@@ -1,0 +1,100 @@
+
+== File Storage
+
+To insert a file into the block store, the following procedure is used:
+
+The resulting file is split into 64k blocks. The last, partial block
+is called the "tail".
+
+Each non-tail is encrypted, and a block addr for it is generated.
+
+This generates a list of blocks which can be concatenated to rebuild
+the (encrypted) file.
+
+Block Addr is 68 bytes = 136 hex chars
+    block info (64 bytes) = ctext hash (name), ptxt hmac (iv)
+    file info  ( 4 bytes) = offset, length
+
+If the ctext hash of a block is all zeros, then it's a tail block and
+it's stored in the current block at the given offset and length.
+
+The list of block addrs is stored in a tree. If the file fits in a single
+block, no tree is needed.
+
+Each tree node is formatted as follows:
+
+ - nn: Number of blocks stored at or below this level.
+ - mm: Number of block addresses in this file.
+ - ll: Length of the file
+ - hash of the file
+ - 1480 bytes of nulls (reserved)
+ - The block addrs of those blocks (up to 640)
+
+If (nn > mm), then these are indirect blocks that point to another
+tree node. Otherwise, these are data blocks.
+
+If there are less than 640 block addrs, the remaining space may be
+used to store a tail.
+
+
+Examples:
+    64k file:  block addr ....,0,0
+    10k file:  block addr ....,0,10k
+   127k file:  tree:
+                block addr: ....,0,0 
+                block addr: ....,0,63k
+    96k file:  tree:
+                block addr: ....,0,0
+                block addr: 0...,32k,64k
+
+As a special case, 0,0 marks a 64k chunk. Zero length files are marked
+as such in the header.
+
+== Listing Storage
+
+Directory structure is stored in a flat map data structure, mapping paths
+to file entries.
+
+This map is stored as a tree of sublists of directory entries.
+
+Each node in the tree is a list, representing some subset of the files in
+sorted order. Each entry is either a file object or a subtree object which
+contains the entries that go in that position in the sorted list.
+
+The subtree object lists the name of the first and last item in the
+subtree and the block address where the subtree is stored.
+
+Inserting an item:
+    - The item before it is found, and the item is inserted after it.
+    - If this causes the node to overflow, the node is rebalanced.
+
+The list format is as follows:
+    - # of items in current file (2 bytes)
+    - total length (2 bytes)
+    - the items
+
+Each item is
+    - length of the item (2 bytes)
+    - type (2 bytes)
+    - flags (2 bytes)
+    Either
+        - ppsz: length of path (2 bytes)
+        - the path (ppsz bytes)
+    Or
+        - block address for file
+        - ppsz: length of path (2 bytes)
+        - the path (ppsz bytes)
+    Or
+        - the number of paths in this subtree (8 bytes)
+        - block address for subtree (100 bytes)
+        - pps0: length of first path
+        - the first path in the subtree (pps0 bytes)
+        - pps1: length of the last path
+        - the last path in the subtree (pps1 bytes)
+
+Path lengths are limited to 4096 bytes, so each tree node can have
+at least 6 subtrees in it.
+
+The tree is rebalanced on insertions.
+
+
