@@ -2,12 +2,21 @@ package db
 
 import (
 	"testing"
+	"../config"
 )
 
 func TestListTables(tt *testing.T) {
-	
+	config.StartTest()
 
-	db := Get()
-	db.createTables()
-	db.listTables()
+	var ts []string 
+
+	Transaction(func() {
+		ts = listTables()
+	})
+
+	if len(ts) < 3 {
+		tt.Fail()
+	}
+
+	config.EndTest()
 }

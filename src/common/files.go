@@ -2,6 +2,7 @@ package common
 
 import (
 	"os"
+	"os/exec"
 	"io"
 	"path"
 	"encoding/hex"
@@ -30,6 +31,16 @@ func CopyFile(dst string, src string) error {
     return cerr
 }
 
+func CopyAll(dst string, src string) error {
+	cp := exec.Command("cp", "-r", src, dst)
+
+	err := cp.Run()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
 
 func HashToPath(hash []byte) string {
 	text := hex.EncodeToString(hash)

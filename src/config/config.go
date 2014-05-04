@@ -4,22 +4,45 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"io/ioutil"
-	"fmt"
 	"os"
 	"os/user"
 	"path"
 	"regexp"
 	"strings"
+	"../common"
 )
 
 var testHome string = ""
 
 func AssetRoot() string {
-	return path.Join(os.Getenv("FOGSYNC_ROOT"), "assets")
+	pp := path.Join(os.Getenv("FOGSYNC_ROOT"), "assets")
+
+	info, err := os.Stat(pp)
+	if err != nil {
+		panic("Can't stat asset root: " + err.Error())
+	}
+
+	if !info.IsDir() {
+		panic("Can't find asset root")
+	}
+
+	return pp
 }
 
 func StartTest() {
+	aroot := AssetRoot()
+
 	tt, err := ioutil.TempDir("", "testHome")
+	if err != nil {
+		panic(err)
+	}
+
+	err = os.MkdirAll(tt, 0755)
+	if err != nil {
+		panic(err)
+	}
+
+	err = common.CopyAll(SyncDir(), path.Join(aroot, "test"))
 	if err != nil {
 		panic(err)
 	}
@@ -43,7 +66,7 @@ func EndTest() {
 }
 
 func SyncDir() string {
-	return fmt.Sprintf("%s/FogSync", HomeDir())
+	return path.Join(HomeDir(), "FogSync")
 }
 
 func HomeDir() string {

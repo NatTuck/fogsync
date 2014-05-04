@@ -8,21 +8,7 @@ import (
 	"encoding/hex"
 )
 
-type FileCache struct {
-
-}
-
-var global_cache *FileCache
-
-func Get() *FileCache {
-	if global_cache == nil {
-		global_cache = new(FileCache)
-	}
-
-	return global_cache
-}
-
-func (cache *FileCache) CopyIn(file *config.SyncPath) {
+func CopyIn(file *config.SyncPath) {
 	// Add a file on the file system to the cache.
 
 	src_path := file.Full()
