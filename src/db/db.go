@@ -2,10 +2,10 @@ package db
 
 import (
 	"os"
-	"io"
 	"path"
 	"sync"
-	"code.google.com/p/go-sqlite/go1/sqlite3"
+	"database/sql"
+	_ "code.google.com/p/go-sqlite/go1/sqlite3"
 	"github.com/coopernurse/gorp"
 	"../config"
 )
@@ -15,8 +15,8 @@ type File struct {
 	Path string // Relative to SyncDir
 	Hash string // Hash of file
 	Host string // Host name of last update
-	Version float64 // Last modified date 
-	Cached bool // Available in cache
+	Mtime float64 // Last modified timestamp
+	Cached bool // Available in local cache
 	Remote bool // All blocks stored remotely
 	Local  bool // Current local version 
 }
@@ -37,57 +37,11 @@ type FileBlock struct {
 	Byte1 int32 // Where does the data end
 }
 
-func createTables() {
-	    create table if not exists files (
-            id integer primary key autoincrement,
-			path string not null, -- Relative to SyncDir
-			hash string not null, -- Hash of file
-			cached int not null,  -- Available in cache
-			remote int not null,  -- All blocks stored remotely
-			local  int not null   -- Stored locally
-	    )
-	`)
-	mustExec(`
-	    create unique index if not exists file_path on files (path)
-	`)
-	mustExec(`
-	    create unique index if not exists file_hash on files (hash)
-	`)
-
-	mustExec(`
-	    create table if not exists blocks (
-            id integer primary key autoincrement,
-			hash string not null, -- Hash of block, identifier 
-			cached int not null,  -- Available in cache
-			remote int not null   -- Stored remotely
-		)
-	`)
-	mustExec(`
-	    create unique index if not exists block_hash on blocks (hash)
-	`)
-
-	mustExec(`
-	    create table if not exists file_blocks (
-            id integer primary key autoincrement,
-			file_id int not null,
-			block_id int not null,
-			nn int not null, -- Which block of the file
-			d0 int not null, -- Where does the data start
-			d1 int not null  -- Where does the data end
-		)
-	`)
-	mustExec(`
-	    create unique index if not exists fb_ids on file_blocks (file_id, block_id)
-	`)
-}
-
-
-
-var conn *sqlite3.Conn
+var dbm *gorp.DbMap
 var lock sync.Mutex
 
 func Connect() {
-	if conn == nil {
+	if dbm == nil {
 		ddir := config.DataDir()
 		
 		err := os.MkdirAll(ddir, 0700)
@@ -97,12 +51,20 @@ func Connect() {
 
 		dbpath := path.Join(config.DataDir(), "db.sqlite3")
 
-		conn, err = sqlite3.Open(dbpath)
+		conn, err := sql.Open("sqlite3", dbpath)
 		if err != nil {
 			panic(err)
 		}
 
-		createTables()
+		dbm = &gorp.DbMap{Db: conn, Dialect: gorp.SqliteDialect{}}
+		dbm.AddTableWithName(File{}, "files").SetKeys(true, "Id")
+		dbm.AddTableWithName(Block{}, "blocks").SetKeys(true, "Id")
+		dbm.AddTableWithName(FileBlock{}, "file_blocks").SetKeys(true, "Id")
+
+		err = dbm.CreateTablesIfNotExists()
+		if err != nil {
+			panic(err)
+		}
 	}
 }
 
@@ -120,51 +82,37 @@ func Transaction(action func ()) {
 
 	Connect()
 
-	err := conn.Begin()
+	trans, err := dbm.Begin()
 	if err != nil {
 		panic(err)
 	}
 
 	action()
 
-	err = conn.Commit()
+	err = trans.Commit()
 	if err != nil {
 		panic(err)
 	}
 }
+	
+type NameStruct struct {
+	Name string
+}
 
 func listTables() []string {
-	rows, err := conn.Query(`SELECT name FROM sqlite_master WHERE type='table'`);
+	names, err := dbm.Select(
+		NameStruct{}, 
+		`SELECT Name FROM sqlite_master WHERE type='table'`)
 	if err != nil {
 		panic(err)
 	}
 
 	tables := make([]string, 4)
 
-	for {
-		var table string
-
-		err := rows.Scan(&table)
-		if err != nil {
-			panic(err)
-		}
-
-		tables = append(tables, table)
-
-		done := rows.Next()
-		if done == io.EOF {
-			break
-		}
+	for _, nn := range(names) {
+		tables = append(tables, nn.(*NameStruct).Name)
 	}
 
 	return tables
 }
-
-func mustExec(sql string) {
-	err := conn.Exec(sql)
-	if err != nil {
-		panic(err)
-	}
-}
-
 

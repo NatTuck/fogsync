@@ -1,21 +1,25 @@
 package db
 
 import (
-	//"encoding/hex"
+	"encoding/hex"
+	"../common"
 )
 
-const (
-	FILE_LOCAL = iota
-	FILE_REMOTE
-)
-
-func AddCachedFile(path string, hash []byte, source int) {
+func FileInCache(sync_path string, hash []byte) {
 	Transaction(func() {
+		var files []File
+		_, err := dbm.Select(
+			&files, 
+			`select * from files where Path = ? and Hash = ?`,
+			sync_path,
+			hex.EncodeToString(hash))
+		common.CheckError(err)
 
-		conn.mustExec(`delete from files where path = ?`, path)
-		conn.mustExec(`insert or ignore 
-
-
+		for _, ff := range(files) {
+			ff.Cached = true
+			_, err = dbm.Update(&ff)
+			common.CheckError(err)
+		}
 	})
 }
 

@@ -41,13 +41,13 @@ func StartTest() {
 	if err != nil {
 		panic(err)
 	}
+	
+	testHome = tt
 
 	err = common.CopyAll(SyncDir(), path.Join(aroot, "test"))
 	if err != nil {
 		panic(err)
 	}
-
-	testHome = tt
 }
 
 func EndTest() {

@@ -12,6 +12,16 @@ func ErrorHere(msg string) error {
     return errors.New(msg1)
 }
 
+func CheckError(err error) {
+	if err == nil {
+		return
+	}
+
+    _, file, line, _ := runtime.Caller(1)
+    msg1 := fmt.Sprintf("%s at %s:%d", err.Error(), file, line)
+    panic(msg1)
+}
+
 func LogErrorHere(err error) {
      _, file, line, _ := runtime.Caller(1)
     log.Printf("%s at %s:%d\n", err.Error(), file, line)
@@ -23,3 +33,4 @@ func TraceError(err error) error {
      msg := fmt.Sprintf("%s\n  ...@ %s:%d", err.Error(), file, line)
      return errors.New(msg)
 }
+
