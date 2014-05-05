@@ -15,7 +15,7 @@ type File struct {
 	Path string // Relative to SyncDir
 	Hash string // Hash of file
 	Host string // Host name of last update
-	Mtime float64 // Last modified timestamp
+	Mtime int64 // Last modified timestamp (Unix Nanoseconds)
 	Cached bool // Available in local cache
 	Remote bool // All blocks stored remotely
 	Local  bool // Current local version 
