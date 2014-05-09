@@ -1,4 +1,4 @@
-package common
+package fs
 
 import (
 	"testing"
@@ -34,7 +34,7 @@ func TestHashFile(tt *testing.T) {
 
 	correct := "ef537f25c895bfa782526529a9b63d97aa631564d5d789c2b765448c8635fb6c"
 
-	if hash != correct {
+	if hex.EncodeToString(hash) != correct {
 		tt.Fail()
 	}
 

@@ -11,12 +11,26 @@ Each non-tail is encrypted, and a block addr for it is generated.
 This generates a list of blocks which can be concatenated to rebuild
 the (encrypted) file.
 
-Block Addr is 68 bytes = 136 hex chars
+Block Addr is 76 bytes = 152 hex chars
     block info (64 bytes) = ctext hash (name), ptxt hmac (iv)
-    file info  ( 4 bytes) = offset, length
+    file info  ( 8 bytes) = offset, length
+    indirection( 4 bytes) = depth
 
 If the ctext hash of a block is all zeros, then it's a tail block and
 it's stored in the current block at the given offset and length.
+
+--
+
+If there's one block addr, that's the address of the file @ depth = 0.
+
+If there are many block addrs, the list of block addrs is stored as a
+file at depth = n, recursively.
+
+A list of blocks is formatted as follows:
+ - How many blocks in this list (64-bit int)
+ - The blocks
+
+--
 
 The list of block addrs is stored in a tree. If the file fits in a single
 block, no tree is needed.
@@ -97,4 +111,9 @@ at least 6 subtrees in it.
 
 The tree is rebalanced on insertions.
 
-
+== Root block
+    - Date
+    - Host
+    - User
+    - Directory Listing bptr
+    - Log bptr

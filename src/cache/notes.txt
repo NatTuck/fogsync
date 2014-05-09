@@ -1,0 +1,5 @@
+
+The fogsync cache is a cache of data stored on the fogsync server.
+
+
+

@@ -1,4 +1,4 @@
-package common
+package fs
 
 import "fmt"
 import "log"
@@ -28,9 +28,15 @@ func LogErrorHere(err error) {
     panic("giving up")
 }
 
+func TagError(err error, tag string) error {
+     _, file, line, _ := runtime.Caller(1)
+	 msg := fmt.Sprintf("%s: %s\n  ...@ %s:%d", tag, err.Error(), file, line)
+     return errors.New(msg)
+}
+
 func TraceError(err error) error {
      _, file, line, _ := runtime.Caller(1)
-     msg := fmt.Sprintf("%s\n  ...@ %s:%d", err.Error(), file, line)
+	 msg := fmt.Sprintf("%s\n  ...@ %s:%d", err.Error(), file, line)
      return errors.New(msg)
 }
 

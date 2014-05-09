@@ -1,4 +1,4 @@
-package common
+package fs
 
 import (
 	"os"
@@ -11,13 +11,13 @@ import (
 func CopyFile(dst string, src string) error {
     in, err := os.Open(src)
     if err != nil { 
-		return err 
+		return TraceError(err)
 	}
     defer in.Close()
 
     out, err := os.Create(dst)
     if err != nil { 
-		return err 
+		return TraceError(err)
 	}
     
 	_, err = io.Copy(out, in)
@@ -25,10 +25,14 @@ func CopyFile(dst string, src string) error {
 	cerr := out.Close()
 
     if err != nil {
-		return err 
+		return TraceError(err)
 	}
 
-    return cerr
+	if cerr != nil {
+		return TraceError(cerr)
+	}
+
+    return nil
 }
 
 func CopyAll(dst string, src string) error {
@@ -36,7 +40,7 @@ func CopyAll(dst string, src string) error {
 
 	err := cp.Run()
 	if err != nil {
-		return err
+		return TraceError(err)
 	}
 
 	return nil

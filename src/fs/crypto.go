@@ -1,5 +1,5 @@
 
-package common
+package fs
 
 import (
 	"crypto/rand"

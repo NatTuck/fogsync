@@ -9,7 +9,7 @@ import (
 	"path"
 	"regexp"
 	"strings"
-	"../common"
+	"../fs"
 )
 
 var testHome string = ""
@@ -44,7 +44,7 @@ func StartTest() {
 	
 	testHome = tt
 
-	err = common.CopyAll(SyncDir(), path.Join(aroot, "test"))
+	err = fs.CopyAll(SyncDir(), path.Join(aroot, "test"))
 	if err != nil {
 		panic(err)
 	}

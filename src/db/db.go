@@ -8,34 +8,9 @@ import (
 	_ "code.google.com/p/go-sqlite/go1/sqlite3"
 	"github.com/coopernurse/gorp"
 	"../config"
+	"../fs"
 )
 
-type File struct {
-	Id int64
-	Path string // Relative to SyncDir
-	Hash string // Hash of file
-	Host string // Host name of last update
-	Mtime int64 // Last modified timestamp (Unix Nanoseconds)
-	Cached bool // Available in local cache
-	Remote bool // All blocks stored remotely
-	Local  bool // Current local version 
-}
-
-type Block struct {
-	Id int64
-	Hash string // Hash of block
-	Cached bool // Available in cache
-	Remote bool // Block is stored remotely
-}
-
-type FileBlock struct {
-	Id int64
-	FileId int64
-	BlockId int64
-	Num int64 // Which block of the file
-	Byte0 int32 // Where does the data start
-	Byte1 int32 // Where does the data end
-}
 
 var dbm *gorp.DbMap
 var lock sync.Mutex
@@ -52,19 +27,15 @@ func Connect() {
 		dbpath := path.Join(config.DataDir(), "db.sqlite3")
 
 		conn, err := sql.Open("sqlite3", dbpath)
-		if err != nil {
-			panic(err)
-		}
+		fs.CheckError(err)
 
 		dbm = &gorp.DbMap{Db: conn, Dialect: gorp.SqliteDialect{}}
-		dbm.AddTableWithName(File{}, "files").SetKeys(true, "Id")
-		dbm.AddTableWithName(Block{}, "blocks").SetKeys(true, "Id")
-		dbm.AddTableWithName(FileBlock{}, "file_blocks").SetKeys(true, "Id")
+
+		connectFiles()
+		connectBlocks()
 
 		err = dbm.CreateTablesIfNotExists()
-		if err != nil {
-			panic(err)
-		}
+		fs.CheckError()
 	}
 }
 
@@ -83,16 +54,12 @@ func Transaction(action func ()) {
 	Connect()
 
 	trans, err := dbm.Begin()
-	if err != nil {
-		panic(err)
-	}
+	fs.CheckError(err)
 
 	action()
 
 	err = trans.Commit()
-	if err != nil {
-		panic(err)
-	}
+	fs.CheckError(err)
 }
 	
 type NameStruct struct {
@@ -103,9 +70,7 @@ func listTables() []string {
 	names, err := dbm.Select(
 		NameStruct{}, 
 		`SELECT Name FROM sqlite_master WHERE type='table'`)
-	if err != nil {
-		panic(err)
-	}
+	fs.CheckError(err)
 
 	tables := make([]string, 4)
 
@@ -115,4 +80,3 @@ func listTables() []string {
 
 	return tables
 }
-
