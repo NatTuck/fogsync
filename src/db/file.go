@@ -1,6 +1,7 @@
 package db
 
 import (
+	"encoding/hex"
 	"../config"
 	"../fs"
 )
@@ -41,7 +42,27 @@ func (file *File) Update() error {
 	return err
 }
 
-func GetFileHistory(sync_path *config.SyncPath) *[]File {
+func (file *File) GetHash() []byte {
+	hash, err := hex.DecodeString(file.Hash)
+	fs.CheckError(err)
+	return hash
+}
+
+func (file *File) GetBlocks() []Block {
+	var blocks []Block
+	
+	Transaction(func() {
+		_, err := dbm.Select(
+			&blocks, 
+			"select * from blocks where FileId = ? order by Num asc",
+			file.Id)
+		fs.CheckError(err)
+	})
+
+	return blocks
+}
+
+func GetFileHistory(sync_path *config.SyncPath) []File {
 	var files []File
 	
 	Transaction(func() {
@@ -52,7 +73,7 @@ func GetFileHistory(sync_path *config.SyncPath) *[]File {
 		fs.CheckError(err)
 	})
 
-	return &files
+	return files
 }
 
 func GetFile(sync_path *config.SyncPath) *File {
@@ -69,8 +90,7 @@ func GetFile(sync_path *config.SyncPath) *File {
 	if len(files) == 0 {
 		return nil
 	} else {
-		return &(files[0])
+		return &files[0]
 	}
 }
-
 

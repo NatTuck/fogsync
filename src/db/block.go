@@ -18,7 +18,7 @@ type Block struct {
 
 func connectBlocks() {
 	btab := dbm.AddTableWithName(Block{}, "blocks")
-	btab.SetKeys(false, "Id")
+	btab.SetKeys(true, "Id")
 }
 
 func GetBlock(hash []byte) *Block {
@@ -35,20 +35,24 @@ func GetBlock(hash []byte) *Block {
 	return &bb
 }
 
-func (bb *Block) Insert() {
-	Transaction(func() {
-		count, err := dbm.Update(bb)
-		fs.CheckError(err)
+func (bb *Block) Update() error {
+	var err error = nil
 
-		if count == 0 {
-			err = dbm.Insert(bb)
-			fs.CheckError(err)
-		}
+	Transaction(func() {
+		_, err = dbm.Update(bb)
 	})
+
+	return err
 }
 
-func (bb *Block) Update() {
-	bb.Insert()
+func (bb *Block) Insert() error {
+	var err error = nil
+
+	Transaction(func() {
+		err = dbm.Insert(bb)
+	})
+
+	return err
 }
 
 func (bb *Block) GetHash() []byte {
@@ -65,19 +69,19 @@ func FindPartialBlock(need int32) *Block {
 	var block *Block = nil
 
 	Transaction(func() {
-		var blocks *[]Block
+		var blocks []Block
 
-		nn, err := dbm.Select(
+		_, err := dbm.Select(
 			&blocks,
 			"select * from blocks where Free >= ? order by Free asc limit 1",
 			need)
 		fs.CheckError(err)
 
-		if nn = 0 {
+		if len(blocks) == 0 {
 			return
 		}
 
-		block = &(blocks[0])
+		block = &blocks[0]
 		block.Free = 0
 		dbm.Update(block)
 	})

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 	"encoding/hex"
-	"../common"
+	"../fs"
 	"../config"
 	"../db"
 )
@@ -16,21 +16,14 @@ func TestCopyInOutFile(tt *testing.T) {
 
 	src_path := path.Join(config.SyncDir(), "goofy_dude.jpg")
 
-	hash0, err := common.HashFile(src_path)
-	common.CheckError(err)
+	hash0, err := fs.HashFile(src_path)
+	fs.CheckError(err)
 
 	sync_path := config.NewSyncPath(src_path)
-	CopyInFile(sync_path)
+	err = CopyInFile(sync_path)
+	fs.CheckError(err)
 
-	hash1, err := common.HashFile(FileCachePath(hash0))
-	common.CheckError(err)
-
-	if !common.KeysEqual(hash0, hash1) {
-		fmt.Println(hash0, hash1)
-		tt.Fail()
-	}
-
-	file := db.CurrentFile(sync_path)
+	file := db.GetFile(sync_path)
 	if file == nil {
 		tt.Fail()
 	} else if file.Hash != hex.EncodeToString(hash0) {
@@ -38,16 +31,17 @@ func TestCopyInOutFile(tt *testing.T) {
 	}
 
 	err = os.Remove(src_path)
-	common.CheckError(err)
+	fs.CheckError(err)
 
 	CopyOutFile(sync_path)
 
-	hash2, err := common.HashFile(src_path)
-	common.CheckError(err)
+	hash1, err := fs.HashFile(src_path)
+	fs.CheckError(err)
 
-	if !common.KeysEqual(hash0, hash2) {
-		fmt.Println(hash0, hash2)
+	if !fs.KeysEqual(hash0, hash1) {
+		fmt.Println(hash0, hash1)
 		tt.Fail()
+		panic("giving up")
 	}
 
 	config.EndTest()

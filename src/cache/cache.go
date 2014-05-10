@@ -2,11 +2,10 @@ package cache
 
 import (
 	"../config"
-	"../common"
+	"../fs"
 	"../db"
 	"encoding/hex"
 	"path"
-	"math"
 	"os"
 )
 
@@ -55,11 +54,16 @@ func CopyInFile(sync_path *config.SyncPath) error {
 		return nil
 	}
 
+	host, err := os.Hostname()
+	if err != nil {
+		return fs.TagError(err, "Hostname")
+	}
+	
 	// Get a DB file ID
 	db_file := db.File {
 		Path: sync_path.Short(),
 		Hash: hex.EncodeToString(hash),
-		Host: os.Hostname(),
+		Host: host,
 		Mtime: info0.ModTime().UnixNano(),
 		Local: true,
 	}
@@ -73,17 +77,15 @@ func CopyInFile(sync_path *config.SyncPath) error {
 	full_bs := info0.Size() / BLOCK_SIZE
 	tail_sz := info0.Size() % BLOCK_SIZE
 
-	blocks := make([]db.Block, full_bs + 1)
-
 	file, err := os.Open(tmp_path)
 	if err != nil {
 		return fs.TagError(err, "Open")
 	}
-		
+	
 	buff := make([]byte, BLOCK_SIZE)
 
 	// Full blocks
-	for ii := range(full_bs) {
+	for ii := int64(0); ii < full_bs; ii++ {
 		_, err = file.Read(buff)
 		if err != nil {
 			return fs.TagError(err, "Read")
@@ -95,11 +97,11 @@ func CopyInFile(sync_path *config.SyncPath) error {
 		}
 
 		block := db.Block{
-			Hash: hash,
+			Hash: hex.EncodeToString(hash),
 			FileId: db_file.Id,
 			Num: ii,
 			Byte0: 0,
-			Byte1: BLOCK_SIZE + 1,
+			Byte1: BLOCK_SIZE,
 			Free: 0,
 			Dirty: true,
 		}
@@ -112,12 +114,12 @@ func CopyInFile(sync_path *config.SyncPath) error {
 
 	// Tail
 	tail := make([]byte, tail_sz)
-	_, err := File.Read(tail)
+	_, err = file.Read(tail)
 	if err != nil {
 		return fs.TraceError(err)
 	}
 
-	free_block := db.FindFreeBlock(tail_sz)
+	free_block := db.FindPartialBlock(int32(tail_sz))
 
 	// No partial block to use
 	if free_block == nil {
@@ -129,12 +131,12 @@ func CopyInFile(sync_path *config.SyncPath) error {
 		}
 
 		block := db.Block{
-			Hash: hash,
+			Hash: hex.EncodeToString(hash),
 			FileId: db_file.Id,
-			Num: ii,
+			Num: full_bs,
 			Byte0: 0,
-			Byte1: tail_sz,
-			Free: BLOCK_SIZE - tail_sz,
+			Byte1: int32(tail_sz),
+			Free:  int32(BLOCK_SIZE - tail_sz),
 			Dirty: true,
 		}
 
@@ -142,7 +144,7 @@ func CopyInFile(sync_path *config.SyncPath) error {
 		if err != nil {
 			return fs.TraceError(err)
 		}
-
+		
 		return nil
 	}
 
@@ -152,7 +154,7 @@ func CopyInFile(sync_path *config.SyncPath) error {
 	}
 
 	b0 := free_block.Byte1
-	b1 := b0 + tail_sz
+	b1 := b0 + int32(tail_sz)
 
 	copy(data[b0:b1], tail)
 
@@ -162,12 +164,12 @@ func CopyInFile(sync_path *config.SyncPath) error {
 	}
 
 	block := db.Block{
-		Hash: bhash,
+		Hash: hex.EncodeToString(bhash),
 		FileId: db_file.Id,
 		Num: full_bs,
 		Byte0: b0,
 		Byte1: b1,
-		Free: BLOCK_SIZE - b1,
+		Free: int32(BLOCK_SIZE - b1),
 		Dirty: true,
 	}
 
@@ -175,35 +177,60 @@ func CopyInFile(sync_path *config.SyncPath) error {
 	if err != nil {
 		return fs.TraceError(err)
 	}
-
+		
 	return nil
 }
 
 func CopyOutFile(sync_path *config.SyncPath) error {
 	// Copy a file in the cache out to the file system.
 
-	file := db.CurrentFile(sync_path)
-	if file == nil {
+	tmp_dir := path.Join(config.CacheDir(), "tmp")
+
+	err := os.MkdirAll(tmp_dir, 0700)
+	if err != nil {
+		return fs.TagError(err, "MkdirAll")
+	}
+	
+	tmp_path := path.Join(tmp_dir, fs.RandomName())
+
+	db_file := db.GetFile(sync_path)
+	if db_file == nil {
 		panic("No such file in cache")
 	}
 
-	hash, err := hex.DecodeString(file.Hash)
-	if err != nil {
-		return fs.TagError(err, "hex.DecodeString")
-	}
-
-	cache_path := FileCachePath(hash)
-
-	err = common.CopyFile(sync_path.Full(), cache_path)
+	temp, err := os.Create(tmp_path)
 	if err != nil {
 		return fs.TraceError(err)
+	}
+	defer func() { 
+		err := temp.Close()
+		fs.CheckError(err)
+
+		os.Remove(tmp_path)
+	}()
+
+	blocks := db_file.GetBlocks()
+
+	for _, bb := range(blocks) {
+		data, err := ReadBlock(bb.GetHash())
+		if err != nil {
+			return fs.TraceError(err)
+		}
+
+		temp.Write(data[bb.Byte0:bb.Byte1])
+	}
+
+	err = fs.CopyFile(sync_path.Full(), tmp_path)
+	if err != nil {
+		return fs.TagError(err, "CopyFile")
 	}
 
 	return nil
 }
 
 func BlockCachePath(hash []byte) string {
-	return path.Join(config.CacheDir(), "blocks", fs.HashToPath(hash))
+	return path.Join(config.CacheDir(), "blocks", 
+	    fs.HashToPath(hash))
 }
 
 func WriteBlock(data []byte) ([]byte, error) {
@@ -215,7 +242,7 @@ func WriteBlock(data []byte) ([]byte, error) {
 		return nil, fs.TagError(err, "MkdirAll")
 	}
 
-	file, err := os.Create(c_path, 0600)
+	file, err := os.Create(c_path)
 	if err != nil {
 		return nil, fs.TagError(err, "Create")
 	}
@@ -245,15 +272,15 @@ func ReadBlock(hash []byte) ([]byte, error) {
 
 	data := make([]byte, BLOCK_SIZE)
 
-	_, err := file.Read(data)
+	_, err = file.Read(data)
 	if err != nil {
 		return nil, fs.TagError(err, "Read")
 	}
 	
 	hash1 := fs.HashSlice(data)
-	if !fs.EqualKeys(hash, hash1) {
+	if !fs.KeysEqual(hash, hash1) {
 		return nil, fs.ErrorHere("Block was corrupted")
 	}
 
-	return data
+	return data, nil
 }

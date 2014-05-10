@@ -35,7 +35,7 @@ func Connect() {
 		connectBlocks()
 
 		err = dbm.CreateTablesIfNotExists()
-		fs.CheckError()
+		fs.CheckError(err)
 	}
 }
 
