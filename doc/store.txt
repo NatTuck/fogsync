@@ -12,9 +12,9 @@ This generates a list of blocks which can be concatenated to rebuild
 the (encrypted) file.
 
 Block Addr is 76 bytes = 152 hex chars
-    block info (64 bytes) = ctext hash (name), ptxt hmac (iv)
-    file info  ( 8 bytes) = offset, length
-    indirection( 4 bytes) = depth
+    block info  (64 bytes) = ctext hash (name), ptxt hmac (iv)
+    file info   ( 8 bytes) = start offset, end offset
+    indirection ( 4 bytes) = depth
 
 If the ctext hash of a block is all zeros, then it's a tail block and
 it's stored in the current block at the given offset and length.

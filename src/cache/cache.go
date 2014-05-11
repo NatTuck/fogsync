@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"path"
 	"os"
+	"code.google.com/p/go.crypto/nacl/secretbox"
 )
 
 const BLOCK_SIZE = 65536

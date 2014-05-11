@@ -1,17 +1,21 @@
 package db
 
 import (
+	"bytes"
 	"encoding/hex"
+	"encoding/binary"
 	"../fs"
 )
 
 type Block struct {
 	Id    int64
-	Hash  string
+	Hash  string // Ciphertext hash
+	Hmac  string // Plaintext hmac (used as IV)
 	FileId int64 // Which file
 	Num   int64  // Which block of the file
 	Byte0 int32  // Where does the data start
 	Byte1 int32  // Where does the data end
+	Depth int32  // Does this point to data, or a bptr list?
 	Free  int32  // This many bytes after Byte1 are unused
 	Dirty bool   // Needs to be uploaded
 }
@@ -63,6 +67,52 @@ func (bb *Block) GetHash() []byte {
 
 func (bb *Block) SetHash(hash []byte) {
 	bb.Hash = hex.EncodeToString(hash)
+}
+
+func (bb *Block) GetHmac() []byte {
+	hmac, err := hex.DecodeString(bb.Hmac)
+	fs.CheckError(err)
+	return hmac
+}
+
+func (bb *Block) SetHmac(hmac []byte) {
+	bb.Hmac = hex.EncodeToString(hmac)
+}
+
+func (bb *Block) Bptr() []byte {
+	bp := make([]byte, 76, 76)
+
+	be := binary.BigEndian
+
+	copy(bp[0:32], bb.GetHash())
+	copy(bp[32:64], bb.GetHmac())
+	be.PutUint32(bp[64:68], bp.Byte0)
+	be.PutUint32(bp[68:72], bp.Byte1)
+	be.PutUint32(bp[72:76], bp.Depth)
+
+	return bp
+}
+
+func LoadBptr(bp []byte) *Block {
+	be := binary.BigEndian
+
+	var bb := GetBlock(bp[0:32])
+
+	if bb == nil {
+		bb := Block{
+			Byte0: be.Uint32(bp[64:68]),
+			Byte1: be.Uint32(bp[68:72]),
+			Depth: be.Uint32(bp[72:76]),
+		}
+
+		bb.SetHash(bp[0:32])
+		bb.SetHmac(bp[32:64])
+
+		err := bb.Insert()
+		fs.CheckError(err)
+	}
+
+	return bb
 }
 
 func FindPartialBlock(need int32) *Block {
