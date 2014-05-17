@@ -20,6 +20,8 @@ func TestCopyInOutFile(tt *testing.T) {
 	fs.CheckError(err)
 
 	sync_path := config.NewSyncPath(src_path)
+
+	// Copy in
 	err = CopyInFile(sync_path)
 	fs.CheckError(err)
 
@@ -33,7 +35,9 @@ func TestCopyInOutFile(tt *testing.T) {
 	err = os.Remove(src_path)
 	fs.CheckError(err)
 
-	CopyOutFile(sync_path)
+	// Copy out
+	err = CopyOutFile(sync_path)
+	fs.CheckError(err)
 
 	hash1, err := fs.HashFile(src_path)
 	fs.CheckError(err)

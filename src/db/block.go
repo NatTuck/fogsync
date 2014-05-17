@@ -1,7 +1,6 @@
 package db
 
 import (
-	"bytes"
 	"encoding/hex"
 	"encoding/binary"
 	"../fs"
@@ -13,10 +12,10 @@ type Block struct {
 	Hmac  string // Plaintext hmac (used as IV)
 	FileId int64 // Which file
 	Num   int64  // Which block of the file
-	Byte0 int32  // Where does the data start
-	Byte1 int32  // Where does the data end
-	Depth int32  // Does this point to data, or a bptr list?
-	Free  int32  // This many bytes after Byte1 are unused
+	Byte0 uint32  // Where does the data start
+	Byte1 uint32  // Where does the data end
+	Depth uint32  // Does this point to data, or a bptr list?
+	Free  uint32  // This many bytes after Byte1 are unused
 	Dirty bool   // Needs to be uploaded
 }
 
@@ -86,9 +85,9 @@ func (bb *Block) Bptr() []byte {
 
 	copy(bp[0:32], bb.GetHash())
 	copy(bp[32:64], bb.GetHmac())
-	be.PutUint32(bp[64:68], bp.Byte0)
-	be.PutUint32(bp[68:72], bp.Byte1)
-	be.PutUint32(bp[72:76], bp.Depth)
+	be.PutUint32(bp[64:68], bb.Byte0)
+	be.PutUint32(bp[68:72], bb.Byte1)
+	be.PutUint32(bp[72:76], bb.Depth)
 
 	return bp
 }
@@ -96,7 +95,7 @@ func (bb *Block) Bptr() []byte {
 func LoadBptr(bp []byte) *Block {
 	be := binary.BigEndian
 
-	var bb := GetBlock(bp[0:32])
+	bb := GetBlock(bp[0:32])
 
 	if bb == nil {
 		bb := Block{

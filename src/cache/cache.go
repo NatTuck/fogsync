@@ -136,8 +136,8 @@ func CopyInFile(sync_path *config.SyncPath) error {
 			FileId: db_file.Id,
 			Num: full_bs,
 			Byte0: 0,
-			Byte1: int32(tail_sz),
-			Free:  int32(BLOCK_SIZE - tail_sz),
+			Byte1: uint32(tail_sz),
+			Free:  uint32(BLOCK_SIZE - tail_sz),
 			Dirty: true,
 		}
 
@@ -155,7 +155,7 @@ func CopyInFile(sync_path *config.SyncPath) error {
 	}
 
 	b0 := free_block.Byte1
-	b1 := b0 + int32(tail_sz)
+	b1 := b0 + uint32(tail_sz)
 
 	copy(data[b0:b1], tail)
 
@@ -170,7 +170,7 @@ func CopyInFile(sync_path *config.SyncPath) error {
 		Num: full_bs,
 		Byte0: b0,
 		Byte1: b1,
-		Free: int32(BLOCK_SIZE - b1),
+		Free: uint32(BLOCK_SIZE - b1),
 		Dirty: true,
 	}
 
@@ -248,7 +248,10 @@ func WriteBlock(data []byte) ([]byte, error) {
 		return nil, fs.TagError(err, "Create")
 	}
 
-	_, err = file.Write(data)
+	buff := make([]byte, 0)
+	ctxt := secretbox.Seal(buff, data, nonce, key)
+
+	_, err = file.Write(ctxt)
 	if err != nil {
 		file.Close()
 		return nil, fs.TagError(err, "Write")
@@ -271,11 +274,20 @@ func ReadBlock(hash []byte) ([]byte, error) {
 	}
 	defer file.Close()
 
-	data := make([]byte, BLOCK_SIZE)
+	ctxt := make([]byte, BLOCK_SIZE + secretbox.Overhead)
 
-	_, err = file.Read(data)
+	_, err = file.Read(ctxt)
 	if err != nil {
 		return nil, fs.TagError(err, "Read")
+	}
+
+	key := config.Get
+
+	buff := make([]byte, 0)
+	data, ok := secretbox.Open(buff, ctxt, nonce, key)
+
+	if !ok {
+		return nil, fs.ErrorHere("bad authenticator")
 	}
 	
 	hash1 := fs.HashSlice(data)

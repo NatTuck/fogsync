@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"os"
+	"fmt"
 	"os/user"
 	"path"
 	"regexp"
@@ -154,10 +155,21 @@ func GetString(sec string, key string) string {
 	err := GetObj(sec, &data)
 
 	if err != nil {
-		return ""
+		return GetDefault(sec, key) 
 	}
 
 	return data[key]
+}
+
+func GetDefault(sec string, key string) string {
+	switch fmt.Sprintf("%s/%s", sec, key) {
+	case "keys/cipher":
+		return "0000000000000000000000000000000000000000000000000000000000000000"
+	case "keys/ivseed":
+		return "0000000000000000000000000000000000000000000000000000000000000000"
+	default:
+		return ""
+	}
 }
 
 func PutString(sec string, key string, value string) {
