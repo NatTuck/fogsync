@@ -8,11 +8,19 @@ FogSync may sync multiple shares, each with the following properties:
 To insert a file into the block cache:
 
  - Optionally, gzip the file.
- - Encrypt the file with crypto/secretbox
-    - A 24 byte random nonce is stored at the beginning of the output
-    - An 8 byte header is stored after the nonce. The first of these
-      bytes has a gzip flag in it. 
-    - A 16 byte MAC is stored at the end of the output.
+ - Encrypt the file
+    - A random nonce is stored after the header
+        - Always 24 bytes
+        - Use first 16 bytes if that's all that's needed
+        - Pad with zeros if we need more
+    - An 8 byte header is stored after the nonce.
+        - 1 byte specifies encryption/authentication mode (0 is ctr-hmac)
+        - 1 byte specifies cipher (0 is Twofish)
+        - 1 byte specifies MAC (0 is SHA256-HMAC)
+        - 1 byte spefifies compression (0 is no compression)
+        - 4 bytes are reserved
+    - A MAC of the encrypted data, including the header and nonce,
+      is stored at the end of the file.
  - Split the result into 64k blocks, saving a list of bptrs.
  - The final, partial block (the tail) is handled specially.
 
@@ -48,6 +56,7 @@ Each directory entry:
  - For symlinks, link path.
  - Size in bytes of the stored data.
  - For files and directories with non-zero size, bptr.
+ - For files and directories with non-zero size, sha256 hash.
  - For files, execute permission.
 
 == Root storage

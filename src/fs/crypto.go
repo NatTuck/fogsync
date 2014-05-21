@@ -4,10 +4,13 @@ package fs
 import (
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/cipher"
+	"crypto/hmac"
 	"encoding/hex"
 	"math"
 	"os"
 	"io"
+	"code.google.com/p/go.crypto/twofish"
 )
 
 func RandomBytes(nn int) []byte {
@@ -74,4 +77,115 @@ func KeysEqual(bs0 []byte, bs1 []byte) bool {
 	}
 
 	return diff == 0
+}
+
+func EncryptFile(file_name string, key []byte) (eret error) {
+	// Encrypts a file in-place.
+
+	if (len(key) != 64) {
+		return ErrorHere("Cipher+HMAC key must be 64 bytes")
+	}
+
+	// Set up the cipher and mac.
+	iv := RandomBytes(24)
+
+	stm := cipher.NewCTR(twofish.NewCipher(key[0:32]), iv)
+	mac := hmac.New(sha256.New(), key[32:64])
+
+	// Open the temp file and write headers
+	temp_name := fmt.Sprintf("%s.temp", file_name)
+
+	out, err := os.Create(temp_name)
+	if err != nil {
+		return TraceError(err)
+	}
+	defer func() {
+		err := out.Close()
+		if err != nil {
+			eret = TraceError(err)
+		}
+	}()
+
+	mac.Write(iv)
+	err = out.Write(iv)
+	if err != nil {
+		return TraceError(err) 
+	}
+
+	// header can be all zeros
+	header := make([]byte, 8)
+
+	stm.XORKeyStream(header, header)
+	mac.Write(header)
+	err = out.Write(header)
+	if err != nil {
+		return TraceError(err) 
+	}
+
+	// Encrypt the input file to the temp file.
+	inp, err := os.Open(file_name)
+	if err != nil {
+		return TraceError(err)
+	}
+	defer func() {
+		err := inp.Close()
+		if err != nil {
+			eret = TraceError(err)
+		}
+	}()
+
+	temp := make([]byte, 64 * 4096)
+
+	for {
+		nn, err := inp.Read(temp)
+		if err == io.EOF {
+			break;
+		}
+		if err != nil {
+			return TraceError(err)
+		}
+
+		stm.XORKeyStream(temp[0:nn], temp[0:nn])
+		mac.Write(temp[0:nn])
+
+		err = out.Write(temp[0:nn])
+		if err != nil {
+			return TraceError(err)
+		}
+	}
+	
+	err = out.Write(mac.Sum(nil))
+	if err != nil {
+		return TraceError(err)
+	}
+
+	err = inp.Close()
+	if err != nil {
+		return TraceError(err)
+	}
+
+	err = out.Close()
+	if err != nil {
+		return TraceError(err)
+	}
+
+	err := os.Rename(temp_name, file_name)
+	if err != nil {
+		return TraceError(err)
+	}
+	
+	return nil
+}
+
+func DecryptFile(file_name string, key []byte) (eret error) {
+	// Decrypts a file in place
+
+	inp, err := os.Open(file_name)
+	if err != nil {
+
+	}
+
+	
+
+	return nil
 }

@@ -13,46 +13,36 @@ import (
 const BLOCK_SIZE = 65536
 
 func CopyInFile(sync_path *config.SyncPath) error {
-	// Add a file on the file system to the cache.
+	// Add a file on the file system to the block cache.
 
-	tmp_dir := path.Join(config.CacheDir(), "tmp")
-
-	err := os.MkdirAll(tmp_dir, 0700)
-	if err != nil {
-		return fs.TagError(err, "MkdirAll")
-	}
-
-	info0, err := os.Lstat(sync_path.Full())
+	// First, grab file stats
+	info, err := os.Lstat(sync_path.Full())
 	if err != nil {
 		return fs.TagError(err, "Lstat")
 	}
 
-	tmp_path := path.Join(tmp_dir, fs.RandomName())
+	// Copy to random temp file
+	temp_copy, err := fs.TempName()
+	if err != nil {
+		return fs.TraceError(err)
+	}
 
-	err = fs.CopyFile(tmp_path, sync_path.Full())
+	err = fs.CopyFile(temp_copy, sync_path.Full())
 	if err != nil {
 		return fs.TagError(err, "CopyFile")
 	}
-	defer os.Remove(tmp_path)
+	defer os.Remove(temp_copy)
 
-	hash, err := fs.HashFile(tmp_path)
+	// Confirm that the file changed
+	hash, err := fs.HashFile(temp_copy)
 	if err != nil {
 		return fs.TagError(err, "HashFile")
 	}
 
-	info1, err := os.Lstat(tmp_path)
-	if err != nil {
-		return fs.TagError(err, "Lstat")
-	}
-
-	if info0.Size() != info1.Size() {
-		return fs.ErrorHere("Lost a race; got a bad copy.")
-	}
-
 	curr := db.GetFile(sync_path)
 	if curr != nil && curr.Hash == hex.EncodeToString(hash) {
-		// No change
-		return nil
+		return ErrorHere("TODO")
+		// TODO: Update directory entry with new mtime.
 	}
 
 	host, err := os.Hostname()
@@ -74,6 +64,12 @@ func CopyInFile(sync_path *config.SyncPath) error {
 		return fs.TraceError(err)
 	}
 
+	// TODO: Try gzipping the file
+	// 
+}
+
+
+func encryptToBlocks(path_id int64, temp_data string, key [32]byte) ([]byte, error) {
 	// For each block, store in cache and record in DB.
 	full_bs := info0.Size() / BLOCK_SIZE
 	tail_sz := info0.Size() % BLOCK_SIZE

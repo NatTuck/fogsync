@@ -6,91 +6,91 @@ import (
 	"../fs"
 )
 
-type File struct {
+type Path struct {
 	Id int64
 	Path string // Relative to SyncDir
-	Hash string // Hash of file
+	Size uint64 // Size of data
+	Hash string // Hex encoded hash of data
 	Bptr string // Block pointer
 	Host string // Host name of last update
 	Mtime int64 // Last modified timestamp (Unix Nanoseconds)
-	Local bool  // Current local version 
 }
 
-func connectFiles() {
-	ftab := dbm.AddTableWithName(File{}, "files")
+func connectPaths() {
+	ftab := dbm.AddTableWithName(Path{}, "paths")
 	ftab.SetKeys(true, "Id")
 	ftab.SetUniqueTogether("Path", "Host", "Mtime")
 }
 
-func (file *File) Insert() error {
+func (pp *Path) Insert() error {
 	var err error = nil
 
 	Transaction(func() {
-		err = dbm.Insert(file)
+		err = dbm.Insert(pp)
 	})
 
 	return err
 }
 
-func (file *File) Update() error {
+func (pp *Path) Update() error {
 	var err error = nil
 
 	Transaction(func() {
-		_, err = dbm.Update(file)
+		_, err = dbm.Update(pp)
 	})
 
 	return err
 }
 
-func (file *File) GetHash() []byte {
-	hash, err := hex.DecodeString(file.Hash)
+func (pp *Path) GetHash() []byte {
+	hash, err := hex.DecodeString(pp.Hash)
 	fs.CheckError(err)
 	return hash
 }
 
-func (file *File) GetBlocks() []Block {
+func (pp *Path) GetBlocks() []Block {
 	var blocks []Block
 	
 	Transaction(func() {
 		_, err := dbm.Select(
 			&blocks, 
 			"select * from blocks where FileId = ? order by Num asc",
-			file.Id)
+			pp.Id)
 		fs.CheckError(err)
 	})
 
 	return blocks
 }
 
-func GetFileHistory(sync_path *config.SyncPath) []File {
-	var files []File
+func GetPathHistory(sync_path *config.SyncPath) []Path {
+	var pps []Path
 	
 	Transaction(func() {
 		_, err := dbm.Select(
-			&files, 
-			"select * from files where Path = ?",
+			&pps, 
+			"select * from paths where Path = ?",
 			sync_path.Short())
 		fs.CheckError(err)
 	})
 
-	return files
+	return pps
 }
 
-func GetFile(sync_path *config.SyncPath) *File {
-	var files []File
+func GetPath(sync_path *config.SyncPath) *Path {
+	var pps []Path
 	
 	Transaction(func() {
 		_, err := dbm.Select(
-			&files, 
-			"select * from files where Path = ? order by Mtime desc limit 1",
+			&pps, 
+			"select * from paths where Path = ? order by Mtime desc limit 1",
 			sync_path.Short())
 		fs.CheckError(err)
 	})
 
-	if len(files) == 0 {
+	if len(pps) == 0 {
 		return nil
 	} else {
-		return &files[0]
+		return &pps[0]
 	}
 }
 

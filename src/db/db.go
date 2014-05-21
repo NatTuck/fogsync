@@ -15,7 +15,7 @@ import (
 var dbm *gorp.DbMap
 var lock sync.Mutex
 
-func Connect() {
+func Connect() error {
 	if dbm == nil {
 		ddir := config.DataDir()
 		
@@ -27,15 +27,19 @@ func Connect() {
 		dbpath := path.Join(config.DataDir(), "db.sqlite3")
 
 		conn, err := sql.Open("sqlite3", dbpath)
-		fs.CheckError(err)
+		if err != nil {
+			return fs.TraceError(err)
+		}
 
 		dbm = &gorp.DbMap{Db: conn, Dialect: gorp.SqliteDialect{}}
 
-		connectFiles()
+		connectPaths()
 		connectBlocks()
 
 		err = dbm.CreateTablesIfNotExists()
-		fs.CheckError(err)
+		if err != nil {
+			return fs.TraceError(err)
+		}
 	}
 }
 
@@ -51,7 +55,8 @@ func Transaction(action func ()) {
 	Lock()
 	defer Unlock()
 
-	Connect()
+	err := Connect()
+	fs.CheckError(err)
 
 	trans, err := dbm.Begin()
 	fs.CheckError(err)

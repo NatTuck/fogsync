@@ -9,14 +9,14 @@ import (
 type Block struct {
 	Id    int64
 	Hash  string // Ciphertext hash
-	Hmac  string // Plaintext hmac (used as IV)
-	FileId int64 // Which file
-	Num   int64  // Which block of the file
-	Byte0 uint32  // Where does the data start
-	Byte1 uint32  // Where does the data end
-	Depth uint32  // Does this point to data, or a bptr list?
-	Free  uint32  // This many bytes after Byte1 are unused
+	PathId int64 // Which path
+	Num   int64  // Which block of the data
+	Byte0 uint32 // Where does the data start
+	Byte1 uint32 // Where does the data end
+	Depth uint32 // Does this point to data, or a bptr list?
+	Free  uint32 // This many bytes after Byte1 are unused
 	Dirty bool   // Needs to be uploaded
+	Dead  bool   // No longer used
 }
 
 func connectBlocks() {
