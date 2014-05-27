@@ -56,3 +56,15 @@ func HashToPath(hash []byte) string {
 	return path.Join(d0, d1, d2, text)
 }
 
+func ReadN(file *os.File, nn int64) []byte {
+	temp := make([]byte, nn)
+
+	mm, err := file.Read(temp)
+	CheckError(err)
+
+	if int64(mm) != nn {
+		PanicHere("Read came up short")
+	}
+	
+	return temp
+}

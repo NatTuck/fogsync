@@ -8,8 +8,13 @@ import "errors"
 func ErrorHere(msg string) error {
     _, file, line, _ := runtime.Caller(1)
     msg1 := fmt.Sprintf("%s at %s:%d", msg, file, line)
-    panic(msg1)
     return errors.New(msg1)
+}
+
+func PanicHere(msg string) {
+    _, file, line, _ := runtime.Caller(1)
+    msg1 := fmt.Sprintf("%s at %s:%d", msg, file, line)
+	panic(msg1)
 }
 
 func CheckError(err error) {
