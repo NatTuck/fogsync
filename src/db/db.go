@@ -41,6 +41,8 @@ func Connect() error {
 			return fs.TraceError(err)
 		}
 	}
+
+	return nil
 }
 
 func Lock() {

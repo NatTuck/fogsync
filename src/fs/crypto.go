@@ -66,9 +66,12 @@ func HashString(data string) []byte {
     return HashSlice([]byte(data))
 }
 
-func KeysEqual(bs0 []byte, bs1 []byte) bool {
+func BytesEqual(bs0 []byte, bs1 []byte) bool {
 	if len(bs0) != len(bs1) {
-		panic("comparing unequal slices makes no sense here")
+		PanicHere(
+			fmt.Sprintf(
+				"Can't compare [%d]byte with [%d]byte",
+				len(bs0), len(bs1)))
 	}
 
 	diff := 0

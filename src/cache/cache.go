@@ -4,13 +4,15 @@ import (
 	"../config"
 	"../fs"
 	"../db"
+	"../pio"
+	"fmt"
 	"encoding/hex"
 	"path"
 	"os"
-	"code.google.com/p/go.crypto/nacl/secretbox"
 )
 
 const BLOCK_SIZE = 65536
+const BPTR_SIZE  = 44
 
 func CopyInFile(sync_path *config.SyncPath) (eret error) {
 	// Add a file on the file system to the block cache.
@@ -47,7 +49,7 @@ func CopyInFile(sync_path *config.SyncPath) (eret error) {
 	fs.CheckError(err)
 	
 	// Get a DB file ID
-	db_file := db.File {
+	db_path := db.Path {
 		Path: sync_path.Short(),
 		Hash: hex.EncodeToString(hash),
 		Host: host,
@@ -60,47 +62,139 @@ func CopyInFile(sync_path *config.SyncPath) (eret error) {
 
 	// TODO: Try gzipping the file
 
-	// Encrypt and separate into blocks.
-	encryptToBlocks(db_file.Id, temp_copy, key, 0)
+	// Encrypt and store as blocks.
+	bptr := encryptToBlocks(db_path.Id, temp_copy, key, 0)
+
+	savePath(sync_path.Short(), bptr)
 }
 
-func encryptToBlocks(file_id int64, temp_name string, key []byte, depth int64) {
-
+func encryptToBlocks(path_id int64, temp_name string, key []byte, depth uint32) []byte {
+	// Encrypt and open the file
 	err := fs.EncryptFile(temp_name, key)
 	fs.CheckError(err)
 
-	inp, err := os.Open(temp_name)
-	fs.CheckError(err)
-	defer inp.Close()
+	input := pio.Open(temp_name)
+	defer input.Close()
 
-	bks_name, err := fs.TempName()
-	fs.CheckError(err)
+	// Open a temp file to store block list
+	blocks_name := fs.TempName()
+	blocks := pio.Create(blocks_name)
+	defer blocks.Close()
+	defer os.Remove(blocks_name)
 
-	bks, err := os.Create(bks_name)
-	fs.CheckError(err)
-
-	temp := make([]byte, BLOCK_SIZE)
+	bnum := 0
 
 	for {
-		var block_id int64
+		data := make([]byte, BLOCK_SIZE)
 
-		nn, err := inp.Read(BLOCK_SIZE)
-		if err == io.EOF {
+		nn, eof = input.Read(data)
+		if eof {
 			break
 		}
-		fs.CheckError(err)
 
-		if nn == BLOCK_SIZE {
-			block_id = saveBlock(temp)
+		// ~1300 addresses fit in a block. It's not worth packing
+		// tails through multiple indirections.
+		if nn < BLOCK_SIZE && bnum < 1024 {
+			bptr := saveTail(block[0:nn])
+			blocks.Write(bptr)
+			break
+		} else {
+			bptr := saveBlock(block, path_id)
+			blocks.Write(bptr)
 		}
+		
+		bnum += 1
+	}
 
+
+	if bnum == 0 {
+		blocks.Seek(0, 0)
+		bptr := blocks.MustRead(BPTR_SIZE)
+		return bptr
+	}
+
+	blocks.Close()
+
+	return encryptToBlocks(path_id, blocks_name, key, depth + 1)
+}
+
+func saveBlock(data []byte, path_id int64, bnum int64, depth uint32, size int) []byte {
+	block := db.Block{
+		PathID: path_id,
+		Num:    bnum,
+		Byte0:  0
+		Byte1:  size,
+		Depth:  depth,
+		Cached: true,
+	}
+
+	if size < BLOCK_SIZE {
+		data1 := fs.RandomBytes(BLOCK_SIZE)
+		copy(data1[0:size], data[0:size])
+		data = data1
+	}
+
+	hash := fs.HashSlice(data)
+	block.SetHash(hash)
+
+	block_path := config.BlockPath(hash)
+
+	bb := pio.Create(block_path)
+	defer bb.Close()
+
+	bb.Write(data)
+	
+	block.Insert()
+
+	return block.Bptr()
+}
+
+func saveTail(data []byte) []byte {
+	part_rec := db.FindPartialBlock(len(data))
+	nn := len(data)
+
+	if part_rec == nil {
+		data1 := make([]byte, BLOCK_SIZE)
+		copy(data1[0:nn], data[0:nn])
+		return saveBlock(data1, path_id, bnum, depth, nn)
+	}
+
+	part_path := config.BlockPath(part_rec.GetHash())
+
+	part_ff := pio.Open(part_path)
+	defer part_ff.Close()
+
+	bdata := part_ff.MustReadN(BLOCK_SIZE)
+	
+	b1 := part_rec.Byte1
+
+	copy(bdata[b1:b1+nn], data)
+
+	bptr := saveBlock(bdata, path_id, bnum, depth, size)
+
+	// Correct all references to old block
+	for _, bb := range(db.GetBlocks(part_rec.GetHash())) {
+		path_rec := bb.GetPath()
+
+		if fs.BytesEqual(path_rec.GetBptr(), bb.Bptr()) {
+			bb.Dead = true
+			bb.Update()
+
+			bb.Id = nil
+			bb.SetBptr(bptr)
+			bb.Insert()
+
+			path_rec.SetBtpr(bptr)
+			path_rec.Update()
+		}
 
 	}
 
+	return bptr
 }
 
-func saveBlock(data []byte) {
-	
+func savePath(short_path string, bptr []byte) {
+	fmt.Println("TODO: Store path in block cache: ", short_path)
+	fmt.Println(hex.EncodeToString(bptr))
 }
-
 

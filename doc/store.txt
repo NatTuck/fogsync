@@ -9,13 +9,12 @@ To insert a file into the block cache:
 
  - Optionally, gzip the file.
  - Encrypt the file
-    - A random nonce/iv is stored first
+    - A MAC of the iv and encrypted data is stored first.
+        - 32 bytes
+    - A random iv is stored after the mac.
         - Always 24 bytes
         - Use first 16 bytes if that's all that's needed
         - Pad with zeros if we need more
-    - A MAC of the encrypted data, including the header, is stored
-      after the nonce.
-        - 32 bytes
     - An 8 byte header is stored after the MAC.
         - 1 byte specifies encryption/authentication mode (0 is ctr-hmac)
         - 1 byte specifies cipher (0 is Twofish)
@@ -30,7 +29,7 @@ A block address (bptr) is as follows:
  - start offset (4 bytes)
  - end offset (4 bytes)
  - indirection depth (4 bytes)
- = 48 bytes
+ = 44 bytes
 
 Integers are unsigned, stored in network (= big endian) byte
 order.
@@ -43,6 +42,9 @@ that block have their block lists updated as well.
 Block lists that are longer than one btr are stored as if they
 were files except that their indirection depth is +1 per level
 of block list. The bptrs are simply packed into the file.
+
+If a block is the tail of a file that's larger than 50 meg,
+it's not treated as a partial block.
 
 == Listing Storage, Mark III
 
