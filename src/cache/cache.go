@@ -4,15 +4,16 @@ import (
 	"../config"
 	"../fs"
 	"../pio"
-	"path"
+	"path/filepath"
 	"fmt"
+	"time"
 	"encoding/hex"
 	"os"
 )
 
 const BLOCK_SIZE = 65536
 
-func CopyInFile(sync_path *config.SyncPath) (eret error) {
+func CopyInFile(sync_path config.SyncPath) (eret error) {
 	// Add a file on the file system to the block cache.
 
 	defer func() {
@@ -64,7 +65,16 @@ func CopyInFile(sync_path *config.SyncPath) (eret error) {
 	err = db_path.Insert()
 	fs.CheckError(err)
 
-	savePath(sync_path.Short(), bptr)
+	file_ent := DirEnt{
+		Type: "file",
+		Bptr: bptr.String(),
+		Size: info.Size(),
+		Hash: hex.EncodeToString(hash),
+		Exec: info.Mode().Perm() & 1 == 1,
+		Mtime: info.ModTime().UnixNano(),
+	}
+
+	savePath(sync_path, file_ent)
 
 	return nil
 }
@@ -140,7 +150,7 @@ func saveBlock(data []byte) []byte {
 	return hash
 }
 
-func CopyOutFile(sync_path *config.SyncPath) (eret error) {
+func CopyOutFile(sync_path config.SyncPath) (eret error) {
 	defer func() {
 		err := recover()
 		if err != nil {
@@ -149,6 +159,10 @@ func CopyOutFile(sync_path *config.SyncPath) (eret error) {
 	}()
 
 	db_path := FindPath(sync_path)
+
+	if db_path == nil {
+		db_path = loadPath(sync_path)
+	}
 
 	bptr := db_path.GetBptr()
 
@@ -228,25 +242,90 @@ func loadBlock(hash []byte) []byte {
 	return pio.ReadFile(config.BlockPath(hash))
 }
 
-func savePath(short_path string, bptr Bptr) {
-	savePath1(short_path, bptr)
+func savePath(sync_path config.SyncPath, ent DirEnt) {
+	names := filepath.SplitList(sync_path.Short())
+
+	share := FindShare("sync")
+
+	root_ent := savePath1(share.RootDir(), names, ent)
+
+	share.Root = root_ent.Bptr
+	share.Update()
 }
 
-func savePath1(short_path string, bptr Bptr) {
-    dname, name := path.Split(short_path)
-	
-	fmt.Println("savePath1")
+func savePath1(cur_dir Dir, names []string, ent DirEnt) DirEnt {
+	name := names[0]
 
-	dir := loadDirectory(dname)
+	if len(names) > 1 {
+		cur_ent := cur_dir[name]
+		
+		if cur_ent.Type != "dir" {
+			panic("That's not a directory")
+		}
 
-	fmt.Println(dir.Ents[name])
-}
+		next_dir := loadDirectory(BptrFromString(cur_ent.Bptr))
 
-func loadDirectory(short_path string) Dir {
-	sync := FindShare("sync")
-	if sync == nil {
-		panic("No sync share")
+		next_ent := savePath1(next_dir, names[1:], ent)
+
+		cur_dir[name] = next_ent
+	} else {
+		cur_dir[name] = ent
 	}
 
-	return Dir{}
+	text := cur_dir.Json()
+
+	temp_name := config.TempName()
+	pio.WriteFile(temp_name, text)
+	defer os.Remove(temp_name)
+
+	key := make([]byte, 64)
+	bptr := encryptToBlocks(temp_name, key, 0)
+	
+	host, err := os.Hostname()
+	fs.CheckError(err)
+
+	return DirEnt{
+		Type: "dir",
+		Bptr: bptr.String(),
+		Size: int64(len(text)),
+		Hash: hex.EncodeToString(fs.HashSlice(text)),
+		Host: host,
+		Mtime: time.Now().UnixNano(),
+	}
+}
+
+func loadDirectory(bptr Bptr) Dir {
+	key := make([]byte, 64)
+	name := decryptFromBlocks(bptr, key)
+	defer os.Remove(name)
+	return DirFromFile(name)
+}
+
+func loadPath(sync_path config.SyncPath) *Path {
+
+	share := FindShare("sync")
+	dir := share.RootDir()
+
+	dirs_text, name := filepath.Split(sync_path.Short())
+	dirs := filepath.SplitList(dirs_text)
+
+	// Traverse the directories
+	for _, nn := range(dirs) {
+		next := dir[nn]
+		dir = loadDirectory(BptrFromString(next.Bptr))
+	}
+
+	ent := dir[name]
+
+	path_rec := Path{
+		Path: sync_path.Short(),
+		Size: ent.Size,
+		Hash: ent.Hash,
+		Bptr: ent.Bptr,
+		Host: ent.Host,
+		Mtime: ent.Mtime,
+	}
+	path_rec.Insert()
+
+	return &path_rec
 }

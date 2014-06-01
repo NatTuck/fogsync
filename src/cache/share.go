@@ -18,7 +18,7 @@ func connectShares() {
 	tab.ColMap("Root").SetNotNull(true)
 }
 
-func FindShare(name string) *Share {
+func FindShare(name string) Share {
 	var shares []Share
 	
 	Transaction(func() {
@@ -30,10 +30,10 @@ func FindShare(name string) *Share {
 	})
 
 	if len(shares) == 0 {
-		return nil
-	} else {
-		return &shares[0]
+		panic("No such share: " + name)
 	}
+
+	return shares[0]
 }
 
 func (ss *Share) Insert() error {
@@ -56,3 +56,12 @@ func (ss *Share) Update() error {
 	return err
 }
 
+func (ss *Share) RootDir() Dir {
+	dir := EmptyDir()
+
+	if ss.Root != "" {
+		dir = loadDirectory(BptrFromString(ss.Root))
+	}
+
+	return dir
+}

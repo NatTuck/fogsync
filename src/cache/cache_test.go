@@ -36,8 +36,9 @@ func TestCopyInOutFile(tt *testing.T) {
 
 	err = os.Remove(src_path)
 	fs.CheckError(err)
-	
-	fmt.Println(pp.Hash)
+
+	file_path := FindPath(sync_path)
+	file_path.Delete()
 
 	// Copy out
 	err = CopyOutFile(sync_path)
@@ -54,3 +55,4 @@ func TestCopyInOutFile(tt *testing.T) {
 
 	config.EndTest()
 }
+

@@ -9,11 +9,11 @@ type SyncPath struct {
 	rel_path string
 }
 
-func NewSyncPath(pp string) *SyncPath {
+func NewSyncPath(pp string) SyncPath {
 	sync := SyncDir()
 
 	if strings.Index(pp, sync) == -1 {
-		return &SyncPath{rel_path: pp}
+		return SyncPath{rel_path: pp}
 	}
 
 	start := len(sync)
@@ -22,7 +22,7 @@ func NewSyncPath(pp string) *SyncPath {
 		start += 1
 	}
 
-	sp := new(SyncPath)
+	sp := SyncPath{}
 	sp.rel_path = "" + pp[start:]
 
 	return sp

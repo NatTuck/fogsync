@@ -8,9 +8,10 @@ import (
 )
 
 type Path struct {
-	Id int64
+	Id   int64
 	Path string // Relative to SyncDir
-	Size uint64 // Size of data
+	Type string // file | dir | link
+	Size int64  // Size of data
 	Hash string // Hex encoded hash of data
 	Bptr string // Block pointer
 	Host string // Host name of last update
@@ -21,7 +22,9 @@ func connectPaths() {
 	tab := dbm.AddTableWithName(Path{}, "paths")
 	tab.SetKeys(true, "Id")
 	tab.ColMap("Path").SetNotNull(true)
+	tab.ColMap("Type").SetNotNull(true)
 	tab.ColMap("Hash").SetNotNull(true)
+	tab.ColMap("Size").SetNotNull(true)
 	tab.ColMap("Bptr").SetNotNull(true)
 	tab.ColMap("Host").SetNotNull(true)
 	tab.ColMap("Mtime").SetNotNull(true)
@@ -52,6 +55,16 @@ func (pp *Path) Update() error {
 	return err
 }
 
+func (pp *Path) Delete() error {
+	var err error = nil
+
+	Transaction(func() {
+		_, err = dbm.Delete(pp)
+	})
+
+	return err
+}
+
 func (pp *Path) GetHash() []byte {
 	hash, err := hex.DecodeString(pp.Hash)
 	fs.CheckError(err)
@@ -76,7 +89,7 @@ func (pp *Path) GetBlocks() []Block {
 	return blocks
 }
 
-func GetPathHistory(sync_path *config.SyncPath) []Path {
+func GetPathHistory(sync_path config.SyncPath) []Path {
 	var pps []Path
 	
 	Transaction(func() {
@@ -90,7 +103,7 @@ func GetPathHistory(sync_path *config.SyncPath) []Path {
 	return pps
 }
 
-func FindPath(sync_path *config.SyncPath) *Path {
+func FindPath(sync_path config.SyncPath) *Path {
 	var pps []Path
 	
 	Transaction(func() {
