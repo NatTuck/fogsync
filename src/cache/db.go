@@ -1,4 +1,4 @@
-package db
+package cache
 
 import (
 	"os"
@@ -10,7 +10,6 @@ import (
 	"../config"
 	"../fs"
 )
-
 
 var dbm *gorp.DbMap
 var lock sync.Mutex
@@ -33,6 +32,7 @@ func Connect() error {
 
 		dbm = &gorp.DbMap{Db: conn, Dialect: gorp.SqliteDialect{}}
 
+		connectShares()
 		connectPaths()
 		connectBlocks()
 

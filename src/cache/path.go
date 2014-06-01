@@ -1,7 +1,8 @@
-package db
+package cache
 
 import (
 	"encoding/hex"
+	"fmt"
 	"../config"
 	"../fs"
 )
@@ -17,13 +18,22 @@ type Path struct {
 }
 
 func connectPaths() {
-	ftab := dbm.AddTableWithName(Path{}, "paths")
-	ftab.SetKeys(true, "Id")
-	ftab.SetUniqueTogether("Path", "Host", "Mtime")
+	tab := dbm.AddTableWithName(Path{}, "paths")
+	tab.SetKeys(true, "Id")
+	tab.ColMap("Path").SetNotNull(true)
+	tab.ColMap("Hash").SetNotNull(true)
+	tab.ColMap("Bptr").SetNotNull(true)
+	tab.ColMap("Host").SetNotNull(true)
+	tab.ColMap("Mtime").SetNotNull(true)
+	tab.SetUniqueTogether("Path", "Host", "Mtime")
 }
 
 func (pp *Path) Insert() error {
 	var err error = nil
+
+	if len(pp.Bptr) != 2 * BPTR_SIZE {
+		return fmt.Errorf("Can't save path with invalid bptr")
+	}
 
 	Transaction(func() {
 		err = dbm.Insert(pp)
@@ -46,6 +56,10 @@ func (pp *Path) GetHash() []byte {
 	hash, err := hex.DecodeString(pp.Hash)
 	fs.CheckError(err)
 	return hash
+}
+
+func (pp *Path) GetBptr() Bptr {
+	return BptrFromString(pp.Bptr)
 }
 
 func (pp *Path) GetBlocks() []Block {
@@ -76,7 +90,7 @@ func GetPathHistory(sync_path *config.SyncPath) []Path {
 	return pps
 }
 
-func GetPath(sync_path *config.SyncPath) *Path {
+func FindPath(sync_path *config.SyncPath) *Path {
 	var pps []Path
 	
 	Transaction(func() {

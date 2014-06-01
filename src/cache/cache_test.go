@@ -8,11 +8,13 @@ import (
 	"encoding/hex"
 	"../fs"
 	"../config"
-	"../db"
 )
 
 func TestCopyInOutFile(tt *testing.T) {
 	config.StartTest()
+
+	share := Share{Name: "sync", Root: ""}
+	share.Insert()
 
 	src_path := path.Join(config.SyncDir(), "goofy_dude.jpg")
 
@@ -25,24 +27,26 @@ func TestCopyInOutFile(tt *testing.T) {
 	err = CopyInFile(sync_path)
 	fs.CheckError(err)
 
-	file := db.GetFile(sync_path)
-	if file == nil {
+	pp := FindPath(sync_path)
+	if pp == nil {
 		tt.Fail()
-	} else if file.Hash != hex.EncodeToString(hash0) {
+	} else if pp.Hash != hex.EncodeToString(hash0) {
 		tt.Fail()
 	}
 
 	err = os.Remove(src_path)
 	fs.CheckError(err)
+	
+	fmt.Println(pp.Hash)
 
 	// Copy out
 	err = CopyOutFile(sync_path)
 	fs.CheckError(err)
-
+	
 	hash1, err := fs.HashFile(src_path)
 	fs.CheckError(err)
 
-	if !fs.KeysEqual(hash0, hash1) {
+	if !fs.BytesEqual(hash0, hash1) {
 		fmt.Println(hash0, hash1)
 		tt.Fail()
 		panic("giving up")
