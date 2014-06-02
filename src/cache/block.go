@@ -15,22 +15,20 @@ type Block struct {
 	Dead   bool   // No longer used, should be deleted
 }
 
-func connectBlocks() {
-	btab := dbm.AddTableWithName(Block{}, "blocks")
-	btab.SetKeys(true, "Id")
-	btab.ColMap("Hash").SetUnique(true).SetNotNull(true)
+func (db *DB) connectBlocks() {
+	tab := db.dbm.AddTableWithName(Block{}, "blocks")
+	tab.SetKeys(true, "Id")
+	tab.ColMap("Hash").SetUnique(true).SetNotNull(true)
 }
 
-func FindBlock(hash []byte) *Block {
+func (db *DB) FindBlock(hash []byte) *Block {
 	var bs []Block
 
-	Transaction(func() {
-		_, err := dbm.Select(
-			&bs, 
-			"select * from blocks where Hash = ? limit 1",
-			hex.EncodeToString(hash))
-		fs.CheckError(err)
-	})
+	_, err := db.dbm.Select(
+		&bs, 
+		"select * from blocks where Hash = ? limit 1",
+		hex.EncodeToString(hash))
+	fs.CheckError(err)
 
 	if len(bs) == 0 {
 		return nil
@@ -38,27 +36,6 @@ func FindBlock(hash []byte) *Block {
 		return &bs[0]
 	}
 }
-
-func (bb *Block) Update() error {
-	var err error = nil
-
-	Transaction(func() {
-		_, err = dbm.Update(bb)
-	})
-
-	return err
-}
-
-func (bb *Block) Insert() error {
-	var err error = nil
-
-	Transaction(func() {
-		err = dbm.Insert(bb)
-	})
-
-	return err
-}
-
 func (bb *Block) GetHash() []byte {
 	hash, err := hex.DecodeString(bb.Hash)
 	fs.CheckError(err)
@@ -81,5 +58,4 @@ func (bb *Block) Cached() bool {
 	
 	return true
 }
-
 

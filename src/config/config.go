@@ -15,8 +15,12 @@ import (
 
 var testHome string = ""
 
+func FogsyncRoot() string {
+	return os.Getenv("FOGSYNC_ROOT")
+}
+
 func AssetRoot() string {
-	pp := path.Join(os.Getenv("FOGSYNC_ROOT"), "assets")
+	pp := path.Join(FogsyncRoot(), "assets")
 
 	info, err := os.Stat(pp)
 	if err != nil {

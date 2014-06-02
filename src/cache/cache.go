@@ -15,7 +15,6 @@ const BLOCK_SIZE = 65536
 
 func CopyInFile(sync_path config.SyncPath) (eret error) {
 	// Add a file on the file system to the block cache.
-
 	defer func() {
 		err := recover()
 		if err != nil {
@@ -23,6 +22,11 @@ func CopyInFile(sync_path config.SyncPath) (eret error) {
 		}
 	}()
 
+	 db := ConnectDB()
+	 
+}
+
+func CopyInFile1(db *DB, sync_path config.SyncPath) {
 	// First, grab file stats
 	info, err := os.Lstat(sync_path.Full())
 	fs.CheckError(err)
@@ -40,7 +44,7 @@ func CopyInFile(sync_path config.SyncPath) (eret error) {
 
 	curr := FindPath(sync_path)
 	if curr != nil && curr.Hash == hex.EncodeToString(hash) {
-		panic("TODO: Update directory entry with new mtime.")
+		// TODO: Update directory entry with new mtime without reinserting.
 	}
 
 	
@@ -144,8 +148,8 @@ func saveBlock(data []byte) []byte {
 	defer file.Close()
 
 	file.Write(data)
-	
-	block.Insert()
+
+	db.Insert(block)
 
 	return hash
 }

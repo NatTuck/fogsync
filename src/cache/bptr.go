@@ -16,17 +16,6 @@ type Bptr struct {
 	Depth uint32
 }
 
-func (bp *Bptr) Block() Block {
-	bb := FindBlock(bp.Hash)
-
-	if bb == nil {
-		bb = &Block{}
-		bb.SetHash(bp.Hash)
-	}
-
-	return *bb
-}
-
 func (bp *Bptr) Bytes() []byte {
 	bytes := make([]byte, 44, 44)
 

@@ -54,5 +54,33 @@ func TestCopyInOutFile(tt *testing.T) {
 	}
 
 	config.EndTest()
+	Disconnect()
 }
 
+func TestCopyInOutTree(tt *testing.T) {
+	config.StartTest()
+	
+	share := Share{Name: "sync", Root: ""}
+	share.Insert()
+
+	// Copy the fogsync source into a temporary folder,
+	// and copy that into the sync directory.
+	ctrl_dir := config.TempName()
+	test_dir := path.Join(config.SyncDir(), "fs")
+
+	err := fs.CopyAll(ctrl_dir, config.FogsyncRoot())
+	fs.CheckError(err)
+	defer os.RemoveAll(ctrl_dir)
+
+	err = fs.CopyAll(test_dir, ctrl_dir)
+	fs.CheckError(err)
+
+	// Copy in all the files in the tree.
+	fs.FindFiles(config.SyncDir(), func(file_path string) {
+		sync_path := config.NewSyncPath(file_path)
+		err := CopyInFile(sync_path)
+		fs.CheckError(err)
+	})
+
+	config.EndTest()
+}

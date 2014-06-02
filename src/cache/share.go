@@ -11,14 +11,14 @@ type Share struct {
 	Root string
 }
 
-func connectShares() {
-	tab := dbm.AddTableWithName(Share{}, "shares")
+func (st* ST) connectShares() {
+	tab := db.dbm.AddTableWithName(Share{}, "shares")
 	tab.SetKeys(true, "Id")
 	tab.ColMap("Name").SetUnique(true).SetNotNull(true)
 	tab.ColMap("Root").SetNotNull(true)
 }
 
-func FindShare(name string) Share {
+func (st* ST) FindShare(name string) Share {
 	var shares []Share
 	
 	Transaction(func() {
