@@ -18,15 +18,20 @@ func CopyInFile(sync_path config.SyncPath) (eret error) {
 	defer func() {
 		err := recover()
 		if err != nil {
+			fmt.Println(err)
 			eret = fmt.Errorf("%v", err)
 		}
 	}()
 
-	 db := ConnectDB()
-	 
+	st := StartST(sync_path.Share)
+	defer st.Finish()
+
+	st.CopyInFile(sync_path)
+
+	return nil
 }
 
-func CopyInFile1(db *DB, sync_path config.SyncPath) {
+func (st *ST) CopyInFile(sync_path config.SyncPath) {
 	// First, grab file stats
 	info, err := os.Lstat(sync_path.Full())
 	fs.CheckError(err)
@@ -42,23 +47,21 @@ func CopyInFile1(db *DB, sync_path config.SyncPath) {
 	hash, err := fs.HashFile(temp_copy)
 	fs.CheckError(err)
 
-	curr := FindPath(sync_path)
+	curr := st.FindPath(sync_path)
 	if curr != nil && curr.Hash == hex.EncodeToString(hash) {
 		// TODO: Update directory entry with new mtime without reinserting.
 	}
 
-	
 	// TODO: Try gzipping the file
 
 	// Encrypt and store as blocks.
-	key := make([]byte, 64)
-	bptr := encryptToBlocks(temp_copy, key, 0)
+	bptr := st.encryptToBlocks(temp_copy, 0)
 
 	// Save record to the DB
 	host, err := os.Hostname()
 	fs.CheckError(err)
 
-	db_path := Path {
+	path_rec := &Path{
 		Path: sync_path.Short(),
 		Hash: hex.EncodeToString(hash),
 		Bptr: bptr.String(),
@@ -66,7 +69,7 @@ func CopyInFile1(db *DB, sync_path config.SyncPath) {
 		Mtime: info.ModTime().UnixNano(),
 	}
 
-	err = db_path.Insert()
+	st.Insert(path_rec)
 	fs.CheckError(err)
 
 	file_ent := DirEnt{
@@ -78,14 +81,12 @@ func CopyInFile1(db *DB, sync_path config.SyncPath) {
 		Mtime: info.ModTime().UnixNano(),
 	}
 
-	savePath(sync_path, file_ent)
-
-	return nil
+	st.savePath(sync_path, file_ent)
 }
 
-func encryptToBlocks(temp_name string, key []byte, depth uint32) Bptr {
+func (st *ST) encryptToBlocks(temp_name string, depth uint32) Bptr {
 	// Encrypt and open the file
-	err := fs.EncryptFile(temp_name, key)
+	err := fs.EncryptFile(temp_name, st.share.Key())
 	fs.CheckError(err)
 
 	input := pio.Open(temp_name)
@@ -108,7 +109,7 @@ func encryptToBlocks(temp_name string, key []byte, depth uint32) Bptr {
 			break
 		}
 
-		hash := saveBlock(data[0:nn])
+		hash := st.saveBlock(data[0:nn])
 
 		bptr := Bptr{hash, 0, uint32(nn), depth}
 
@@ -125,10 +126,10 @@ func encryptToBlocks(temp_name string, key []byte, depth uint32) Bptr {
 
 	blocks.Close()
 
-	return encryptToBlocks(blocks_name, key, depth + 1)
+	return st.encryptToBlocks(blocks_name, depth + 1)
 }
 
-func saveBlock(data []byte) []byte {
+func (st *ST) saveBlock(data []byte) []byte {
 	block := Block{}
 
 	size := len(data)
@@ -144,12 +145,12 @@ func saveBlock(data []byte) []byte {
 	hash := fs.HashSlice(data)
 	block.SetHash(hash)
 
-	file := pio.Create(config.BlockPath(hash))
+	file := pio.Create(st.share.BlockPath(hash))
 	defer file.Close()
 
 	file.Write(data)
 
-	db.Insert(block)
+	st.Insert(&block)
 
 	return hash
 }
@@ -162,16 +163,19 @@ func CopyOutFile(sync_path config.SyncPath) (eret error) {
 		}
 	}()
 
-	db_path := FindPath(sync_path)
+	st := StartST(sync_path.Share)
+	defer st.Finish()
 
-	if db_path == nil {
-		db_path = loadPath(sync_path)
-	}
+	st.CopyOutFile(sync_path)
 
-	bptr := db_path.GetBptr()
+	return nil
+}
 
-	key := make([]byte, 64)
-	temp_name := decryptFromBlocks(bptr, key)
+func (st *ST) CopyOutFile(sync_path config.SyncPath) (eret error) {
+	path_rec := st.loadPath(sync_path)
+	bptr := path_rec.GetBptr()
+
+	temp_name := st.decryptFromBlocks(bptr)
 	defer os.Remove(temp_name)
 
 	err := fs.CopyFile(sync_path.Full(), temp_name)
@@ -180,7 +184,7 @@ func CopyOutFile(sync_path config.SyncPath) (eret error) {
 	return nil
 }
 
-func decryptFromBlocks(bptr Bptr, key []byte) string {
+func (st *ST) decryptFromBlocks(bptr Bptr) string {
 	// Make a list of one block.
 	list_name := config.TempName()
 
@@ -188,10 +192,10 @@ func decryptFromBlocks(bptr Bptr, key []byte) string {
 	defer os.Remove(list_name)
 
 	// Decrypt it to a file.
-	return decryptFromBlockList(list_name, key)
+	return st.decryptFromBlockList(list_name)
 }
 
-func decryptFromBlockList(list_name string, key []byte) string {
+func (st *ST) decryptFromBlockList(list_name string) string {
 	list := pio.Open(list_name)
 	defer list.Close()
 
@@ -218,7 +222,7 @@ func decryptFromBlockList(list_name string, key []byte) string {
 		}
 
 		bptr := BptrFromBytes(bptr_bytes)
-		data := loadBptr(bptr)
+		data := st.loadBptr(bptr)
 
 		temp.Write(data)
 
@@ -227,37 +231,39 @@ func decryptFromBlockList(list_name string, key []byte) string {
 		}
 	}
 
-    err := fs.DecryptFile(temp_name, key)
+    err := fs.DecryptFile(temp_name, st.share.Key())
 	fs.CheckError(err)
 
 	if more_depth {
-		return decryptFromBlockList(temp_name, key)
+		return st.decryptFromBlockList(temp_name)
 	} else {
 		return temp_name
 	}
 }
 
-func loadBptr(bptr Bptr) []byte {
-	data := loadBlock(bptr.Hash)
+func (st *ST) loadBptr(bptr Bptr) []byte {
+	data := st.loadBlock(bptr.Hash)
 	return data[bptr.Byte0:bptr.Byte1]
 }
 
-func loadBlock(hash []byte) []byte {
-	return pio.ReadFile(config.BlockPath(hash))
+func (st *ST) loadBlock(hash []byte) []byte {
+	return pio.ReadFile(st.share.BlockPath(hash))
 }
 
-func savePath(sync_path config.SyncPath, ent DirEnt) {
+func (st *ST) savePath(sync_path config.SyncPath, ent DirEnt) {
 	names := filepath.SplitList(sync_path.Short())
 
-	share := FindShare("sync")
+	root_dir := EmptyDir()
+	if st.share.Root != "" {
+		root_dir = st.loadDirectory(BptrFromString(st.share.Root))
+	}
 
-	root_ent := savePath1(share.RootDir(), names, ent)
+	root_ent := st.savePath1(root_dir, names, ent)
 
-	share.Root = root_ent.Bptr
-	share.Update()
+	st.share.Root = root_ent.Bptr
 }
 
-func savePath1(cur_dir Dir, names []string, ent DirEnt) DirEnt {
+func (st *ST) savePath1(cur_dir Dir, names []string, ent DirEnt) DirEnt {
 	name := names[0]
 
 	if len(names) > 1 {
@@ -267,10 +273,8 @@ func savePath1(cur_dir Dir, names []string, ent DirEnt) DirEnt {
 			panic("That's not a directory")
 		}
 
-		next_dir := loadDirectory(BptrFromString(cur_ent.Bptr))
-
-		next_ent := savePath1(next_dir, names[1:], ent)
-
+		next_dir := st.loadDirectory(BptrFromString(cur_ent.Bptr))
+		next_ent := st.savePath1(next_dir, names[1:], ent)
 		cur_dir[name] = next_ent
 	} else {
 		cur_dir[name] = ent
@@ -282,8 +286,7 @@ func savePath1(cur_dir Dir, names []string, ent DirEnt) DirEnt {
 	pio.WriteFile(temp_name, text)
 	defer os.Remove(temp_name)
 
-	key := make([]byte, 64)
-	bptr := encryptToBlocks(temp_name, key, 0)
+	bptr := st.encryptToBlocks(temp_name, 0)
 	
 	host, err := os.Hostname()
 	fs.CheckError(err)
@@ -298,17 +301,14 @@ func savePath1(cur_dir Dir, names []string, ent DirEnt) DirEnt {
 	}
 }
 
-func loadDirectory(bptr Bptr) Dir {
-	key := make([]byte, 64)
-	name := decryptFromBlocks(bptr, key)
+func (st *ST) loadDirectory(bptr Bptr) Dir {
+	name := st.decryptFromBlocks(bptr)
 	defer os.Remove(name)
 	return DirFromFile(name)
 }
 
-func loadPath(sync_path config.SyncPath) *Path {
-
-	share := FindShare("sync")
-	dir := share.RootDir()
+func (st* ST) loadPath(sync_path config.SyncPath) *Path {
+	dir := st.loadDirectory(BptrFromString(st.share.Root))
 
 	dirs_text, name := filepath.Split(sync_path.Short())
 	dirs := filepath.SplitList(dirs_text)
@@ -316,7 +316,7 @@ func loadPath(sync_path config.SyncPath) *Path {
 	// Traverse the directories
 	for _, nn := range(dirs) {
 		next := dir[nn]
-		dir = loadDirectory(BptrFromString(next.Bptr))
+		dir = st.loadDirectory(BptrFromString(next.Bptr))
 	}
 
 	ent := dir[name]
@@ -329,7 +329,7 @@ func loadPath(sync_path config.SyncPath) *Path {
 		Host: ent.Host,
 		Mtime: ent.Mtime,
 	}
-	path_rec.Insert()
+	st.Insert(path_rec)
 
 	return &path_rec
 }

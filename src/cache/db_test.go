@@ -8,11 +8,11 @@ import (
 func TestListTables(tt *testing.T) {
 	config.StartTest()
 
-	var ts []string 
+	share := config.GetShare("sync")
+	st := StartST(&share)
+	defer st.Finish()
 
-	Transaction(func() {
-		ts = listTables()
-	})
+	ts := st.listTables()
 
 	if len(ts) < 3 {
 		tt.Fail()

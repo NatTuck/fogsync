@@ -2,7 +2,6 @@ package cache
 
 import (
 	"encoding/hex"
-	"fmt"
 	"../config"
 	"../fs"
 )
@@ -18,8 +17,8 @@ type Path struct {
 	Mtime int64 // Last modified timestamp (Unix Nanoseconds)
 }
 
-func connectPaths() {
-	tab := dbm.AddTableWithName(Path{}, "paths")
+func (st *ST) connectPaths() {
+	tab := st.dbm.AddTableWithName(Path{}, "paths")
 	tab.SetKeys(true, "Id")
 	tab.ColMap("Path").SetNotNull(true)
 	tab.ColMap("Type").SetNotNull(true)
@@ -29,40 +28,6 @@ func connectPaths() {
 	tab.ColMap("Host").SetNotNull(true)
 	tab.ColMap("Mtime").SetNotNull(true)
 	tab.SetUniqueTogether("Path", "Host", "Mtime")
-}
-
-func (pp *Path) Insert() error {
-	var err error = nil
-
-	if len(pp.Bptr) != 2 * BPTR_SIZE {
-		return fmt.Errorf("Can't save path with invalid bptr")
-	}
-
-	Transaction(func() {
-		err = dbm.Insert(pp)
-	})
-
-	return err
-}
-
-func (pp *Path) Update() error {
-	var err error = nil
-
-	Transaction(func() {
-		_, err = dbm.Update(pp)
-	})
-
-	return err
-}
-
-func (pp *Path) Delete() error {
-	var err error = nil
-
-	Transaction(func() {
-		_, err = dbm.Delete(pp)
-	})
-
-	return err
 }
 
 func (pp *Path) GetHash() []byte {
@@ -75,44 +40,26 @@ func (pp *Path) GetBptr() Bptr {
 	return BptrFromString(pp.Bptr)
 }
 
-func (pp *Path) GetBlocks() []Block {
+func (pp *Path) GetBlocks(st *ST) []Block {
 	var blocks []Block
 	
-	Transaction(func() {
-		_, err := dbm.Select(
-			&blocks, 
-			"select * from blocks where FileId = ? order by Num asc",
-			pp.Id)
-		fs.CheckError(err)
-	})
+	_, err := st.dbm.Select(
+		&blocks, 
+		"select * from blocks where FileId = ? order by Num asc",
+		pp.Id)
+	fs.CheckError(err)
 
 	return blocks
 }
 
-func GetPathHistory(sync_path config.SyncPath) []Path {
+func (st *ST) FindPath(sync_path config.SyncPath) *Path {
 	var pps []Path
 	
-	Transaction(func() {
-		_, err := dbm.Select(
-			&pps, 
-			"select * from paths where Path = ?",
-			sync_path.Short())
-		fs.CheckError(err)
-	})
-
-	return pps
-}
-
-func FindPath(sync_path config.SyncPath) *Path {
-	var pps []Path
-	
-	Transaction(func() {
-		_, err := dbm.Select(
-			&pps, 
-			"select * from paths where Path = ? order by Mtime desc limit 1",
-			sync_path.Short())
-		fs.CheckError(err)
-	})
+	_, err := st.dbm.Select(
+		&pps, 
+		"select * from paths where Path = ? order by Mtime desc limit 1",
+		sync_path.Short())
+	fs.CheckError(err)
 
 	if len(pps) == 0 {
 		return nil

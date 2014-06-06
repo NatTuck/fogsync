@@ -4,7 +4,6 @@ import (
 	"encoding/hex"
 	"os"
 	"../fs"
-	"../config"
 )
 
 type Block struct {
@@ -13,18 +12,19 @@ type Block struct {
 	Remote bool   // Available on cloud server
 	Tail   bool   // Is this an unpacked short block?
 	Dead   bool   // No longer used, should be deleted
+	st     *ST    `db:"-"`
 }
 
-func (db *DB) connectBlocks() {
+func (db *ST) connectBlocks() {
 	tab := db.dbm.AddTableWithName(Block{}, "blocks")
 	tab.SetKeys(true, "Id")
 	tab.ColMap("Hash").SetUnique(true).SetNotNull(true)
 }
 
-func (db *DB) FindBlock(hash []byte) *Block {
+func (st *ST) FindBlock(hash []byte) *Block {
 	var bs []Block
 
-	_, err := db.dbm.Select(
+	_, err := st.dbm.Select(
 		&bs, 
 		"select * from blocks where Hash = ? limit 1",
 		hex.EncodeToString(hash))
@@ -33,7 +33,9 @@ func (db *DB) FindBlock(hash []byte) *Block {
 	if len(bs) == 0 {
 		return nil
 	} else {
-		return &bs[0]
+		bb := &bs[0]
+		bb.st = st
+		return bb
 	}
 }
 func (bb *Block) GetHash() []byte {
@@ -48,7 +50,7 @@ func (bb *Block) SetHash(hash []byte) {
 
 func (bb *Block) Cached() bool {
 	hash := bb.GetHash()
-	bpath := config.BlockPath(hash)
+	bpath := bb.st.share.BlockPath(hash)
 
 	_, err := os.Lstat(bpath)
 	if os.IsNotExist(err) {

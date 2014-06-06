@@ -1,9 +1,11 @@
 package fs
 
-import "fmt"
-import "log"
-import "runtime"
-import "errors"
+import (
+	"fmt"
+	"log"
+	"runtime"
+	"errors"
+)
 
 func ErrorHere(msg string) error {
     _, file, line, _ := runtime.Caller(1)
@@ -12,8 +14,12 @@ func ErrorHere(msg string) error {
 }
 
 func PanicHere(msg string) {
-    _, file, line, _ := runtime.Caller(1)
-    msg1 := fmt.Sprintf("%s at %s:%d", msg, file, line)
+	stack := make([]byte, 8192)
+	runtime.Stack(stack, false)
+
+	_, file, line, _ := runtime.Caller(1)
+    msg1 := fmt.Sprintf("\n%s\n\n%s at %s:%d", string(stack), msg, file, line)
+
 	panic(msg1)
 }
 
@@ -22,9 +28,7 @@ func CheckError(err error) {
 		return
 	}
 
-    _, file, line, _ := runtime.Caller(1)
-    msg1 := fmt.Sprintf("%s at %s:%d", err.Error(), file, line)
-    panic(msg1)
+	PanicHere(err.Error())
 }
 
 func LogErrorHere(err error) {

@@ -48,11 +48,20 @@ func StartTest() {
 	}
 	
 	testHome = tt
+	
+	zkey := "00000000000000000000000000000000"
 
-	err = fs.CopyAll(SyncDir(), path.Join(aroot, "test"))
-	if err != nil {
-		panic(err)
+	share := Share{
+		Name: "sync",
+		Root: "",
+		Ckey: zkey,
+		Hkey: zkey,
 	}
+
+	AddShare(share)
+
+	err = fs.CopyAll(share.Path(), path.Join(aroot, "test"))
+	fs.CheckError(err)
 }
 
 func EndTest() {
@@ -70,8 +79,11 @@ func EndTest() {
 	}
 }
 
-func SyncDir() string {
-	return path.Join(HomeDir(), "FogSync")
+func SyncBase() string {
+	base := path.Join(HomeDir(), "FogSync") 
+	err := os.MkdirAll(base, 0755)
+	fs.CheckError(err)
+	return base
 }
 
 func HomeDir() string {
@@ -114,21 +126,22 @@ func DataDir() string {
 	return path.Join(base, "fogsync")
 }
 
-func ReadFile(fileName string) ([]byte, error) {
-	filePath := path.Join(ConfDir(), fileName)
-	return ioutil.ReadFile(filePath)
+func ReadFile(file_name string) ([]byte, error) {
+	file_path := path.Join(ConfDir(), file_name)
+	data, err := ioutil.ReadFile(file_path)
+	return data, err
 }
 
-func WriteFile(fileName string, data []byte) {
-	filePath := path.Join(ConfDir(), fileName)
+func WriteFile(file_name string, data []byte) {
+	file_path := path.Join(ConfDir(), file_name)
 
-	dirPath := path.Dir(filePath)
-	err := os.MkdirAll(dirPath, 0700)
+	dir_path := path.Dir(file_path)
+	err := os.MkdirAll(dir_path, 0700)
 	if err != nil {
 		panic(err)
 	}
 
-	err = ioutil.WriteFile(filePath, data, 0600)
+	err = ioutil.WriteFile(file_path, data, 0600)
 	if err != nil {
 		panic(err)
 	}
@@ -143,15 +156,17 @@ func GetObj(fileName string, obj interface{}) error {
 	return json.Unmarshal(data, obj)
 }
 
-func PutObj(fileName string, obj interface{}) {
+func PutObj(fileName string, obj interface{}) error {
 	data, err := json.MarshalIndent(obj, "", "  ")
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	data = append(data, '\n')
 
 	WriteFile(fileName, data)
+
+	return nil
 }
 
 func GetString(sec string, key string) string {
@@ -167,10 +182,6 @@ func GetString(sec string, key string) string {
 
 func GetDefault(sec string, key string) string {
 	switch fmt.Sprintf("%s/%s", sec, key) {
-	case "keys/cipher":
-		return "0000000000000000000000000000000000000000000000000000000000000000"
-	case "keys/ivseed":
-		return "0000000000000000000000000000000000000000000000000000000000000000"
 	default:
 		return ""
 	}
@@ -182,7 +193,8 @@ func PutString(sec string, key string, value string) {
 
 	data[key] = value
 
-	PutObj(sec, data)
+	err := PutObj(sec, data)
+	fs.CheckError(err)
 }
 
 func GetBytes(sec string, key string) []byte {

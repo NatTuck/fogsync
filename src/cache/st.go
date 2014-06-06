@@ -18,11 +18,11 @@ type ST struct {
 	sql   *sql.DB
 	dbm   *gorp.DbMap
 	trans *gorp.Transaction
-	share *Share
+	share *config.Share
 	fail  bool
 }
 
-func StartST(share_name string) ST {
+func StartST(share *config.Share) ST {
 	ddir := config.DataDir()
 		
 	err := os.MkdirAll(ddir, 0700)
@@ -35,21 +35,18 @@ func StartST(share_name string) ST {
 
 	dbm := &gorp.DbMap{Db: conn, Dialect: gorp.SqliteDialect{}}
 
-	st := ST{conn, dbm, nil, nil, false}
+	st := ST{conn, dbm, nil, share, false}
 
-	st.connectShares()
 	st.connectPaths()
 	st.connectBlocks()
 
 	err = dbm.CreateTablesIfNotExists()
 	fs.CheckError(err)
 
-
-
-	db.trans, err = dbm.Begin()
+	st.trans, err = dbm.Begin()
 	fs.CheckError(err)
 
-	return db
+	return st
 }
 
 func (st *ST) Finish() {
@@ -59,6 +56,8 @@ func (st *ST) Finish() {
 	} else {
 		err := st.trans.Commit()
 		fs.CheckError(err)
+
+		config.AddShare(*st.share)
 	}
 
 	err := st.sql.Close()
@@ -66,11 +65,13 @@ func (st *ST) Finish() {
 }
 
 func (st *ST) Insert(item interface{}) {
-	st.dbm.Insert(item)
+	err := st.dbm.Insert(item)
+	fs.CheckError(err)
 }
 
 func (st *ST) Update(item interface{}) {
-	st.dbm.Update(item)
+	_, err := st.dbm.Update(item)
+	fs.CheckError(err)
 }
 
 type NameStruct struct {

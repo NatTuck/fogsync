@@ -5,7 +5,6 @@ import (
 	"path"
 	"fmt"
 	"os"
-	"encoding/hex"
 	"../fs"
 	"../config"
 )
@@ -13,32 +12,21 @@ import (
 func TestCopyInOutFile(tt *testing.T) {
 	config.StartTest()
 
-	share := Share{Name: "sync", Root: ""}
-	share.Insert()
+	share := config.GetShare("sync")
 
-	src_path := path.Join(config.SyncDir(), "goofy_dude.jpg")
+	src_path := path.Join(share.Path(), "goofy_dude.jpg")
 
 	hash0, err := fs.HashFile(src_path)
 	fs.CheckError(err)
 
-	sync_path := config.NewSyncPath(src_path)
+	sync_path := share.NewSyncPath(src_path)
 
 	// Copy in
 	err = CopyInFile(sync_path)
 	fs.CheckError(err)
 
-	pp := FindPath(sync_path)
-	if pp == nil {
-		tt.Fail()
-	} else if pp.Hash != hex.EncodeToString(hash0) {
-		tt.Fail()
-	}
-
 	err = os.Remove(src_path)
 	fs.CheckError(err)
-
-	file_path := FindPath(sync_path)
-	file_path.Delete()
 
 	// Copy out
 	err = CopyOutFile(sync_path)
@@ -50,23 +38,20 @@ func TestCopyInOutFile(tt *testing.T) {
 	if !fs.BytesEqual(hash0, hash1) {
 		fmt.Println(hash0, hash1)
 		tt.Fail()
-		panic("giving up")
 	}
 
 	config.EndTest()
-	Disconnect()
 }
 
 func TestCopyInOutTree(tt *testing.T) {
 	config.StartTest()
 	
-	share := Share{Name: "sync", Root: ""}
-	share.Insert()
+	share := config.GetShare("sync")
 
 	// Copy the fogsync source into a temporary folder,
 	// and copy that into the sync directory.
 	ctrl_dir := config.TempName()
-	test_dir := path.Join(config.SyncDir(), "fs")
+	test_dir := path.Join(share.Path(), "fs")
 
 	err := fs.CopyAll(ctrl_dir, config.FogsyncRoot())
 	fs.CheckError(err)
@@ -76,8 +61,8 @@ func TestCopyInOutTree(tt *testing.T) {
 	fs.CheckError(err)
 
 	// Copy in all the files in the tree.
-	fs.FindFiles(config.SyncDir(), func(file_path string) {
-		sync_path := config.NewSyncPath(file_path)
+	fs.FindFiles(share.Path(), func(file_path string) {
+		sync_path := share.NewSyncPath(file_path)
 		err := CopyInFile(sync_path)
 		fs.CheckError(err)
 	})

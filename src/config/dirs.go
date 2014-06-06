@@ -17,11 +17,4 @@ func TempName() string {
 	return path.Join(tmp_dir, fs.RandomName())
 }
 
-func BlockPath(hash []byte) string {
-	bpath := path.Join(CacheDir(), fs.HashToPath(hash))
 
-	err := os.MkdirAll(path.Dir(bpath), 0700)
-	fs.CheckError(err)
-
-	return bpath
-}

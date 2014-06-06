@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"io"
+	"fmt"
 	"path"
 	"encoding/hex"
 )
@@ -40,7 +41,8 @@ func CopyAll(dst string, src string) error {
 
 	err := cp.Run()
 	if err != nil {
-		return TraceError(err)
+		msg := fmt.Errorf("Error in 'cp' command: %v\n", err)
+		return TraceError(msg)
 	}
 
 	return nil
