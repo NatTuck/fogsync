@@ -70,7 +70,8 @@ func AddShare(share Share) {
 		fs.PanicHere("Share must have name")
 	}
 
-	if len(share.Root) != 44 && share.Root != "" {
+	if len(share.Root) != 88 && share.Root != "" {
+		fmt.Println("Bad root:", share.Root)
 		fs.PanicHere("Invalid share root")
 	}
 

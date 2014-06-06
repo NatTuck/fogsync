@@ -18,7 +18,7 @@ func PanicHere(msg string) {
 	runtime.Stack(stack, false)
 
 	_, file, line, _ := runtime.Caller(1)
-    msg1 := fmt.Sprintf("\n%s\n\n%s at %s:%d", string(stack), msg, file, line)
+    msg1 := fmt.Sprintf("\n%s at %s:%d\n\n%s\n", msg, file, line, string(stack))
 
 	panic(msg1)
 }
