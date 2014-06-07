@@ -13,7 +13,13 @@ import (
 
 const BLOCK_SIZE = 65536
 
-func CopyInFile(sync_path config.SyncPath) (eret error) {
+func CopyInFile(sync_path config.SyncPath) error {
+	sync_paths := make([]config.SyncPath, 0)
+	sync_paths = append(sync_paths, sync_path)
+	return CopyInFiles(sync_paths)
+}
+
+func CopyInFiles(sync_paths []config.SyncPath) (eret error) {
 	// Add a file on the file system to the block cache.
 	defer func() {
 		err := recover()
@@ -23,10 +29,16 @@ func CopyInFile(sync_path config.SyncPath) (eret error) {
 		}
 	}()
 
-	st := StartST(sync_path.Share)
+	if len(sync_paths) == 0 {
+		return nil
+	}
+
+	st := StartST(sync_paths[0].Share)
 	defer st.Finish()
 
-	st.CopyInFile(sync_path)
+	for _, sync_path := range(sync_paths) {
+		st.CopyInFile(sync_path)
+	}
 
 	return nil
 }
@@ -155,7 +167,13 @@ func (st *ST) saveBlock(data []byte) []byte {
 	return hash
 }
 
-func CopyOutFile(sync_path config.SyncPath) (eret error) {
+func CopyOutFile(sync_path config.SyncPath) error {
+	sync_paths := make([]config.SyncPath, 0)
+	sync_paths = append(sync_paths, sync_path)
+	return CopyOutFiles(sync_paths)
+}
+
+func CopyOutFiles(sync_paths []config.SyncPath) (eret error) {
 	defer func() {
 		err := recover()
 		if err != nil {
@@ -163,10 +181,16 @@ func CopyOutFile(sync_path config.SyncPath) (eret error) {
 		}
 	}()
 
-	st := StartST(sync_path.Share)
+	if len(sync_paths) == 0 {
+		return nil
+	}
+
+	st := StartST(sync_paths[0].Share)
 	defer st.Finish()
 
-	st.CopyOutFile(sync_path)
+	for _, sync_path := range(sync_paths) {
+		st.CopyOutFile(sync_path)
+	}
 
 	return nil
 }

@@ -1,5 +1,8 @@
 package config
 
+// Consider:
+//  go get github.com/BurntSushi/toml
+
 import (
 	"encoding/hex"
 	"encoding/json"

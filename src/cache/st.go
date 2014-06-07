@@ -2,7 +2,7 @@ package cache
 
 import (
 	"os"
-	"path"
+	//"path"
 	"database/sql"
 	_"github.com/mxk/go-sqlite/sqlite3"
 	"github.com/coopernurse/gorp"
@@ -28,9 +28,9 @@ func StartST(share *config.Share) ST {
 	err := os.MkdirAll(ddir, 0700)
 	fs.CheckError(err)
 
-	dbpath := path.Join(config.DataDir(), "db.sqlite3")
+	//dbpath := path.Join(config.DataDir(), "db.sqlite3")
 
-	conn, err := sql.Open("sqlite3", dbpath)
+	conn, err := sql.Open("sqlite3", ":memory:")
 	fs.CheckError(err)
 
 	dbm := &gorp.DbMap{Db: conn, Dialect: gorp.SqliteDialect{}}

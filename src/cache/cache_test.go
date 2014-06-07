@@ -69,13 +69,15 @@ func TestCopyInOutTree(tt *testing.T) {
 	fmt.Println("Multi-file")
 
 	// Copy in all the files in the tree.
+	paths := make([]config.SyncPath, 0)
+
 	fs.FindFiles(share.Path(), func(file_path string) {
 		sync_path := share.NewSyncPath(file_path)
-		err := CopyInFile(sync_path)
-		fs.CheckError(err)
-
-		fmt.Println(".")
+		paths = append(paths, sync_path)
 	})
+
+	err = CopyInFiles(paths)
+	fs.CheckError(err)
 
 	fmt.Println("Done multi-file")
 
