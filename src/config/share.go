@@ -54,7 +54,7 @@ func readShares() map[string]Share {
 
 	err := GetObj("shares", &shares)
 	if err != nil {
-		fmt.Println("Reading shares:", err)
+		//fmt.Println("Reading shares:", err)
 		return make(map[string]Share)
 	}
 	return shares

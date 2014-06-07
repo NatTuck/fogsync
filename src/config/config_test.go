@@ -23,9 +23,11 @@ func TestPutGet(tt *testing.T) {
 func TestSyncPath(tt *testing.T) {
 	StartTest()
 
-	sync := SyncDir()
+	share := GetShare("sync")
 
-	p1 := NewSyncPath("some/path")
+	sync := share.Path()
+
+	p1 := share.NewSyncPath("some/path")
 
 	if p1.Full() != sync + "/some/path" {
 		tt.Fail()
@@ -35,7 +37,7 @@ func TestSyncPath(tt *testing.T) {
 		tt.Fail()
 	}
 
-	p2 := NewSyncPath(sync + "/some/other/path")
+	p2 := share.NewSyncPath(sync + "/some/other/path")
 
 	if p2.Full() != sync + "/some/other/path" {
 		fmt.Println("got: ", p2.Full())

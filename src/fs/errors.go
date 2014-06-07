@@ -7,20 +7,30 @@ import (
 	"errors"
 )
 
+func StackTrace() string {
+	stack := make([]byte, 8192)
+	runtime.Stack(stack, false)
+	return string(stack)
+}
+
 func ErrorHere(msg string) error {
     _, file, line, _ := runtime.Caller(1)
     msg1 := fmt.Sprintf("%s at %s:%d", msg, file, line)
     return errors.New(msg1)
 }
 
-func PanicHere(msg string) {
+func reallyPanic(msg string) {
 	stack := make([]byte, 8192)
 	runtime.Stack(stack, false)
 
-	_, file, line, _ := runtime.Caller(1)
+	_, file, line, _ := runtime.Caller(2)
     msg1 := fmt.Sprintf("\n%s at %s:%d\n\n%s\n", msg, file, line, string(stack))
 
 	panic(msg1)
+}
+
+func PanicHere(msg string) {
+	reallyPanic(msg)
 }
 
 func CheckError(err error) {
@@ -28,7 +38,7 @@ func CheckError(err error) {
 		return
 	}
 
-	PanicHere(err.Error())
+	reallyPanic(err.Error())
 }
 
 func LogErrorHere(err error) {

@@ -130,7 +130,7 @@ func (st *ST) encryptToBlocks(temp_name string, depth uint32) Bptr {
 }
 
 func (st *ST) saveBlock(data []byte) []byte {
-	block := Block{}
+	block := &Block{}
 
 	size := len(data)
 
@@ -150,7 +150,7 @@ func (st *ST) saveBlock(data []byte) []byte {
 
 	file.Write(data)
 
-	st.Insert(&block)
+	st.Insert(block)
 
 	return hash
 }
@@ -177,7 +177,7 @@ func (st *ST) CopyOutFile(sync_path config.SyncPath) (eret error) {
 
 	temp_name := st.decryptFromBlocks(bptr)
 	defer os.Remove(temp_name)
-
+	
 	err := fs.CopyFile(sync_path.Full(), temp_name)
 	fs.CheckError(err)
 
@@ -230,7 +230,7 @@ func (st *ST) decryptFromBlockList(list_name string) string {
 			more_depth = false
 		}
 	}
-
+	
     err := fs.DecryptFile(temp_name, st.share.Key())
 	fs.CheckError(err)
 
@@ -321,7 +321,7 @@ func (st* ST) loadPath(sync_path config.SyncPath) *Path {
 
 	ent := dir[name]
 
-	path_rec := Path{
+	path_rec := &Path{
 		Path: sync_path.Short(),
 		Size: ent.Size,
 		Hash: ent.Hash,
@@ -331,5 +331,5 @@ func (st* ST) loadPath(sync_path config.SyncPath) *Path {
 	}
 	st.Insert(path_rec)
 
-	return &path_rec
+	return path_rec
 }

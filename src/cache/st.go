@@ -34,6 +34,7 @@ func StartST(share *config.Share) ST {
 	fs.CheckError(err)
 
 	dbm := &gorp.DbMap{Db: conn, Dialect: gorp.SqliteDialect{}}
+	dbm.Exec("pragma synchronous = off")
 
 	st := ST{conn, dbm, nil, share, false}
 
