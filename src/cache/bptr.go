@@ -35,7 +35,7 @@ func (bp *Bptr) String() string {
 
 func BptrFromBytes(bytes []byte) Bptr {
 	if len(bytes) != BPTR_SIZE {
-		fs.PanicHere("Short bptr")
+		fs.PanicHere("Short bptr: " + hex.EncodeToString(bytes))
 	}
 
 	be := binary.BigEndian
@@ -53,4 +53,3 @@ func BptrFromString(text string) Bptr {
 	fs.CheckError(err)
 	return BptrFromBytes(bytes)
 }
-

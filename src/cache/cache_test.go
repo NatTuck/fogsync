@@ -66,8 +66,6 @@ func TestCopyInOutTree(tt *testing.T) {
 	err = fs.CopyAll(test_dir, ctrl_dir)
 	fs.CheckError(err)
 
-	fmt.Println("Multi-file")
-
 	// Copy in all the files in the tree.
 	paths := make([]config.SyncPath, 0)
 

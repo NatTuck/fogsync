@@ -1,0 +1,2 @@
+github.com/GeertJohan/go.rice
+https://github.com/BurntSushi/toml

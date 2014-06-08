@@ -22,11 +22,13 @@ func CopyInFile(sync_path config.SyncPath) error {
 func CopyInFiles(sync_paths []config.SyncPath) (eret error) {
 	// Add a file on the file system to the block cache.
 	defer func() {
+		/*
 		err := recover()
 		if err != nil {
 			fmt.Println(err)
 			eret = fmt.Errorf("%v", err)
 		}
+		*/
 	}()
 
 	if len(sync_paths) == 0 {
@@ -59,7 +61,7 @@ func (st *ST) CopyInFile(sync_path config.SyncPath) {
 	hash, err := fs.HashFile(temp_copy)
 	fs.CheckError(err)
 
-	curr := st.FindPath(sync_path)
+	curr := st.loadPath(sync_path)
 	if curr != nil && curr.Hash == hex.EncodeToString(hash) {
 		// TODO: Update directory entry with new mtime without reinserting.
 	}
@@ -73,23 +75,13 @@ func (st *ST) CopyInFile(sync_path config.SyncPath) {
 	host, err := os.Hostname()
 	fs.CheckError(err)
 
-	path_rec := &Path{
-		Path: sync_path.Short(),
-		Hash: hex.EncodeToString(hash),
-		Bptr: bptr.String(),
-		Host: host,
-		Mtime: info.ModTime().UnixNano(),
-	}
-
-	st.Insert(path_rec)
-	fs.CheckError(err)
-
 	file_ent := DirEnt{
 		Type: "file",
 		Bptr: bptr.String(),
 		Size: info.Size(),
 		Hash: hex.EncodeToString(hash),
 		Exec: info.Mode().Perm() & 1 == 1,
+		Host: host,
 		Mtime: info.ModTime().UnixNano(),
 	}
 
@@ -142,8 +134,6 @@ func (st *ST) encryptToBlocks(temp_name string, depth uint32) Bptr {
 }
 
 func (st *ST) saveBlock(data []byte) []byte {
-	block := &Block{}
-
 	size := len(data)
 
 	if size < BLOCK_SIZE {
@@ -151,18 +141,15 @@ func (st *ST) saveBlock(data []byte) []byte {
 		copy(data1[0:size], data[0:size])
 		data = data1
 
-		block.Tail = true
+		// TODO: Note that this is a tail block
 	}
 
 	hash := fs.HashSlice(data)
-	block.SetHash(hash)
 
 	file := pio.Create(st.share.BlockPath(hash))
 	defer file.Close()
 
 	file.Write(data)
-
-	st.Insert(block)
 
 	return hash
 }
@@ -175,10 +162,12 @@ func CopyOutFile(sync_path config.SyncPath) error {
 
 func CopyOutFiles(sync_paths []config.SyncPath) (eret error) {
 	defer func() {
+		/*
 		err := recover()
 		if err != nil {
 			eret = fmt.Errorf("%v", err)
 		}
+		*/
 	}()
 
 	if len(sync_paths) == 0 {
@@ -196,8 +185,12 @@ func CopyOutFiles(sync_paths []config.SyncPath) (eret error) {
 }
 
 func (st *ST) CopyOutFile(sync_path config.SyncPath) (eret error) {
-	path_rec := st.loadPath(sync_path)
-	bptr := path_rec.GetBptr()
+	path_ent := st.loadPath(sync_path)
+	if path_ent == nil {
+		panic(fmt.Errorf("No such path: %s", sync_path.Short()))
+	}
+
+	bptr := path_ent.GetBptr()
 
 	temp_name := st.decryptFromBlocks(bptr)
 	defer os.Remove(temp_name)
@@ -331,29 +324,32 @@ func (st *ST) loadDirectory(bptr Bptr) Dir {
 	return DirFromFile(name)
 }
 
-func (st* ST) loadPath(sync_path config.SyncPath) *Path {
-	dir := st.loadDirectory(BptrFromString(st.share.Root))
+func (st* ST) loadPath(sync_path config.SyncPath) *DirEnt {
+
+	dir := EmptyDir()
+	
+	if st.share.Root != "" {
+		dir = st.loadDirectory(BptrFromString(st.share.Root))
+	}
 
 	dirs_text, name := filepath.Split(sync_path.Short())
 	dirs := filepath.SplitList(dirs_text)
 
 	// Traverse the directories
 	for _, nn := range(dirs) {
-		next := dir[nn]
-		dir = st.loadDirectory(BptrFromString(next.Bptr))
+		next, ok := dir[nn]
+
+		if !ok {
+			dir = Dir{}
+		} else {
+			dir = st.loadDirectory(BptrFromString(next.Bptr))
+		}
 	}
 
-	ent := dir[name]
-
-	path_rec := &Path{
-		Path: sync_path.Short(),
-		Size: ent.Size,
-		Hash: ent.Hash,
-		Bptr: ent.Bptr,
-		Host: ent.Host,
-		Mtime: ent.Mtime,
+	ent, ok := dir[name]
+	if ok {
+		return &ent
+	} else {
+		return nil
 	}
-	st.Insert(path_rec)
-
-	return path_rec
 }

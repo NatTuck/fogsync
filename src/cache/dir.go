@@ -42,3 +42,6 @@ func (dd *Dir) Json() []byte {
 	return json
 }
 
+func (ent *DirEnt) GetBptr() Bptr {
+	return BptrFromString(ent.Bptr)
+}
