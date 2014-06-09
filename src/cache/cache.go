@@ -267,13 +267,20 @@ func (st *ST) loadBlock(hash []byte) []byte {
 	return pio.ReadFile(st.share.BlockPath(hash))
 }
 
-func (st *ST) savePath(sync_path config.SyncPath, ent DirEnt) {
-	names := filepath.SplitList(sync_path.Short())
-
+func (st *ST) rootDir() Dir {
 	root_dir := EmptyDir()
+
 	if st.share.Root != "" {
 		root_dir = st.loadDirectory(BptrFromString(st.share.Root))
 	}
+
+	return root_dir
+}
+
+func (st *ST) savePath(sync_path config.SyncPath, ent DirEnt) {
+	root_dir := st.rootDir()
+
+	names := filepath.SplitList(sync_path.Short())
 
 	root_ent := st.savePath1(root_dir, names, ent)
 
