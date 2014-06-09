@@ -20,13 +20,13 @@ func StartGC(share *config.Share) {
 		os.Remove(blocks_name)
 	}()
 
-	root_bptr := 
+	root_bptr := BptrFromString(st.share.Root)
+	writeDirBlocks(blocks, root_bptr)
 }
 
-func writeDirBlocks(blocks pio.File, dir Dir) {
-	writeEntBlocks(blocks, ent)
-
-
+func writeDirBlocks(blocks pio.File, bptr Bptr) {
+	dir := loadDirectory(bptr)
+	
 
 	for _, ent := range dir {
 		switch ent.Type {
