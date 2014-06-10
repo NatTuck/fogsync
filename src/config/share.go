@@ -35,13 +35,30 @@ func (ss *Share) Key() []byte {
 	return key
 }
 
+func (ss *Share) CacheDir() string {
+	return path.Join(CacheDir(), ss.Name)
+}
+
 func (ss *Share) BlockPath(hash []byte) string {
-	bpath := path.Join(CacheDir(), ss.Name, fs.HashToPath(hash))
+	bpath := path.Join(ss.CacheDir(), fs.HashToPath(hash))
 
 	err := os.MkdirAll(path.Dir(bpath), 0700)
 	fs.CheckError(err)
 
 	return bpath
+}
+
+func (ss *Share) PathToHash(block_path string) ([]byte, bool) {
+	hash_text := path.Base(block_path)
+
+	if len(hash_text) != 64 {
+		return nil, false
+	}
+
+	hash, err := hex.DecodeString(hash_text)
+	fs.CheckError(err)
+
+	return hash, true
 }
 
 func (ss *Share) SetKeys(ckey []byte, hkey []byte) {

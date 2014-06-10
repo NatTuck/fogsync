@@ -33,6 +33,10 @@ func (bp *Bptr) String() string {
 	return hex.EncodeToString(bp.Bytes())
 }
 
+func (bp *Bptr) HashString() string {
+	return hex.EncodeToString(bp.Hash)
+}
+
 func BptrFromBytes(bytes []byte) Bptr {
 	if len(bytes) != BPTR_SIZE {
 		fs.PanicHere("Short bptr: " + hex.EncodeToString(bytes))

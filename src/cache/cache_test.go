@@ -30,6 +30,9 @@ func TestCopyInOutFile(tt *testing.T) {
 	err = os.Remove(src_path)
 	fs.CheckError(err)
 
+	// Does the GC really work?
+	StartGC(&share)
+
 	// Copy out
 	fmt.Println("Copy out...")
 
@@ -45,6 +48,7 @@ func TestCopyInOutFile(tt *testing.T) {
 	}
 
 	fmt.Println("Done single file")
+
 
 	config.EndTest()
 }
@@ -66,6 +70,9 @@ func TestCopyInOutTree(tt *testing.T) {
 	err = fs.CopyAll(test_dir, ctrl_dir)
 	fs.CheckError(err)
 
+	// Clean up garbage
+	StartGC(&share)
+
 	// Copy in all the files in the tree.
 	paths := make([]config.SyncPath, 0)
 
@@ -78,6 +85,6 @@ func TestCopyInOutTree(tt *testing.T) {
 	fs.CheckError(err)
 
 	fmt.Println("Done multi-file")
-
+	
 	config.EndTest()
 }

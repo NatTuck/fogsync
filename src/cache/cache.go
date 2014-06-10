@@ -202,6 +202,10 @@ func (st *ST) CopyOutFile(sync_path config.SyncPath) (eret error) {
 }
 
 func (st *ST) decryptFromBlocks(bptr Bptr) string {
+	return st.decryptFromBlocks1(bptr, nil)
+}
+
+func (st *ST) decryptFromBlocks1(bptr Bptr, bs *pio.File) string {
 	// Make a list of one block.
 	list_name := config.TempName()
 
@@ -209,10 +213,10 @@ func (st *ST) decryptFromBlocks(bptr Bptr) string {
 	defer os.Remove(list_name)
 
 	// Decrypt it to a file.
-	return st.decryptFromBlockList(list_name)
+	return st.decryptFromBlockList(list_name, bs)
 }
 
-func (st *ST) decryptFromBlockList(list_name string) string {
+func (st *ST) decryptFromBlockList(list_name string, bs *pio.File) string {
 	list := pio.Open(list_name)
 	defer list.Close()
 
@@ -241,6 +245,10 @@ func (st *ST) decryptFromBlockList(list_name string) string {
 		bptr := BptrFromBytes(bptr_bytes)
 		data := st.loadBptr(bptr)
 
+		if bs != nil {
+			bs.Write(bptr.Hash)
+		}
+
 		temp.Write(data)
 
 		if bptr.Depth == 0 {
@@ -252,7 +260,7 @@ func (st *ST) decryptFromBlockList(list_name string) string {
 	fs.CheckError(err)
 
 	if more_depth {
-		return st.decryptFromBlockList(temp_name)
+		return st.decryptFromBlockList(temp_name, bs)
 	} else {
 		return temp_name
 	}
