@@ -53,9 +53,9 @@ func HashToPath(hash []byte) string {
 
 	d0 := text[0:3]
 	d1 := text[3:6]
-	d2 := text[6:9]
+	//d2 := text[6:9]
 
-	return path.Join(d0, d1, d2, text)
+	return path.Join(d0, d1, text)
 }
 
 func ReadN(file *os.File, nn int64) []byte {

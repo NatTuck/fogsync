@@ -50,36 +50,55 @@ func (st *ST) CopyInFile(sync_path config.SyncPath) {
 	info, err := os.Lstat(sync_path.Full())
 	fs.CheckError(err)
 
-	// Copy to random temp file
-	temp_copy := config.TempName()
+	link := ""
+	bptr := ""
+	hash := ""
 
-	err = fs.CopyFile(temp_copy, sync_path.Full())
-	fs.CheckError(err)
-	defer os.Remove(temp_copy)
+	if info.Mode().IsRegular() {
+		// Copy to random temp file
+		temp_copy := config.TempName()
 
-	// Confirm that the file changed
-	hash, err := fs.HashFile(temp_copy)
-	fs.CheckError(err)
+		err = fs.CopyFile(temp_copy, sync_path.Full())
+		fs.CheckError(err)
+		defer os.Remove(temp_copy)
 
-	curr := st.loadPath(sync_path)
-	if curr != nil && curr.Hash == hex.EncodeToString(hash) {
-		// TODO: Update directory entry with new mtime without reinserting.
+		// Confirm that the file changed
+		hash_bytes, err := fs.HashFile(temp_copy)
+		fs.CheckError(err)
+
+		hash = hex.EncodeToString(hash_bytes)
+
+		curr := st.loadPath(sync_path)
+		if curr != nil && curr.Hash == hash {
+			fmt.Println("TODO: Don't need to re-insert unchanged file")
+			// TODO: Update directory entry with new mtime without reinserting.
+		}
+
+		// TODO: Try gzipping the file
+
+		// Encrypt and store as blocks.
+		bptr_obj := st.encryptToBlocks(temp_copy, 0)
+		bptr = bptr_obj.String()
+
+	} else {
+		// If it's not a regular file, maybe it's a symlink.
+
+		link, err = os.Readlink(sync_path.Full())
+		if err != nil {
+			// Apparently not.
+			fs.PanicHere("Unknown file type for " + sync_path.Full())
+		}
 	}
 
-	// TODO: Try gzipping the file
-
-	// Encrypt and store as blocks.
-	bptr := st.encryptToBlocks(temp_copy, 0)
-
-	// Save record to the DB
 	host, err := os.Hostname()
 	fs.CheckError(err)
 
 	file_ent := DirEnt{
 		Type: "file",
-		Bptr: bptr.String(),
+		Bptr: bptr,
+		Link: link,
 		Size: info.Size(),
-		Hash: hex.EncodeToString(hash),
+		Hash: hash,
 		Exec: info.Mode().Perm() & 1 == 1,
 		Host: host,
 		Mtime: info.ModTime().UnixNano(),
