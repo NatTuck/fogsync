@@ -16,4 +16,3 @@ func (cc *Cloud) Save() {
 	config.PutObj("clouds", &clouds)
 }
 
-
