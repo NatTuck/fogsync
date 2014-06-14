@@ -1,20 +1,20 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="utf-8">
   <title>FogSync Client</title>
-
-  <%- File.open("tmp/javascripts.txt") do |jss| -%>
-    <%- jss.each_line do |line| -%>
-      <%- line.chomp! -%>
-      <%- line.split(/\s+/).each do |js| -%>
+  <%- require 'pathname' -%>
+  <%- Dir.glob("public/*.js").sort.map {|pp| Pathname.new(pp).basename }.each do |js| -%>
   <script src="/assets/<%= js %>"></script>
-      <%- end -%>
-    <%- end -%>
+  <%- end -%>
+  <%- Dir.glob("public/*.css").sort.map {|pp| Pathname.new(pp).basename }.each do |css| -%>
+  <link href="/assets/<%= css %>" media="all" rel="stylesheet">
   <%- end -%>
 </head>
 <body>
-  <h1>It's a web page</h1>
 
+<div class="content">
+</div>
 
 </body>
 </html>

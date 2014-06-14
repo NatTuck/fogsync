@@ -1,0 +1,13 @@
+
+Welcome to the awesome asset pipeline for the fogsync client that is totally
+not hacked together out of crazy Make variables with embedded perl commands.
+
+Stuff to edit lives in "css", "html", and "js" directories.
+
+Stuff to not edit because it's automatically populated lives
+in the "public" directory.
+
+Once you've made changes, type "make" and everything should be regenerated as
+nessisary. If you add new scss, hbs, or coffee files in the right place the
+Makefile will find them.
+
