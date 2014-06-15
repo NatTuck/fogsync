@@ -1,53 +1,16 @@
-
 package webui
 
 import (
-	"path"
 	"net/http"
-	"github.com/GeertJohan/go.rice"
-	"../fs"
 )
 
 func Start() {
-	http.HandleFunc("/", serveIndex)
-	http.HandleFunc("/assets/", serveAssets)
+	http.HandleFunc("/", serveAssets)
+	http.HandleFunc("/shares/", serveShares)
+	http.HandleFunc("/settings/", serveSettings)
 
 	http.ListenAndServe(":5000", nil)
 }
 
-func serveIndex(ww http.ResponseWriter, req *http.Request) {
-	hdrs := ww.Header()
-	hdrs["Content-Type"] = []string{"text/html"}
-	
-	ww.Write(getAsset("index.html"))
-}
 
-func serveAssets(ww http.ResponseWriter, req *http.Request) {
-	name := path.Base(req.URL.Path)
 
-	ctype := "application/octet-stream"
-
-	switch path.Ext(name) {
-	case ".css":
-		ctype = "text/css"
-	case ".js":
-		ctype = "application/javascript"
-	default:
-		// do nothing
-	}
-	
-	hdrs := ww.Header()
-	hdrs["Content-Type"] = []string{ctype}
-
-	ww.Write(getAsset(name))
-}
-
-func getAsset(name string) []byte {
-	box, err := rice.FindBox("assets/public")
-	fs.CheckError(err)
-
-	data, err := box.Bytes(name)
-	fs.CheckError(err)
-
-	return data
-}

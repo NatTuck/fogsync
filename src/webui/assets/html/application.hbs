@@ -8,13 +8,19 @@
         <span class="icon-bar"></span>
         <span class="icon-bar"></span>
       </button>
-      <a class="navbar-brand" href="#/">FogSync Client</a>
+      {{#link-to "index" class="navbar-brand"}}FogSync Client{{/link-to}}
     </div>
     <div class="collapse navbar-collapse">
       <ul class="nav navbar-nav">
-        <li class="active"><a href="#/">Home</a></li>
-        <li><a href="#/about">About</a></li>
-        <li><a href="#/contact">Contact</a></li>
+        {{#link-to "index" tagName="li"}}
+          <a {{bind-attr href="view.href"}}>Home</a>
+        {{/link-to}}
+        {{#link-to "shares" tagName="li"}}
+          <a {{bind-attr href="view.href"}}>Shares</a>
+        {{/link-to}}
+        {{#link-to "about" tagName="li"}}
+          <a {{bind-attr href="view.href"}}>About</a></li>
+        {{/link-to}}
       </ul>
     </div>
   </div>

@@ -14,7 +14,7 @@ SCSS := $(wildcard css/*.scss)
 HBS := $(wildcard html/*.hbs)
 
 public/index.html: $(CSJS) public/fogsync.css public/templates.js html/index.html.erb
-	cp js/*.* js/bootstrap/* css/*.* public
+	cp js/*.* js/bootstrap/* css/*.* images/*.* fonts/*.* public
 	erb -T - html/index.html.erb > public/index.html
 
 $(CSJS): $(CS)

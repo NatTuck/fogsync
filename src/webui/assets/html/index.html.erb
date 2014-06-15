@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <title>FogSync Client</title>
+  <link rel="icon" type="image/png" href="/assets/cloud-icon.png"/>
   <%- require 'pathname' -%>
   <%- Dir.glob("public/*.js").sort.map {|pp| Pathname.new(pp).basename }.each do |js| -%>
   <script src="/assets/<%= js %>"></script>

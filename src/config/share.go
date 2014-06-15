@@ -10,6 +10,7 @@ import (
 )
 
 type Share struct {
+	Id   int    `json:"id"`
 	Name string
 	Root string
 	Ckey string
@@ -103,4 +104,17 @@ func AddShare(share Share) {
 func GetShare(name string) Share {
 	shares := readShares()
 	return shares[name]
+}
+
+func Shares() []Share {
+	shares := make([]Share, 0)
+
+	ii := 0
+	for _, ss := range(readShares()) {
+		ss.Id = ii
+		shares = append(shares, ss)
+		ii++
+	}
+
+	return shares
 }

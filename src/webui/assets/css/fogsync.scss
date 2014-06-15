@@ -1,2 +1,12 @@
 
-@import "bootstrap/bootstrap"
+@import "bootstrap/bootstrap";
+
+.navbar {
+  a {
+    cursor: pointer;
+  }
+}
+
+.form-desc {
+  margin-top: 1ex;
+}
