@@ -37,7 +37,7 @@ App.IndexController = Ember.Controller.extend({
     save: (ee) ->
       settings = this.get('model')
       settings.save().then(skip, -> console.log(settings.errors))
-  }
+  },
 })
 
 App.SharesRoute = Ember.Route.extend({
@@ -51,3 +51,4 @@ App.Router.map ->
     this.resource('setting', {path: ':settings_id'})
   this.resource("shares")
   this.route("about")
+
