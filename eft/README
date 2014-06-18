@@ -1,0 +1,125 @@
+
+Encrypted File Trie
+~~~~~~~~~~~~~~~~~~~
+
+EFT stores a directory tree and its contents as a bunch of indistinguishable
+encrypted blocks.
+
+Security goals:
+ * Someone with access to the stored blocks should be unable to determine much
+   about the stored file contents and structure.
+ * Even if someone is monitoring changes to the stored blocks, they should only
+   be able to determine the approximate size of each change.
+
+Performance goals:
+  The following operations should be fast:
+    * Extracting a file or directory listing, even if the blocks are stored
+      remotely.
+    * Inserting / updating a file or directory listing.
+    * Determining the sets of added and deleted blocks after any operation.
+
+Features that would be nice:
+  * Cheap snapshots.
+
+
+This implementation:
+  * Blocks are 16k (data) + 64 bytes (nonce & mac).
+  * There are four categories of block:
+    * Directory tree structure (a hash-mapped trie)
+    * Data block lists (a "number trie")
+    * Small data blocks (entities < ~12k)
+    * Large data blocks (chunks of entities > ~12k)
+  * Each block is referenced by its 32-byte SHA256 hash.
+  * Each block is encrypted and authenticated with XSalsa20 + Poly1305 (NACL Secret Box)
+  * Blocks are always encrypted.
+
+
+Directory Tree Blocks
+~~~~~~~~~~~~~~~~~~~~~
+
+Each EFT store is has a single root block identified by its block hash. This
+block is the root of a hash-mapped trie. This trie maps file system paths to
+entities (directories, files, symbolic links) in the file system.
+
+Paths are hashed with SHA256.
+
+Each trie node has 256 entries, indexed by one byte in the hash. Entries are
+48 bytes, making the total table 12k in size.
+
+The overall structure of a trie node block is as follows:
+    [0,  4k]: Reserved
+    [4k,16k]: Table
+
+Each entry in the table is structured like this:
+    [0, 32]: Block address for subtrie or entry.
+    [32,36]: Type of entry:
+        0 = Empty
+        1 = Subtrie
+        2 = File
+        3 = Dir
+        4 = Symlink
+    [36,44]: Size of entity
+    [46,48]: Reserved
+
+
+Small Entity Blocks
+~~~~~~~~~~~~~~~~~~~
+
+If an entity is under 12k, it can be stored directly in a single data
+block. The extra 4k leaves space for storing keys for the directory tree
+trie.
+
+Structure:
+    [0,  4k]: Entity Metadata Header
+    [4k, 16k]: Data
+
+Entity Metadata Header:
+    [0,   4]: Type (directory, file, symlink)
+    [4,  12]: Size (uint64)
+    [12, 20]: Mtime (uint64, nanoseconds since epoch)
+    [20, 24]: Mode (0 = default, 1 = u+x)
+    [24, 32]: Reserved
+    [32, 64]: Hash
+    [1k, 2k]: Path (4 byte length, 1020 bytes of data)
+    [2k, 3k]: Last Modified By (user@host) (4 byte length, 1020 bytes data)
+    [3k, 4k]: Reserved
+
+Note that this means directories are only needed for traversals. They store
+a JSON list of file names and nothing else.
+
+Block Lists
+~~~~~~~~~~~
+
+For entities over 12k, it is nessisary to store the list of blocks that
+constitute the entity. This list is stored as a trie of block numbers
+to block hashes. This has the advantage of allowing reasonably efficient
+random reads and writes within a file.
+
+The block address from the directory trie points to the root of the block
+list trie.
+
+The key used to index the trie is a 64-bit unsigned integer in little-
+endian byte order with trailing zero bytes removed. This means that the
+depth of the trie will be the minimum that uniquely addresses all the
+blocks of the entity.
+
+The table is again 256 entries of 48 bytes each, making the table 12k.
+
+Block list node format:
+    [0,   4k]: Entity Metadata Header
+    [4k, 16k]: Table
+
+Table entry structure:
+    [0,  32]: Address of subtrie or block.
+    [32, 36]: Type of entry:
+        0 = Empty
+        1 = Subtrie
+        2 = Data block
+
+
+Large Entity Blocks:
+~~~~~~~~~~~~~~~~~~~
+
+These have data in them.
+
+
