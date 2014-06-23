@@ -4,6 +4,8 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"code.google.com/p/go.crypto/nacl/secretbox"
+	"os"
+	"io"
 	"fmt"
 )
 
@@ -20,6 +22,34 @@ func HashSlice(data []byte) []byte {
 	sha := sha256.New()
 	sha.Write(data)
 	return sha.Sum(nil)
+}
+
+func HashFile(file_path string) ([]byte, error) {
+	sha := sha256.New()
+
+	file, err := os.Open(file_path)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	for {
+		chunk := make([]byte, 64 * 1024)
+
+		nn, err := file.Read(chunk)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		sha.Write(chunk[0:nn])
+	}
+
+	hash := sha.Sum(nil)
+
+	return hash, nil
 }
 
 func EncryptBlock(data []byte, key [32]byte) []byte {

@@ -2,8 +2,11 @@ package eft
 
 import (
 	"encoding/hex"
+	"sync"
 	"path"
 	"os"
+	"fmt"
+	"io/ioutil"
 )
 
 const BLOCK_SIZE = 16 * 1024
@@ -15,9 +18,9 @@ type EFT struct {
 
 	mutex sync.Mutex
 
-	adds os.File
+	adds *os.File
 	addsName string
-	dead os.File
+	dead *os.File
 	deadName string
 }
 
@@ -31,36 +34,33 @@ func (eft *EFT) BlockPath(hash []byte) string {
 func (eft *EFT) Put(info ItemInfo, src_path string) error {
 	eft.begin()
 
-	info, err := os.Lstat(src_path)
-	if err != nil {
-		eft.abort()
-		return err
-	}
-
 	var data_hash []byte
+	var err error
 
 	// create the data blocks (for file)
 	// create the block list / metadata
 	if (info.Size <= 12 * 1024) {
-		err, data_hash = eft.saveSmallItem(info, src_path)
+		data_hash, err = eft.saveSmallItem(info, src_path)
 	} else {
-		err, data_hash = eft.saveLargeItem(info, src_path)
+		//data_hash, err = eft.saveLargeItem(info, src_path)
 	}
 	if err != nil {
 		eft.abort()
 		return err
 	}
+
+	fmt.Println(data_hash)
 
 	// insert into tree
-	err, root := eft.putTree(info, data_hash)
+	//err, root := eft.putTree(info, data_hash)
 	if err != nil {
 		eft.abort()
 		return err
 	}
-	eft.Root = root
+	//eft.Root = root
 
 	// update parent directories to root
-	err, root := eft.
+	//err, root := eft.
 
 	// update root
 	// remove dead blocks
@@ -68,9 +68,11 @@ func (eft *EFT) Put(info ItemInfo, src_path string) error {
 	// unlock
 
 	eft.commit()
+	
+	return nil
 }
 
-func (eft *EFT) Get(name string, dst_path string) (uint16, error) {
+func (eft *EFT) Get(name string, dst_path string) (uint32, error) {
 	// lock
 	// find path in tree
 	// read metadata and blocks
@@ -79,6 +81,8 @@ func (eft *EFT) Get(name string, dst_path string) (uint16, error) {
 
 	// Writes out file data, directory listing, or link target
 	// Returns type of object.
+
+	return 0, nil
 }
 
 func (eft *EFT) Del(name string) error {
@@ -94,6 +98,8 @@ func (eft *EFT) Del(name string) error {
 	// remove dead blocks
 	// update global new/dead lists
 	// unlock
+
+	return nil
 }
 
 func (eft *EFT) SaveBlock(data []byte) ([]byte, error) {

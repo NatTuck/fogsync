@@ -59,7 +59,7 @@ func (tb *TreeBlock) Save(eft *EFT) error {
 	be := binary.BigEndian
 
 	for ii := 0; ii < 256; ii++ {
-		ent := tb.Tree[ii]
+		ent := tb.Table[ii]
 
 		rec := make([]byte, 48)
 		copy(rec[0:32], ent.Hash[:])
