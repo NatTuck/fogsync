@@ -7,14 +7,15 @@ import (
 	"os"
 )
 
-func TestSmallRoundtrip(tt *testing.T) {
+func TestFullRoundtrip(tt *testing.T) {
 	eft_dir := tmpRandomName()
 	hi0_txt := tmpRandomName()
 	hi1_txt := tmpRandomName()
 
 	defer func() {
 		if len(eft_dir) > 8 {
-			os.RemoveAll(eft_dir)
+			fmt.Println(eft_dir)
+			//os.RemoveAll(eft_dir)
 			os.Remove(hi0_txt)
 			os.Remove(hi1_txt)
 		}
@@ -33,19 +34,15 @@ func TestSmallRoundtrip(tt *testing.T) {
 		panic(err)
 	}
 
-	eft.begin()
-
-	hash, err := eft.saveSmallItem(info0, hi0_txt)
+	err = eft.Put(info0, hi0_txt)
 	if err != nil {
 		panic(err)
 	}
 
-	info1, err := eft.loadSmallItem(hash, hi1_txt)
+	info1, err := eft.Get(info0.Path, hi1_txt)
 	if err != nil {
 		panic(err)
 	}
-
-	eft.commit()
 
 	if info0 != info1 {
 		fmt.Println("Item info mismatch")

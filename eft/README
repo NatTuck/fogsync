@@ -55,9 +55,7 @@ Each entry in the table is structured like this:
     [32,36]: Type of entry:
         0 = Empty
         1 = Subtrie
-        2 = File
-        3 = Dir
-        4 = Symlink
+        2 = Item
     [36,44]: Size of entity
     [46,48]: Reserved
 

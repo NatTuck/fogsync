@@ -49,8 +49,8 @@ func TestLargeRoundtrip(tt *testing.T) {
 	
 	eft.commit()
 
-	if info0.Size != info1.Size {
-		fmt.Println("Item size mismatch")
+	if info0 != info1 {
+		fmt.Println("Item info mismatch")
 		tt.Fail()
 	}
 

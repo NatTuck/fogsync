@@ -8,9 +8,9 @@ import (
 )
 
 const (
-	INFO_FILE = 2
-	INFO_DIR  = 3
-	INFO_LINK = 4
+	INFO_FILE = 4
+	INFO_DIR  = 5
+	INFO_LINK = 6
 )
 
 type ItemInfo struct {
@@ -18,9 +18,22 @@ type ItemInfo struct {
 	Size uint64
 	ModT uint64
 	Mode uint32 // executable?
-	Hash []byte
+	Hash [32]byte
 	Path string
 	MoBy string // last modified by (user@host)
+}
+
+func (info *ItemInfo) TypeName() string {
+	switch info.Type {
+	case INFO_FILE:
+		return "file"
+	case INFO_DIR:
+		return "dir"
+	case INFO_LINK:
+		return "link"
+	default:
+		return "bad"
+	}
 }
 
 func GetItemInfo(src_path string) (ItemInfo, error) {
@@ -49,10 +62,11 @@ func GetItemInfo(src_path string) (ItemInfo, error) {
 		info.Mode = uint32(sysi.Mode().Perm() & 1)
 	}
 
-	info.Hash, err = HashFile(src_path)
+	data_hash, err := HashFile(src_path)
 	if err != nil {
 		return info, trace(err)
 	}
+	copy(info.Hash[:], data_hash)
 
 	uu, err := user.Current()
 	if err != nil {
@@ -81,8 +95,7 @@ func ItemInfoFromBytes(data []byte) ItemInfo {
 	info.Size = be.Uint64(data[4 :12])
 	info.ModT = be.Uint64(data[12:20])
 	info.Mode = be.Uint32(data[20:24])
-	info.Hash = make([]byte, 32)
-	copy(info.Hash, data[32:64])
+	copy(info.Hash[:], data[32:64])
 
 	path_len := be.Uint32(data[1024:1028])
 	info.Path = string(data[1028:1028 + path_len])
@@ -101,7 +114,7 @@ func (info *ItemInfo) Bytes() []byte {
 	be.PutUint64(data[4 :12], info.Size)
 	be.PutUint64(data[12:20], info.ModT)
 	be.PutUint32(data[20:24], info.Mode)
-	copy(data[32:64], info.Hash)
+	copy(data[32:64], info.Hash[:])
 
 	path_len := len(info.Path)
 	if (path_len > 1020) {

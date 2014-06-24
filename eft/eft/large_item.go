@@ -4,7 +4,6 @@ import (
 	"os"
 	"io"
 	"fmt"
-	"errors"
 	"encoding/binary"
 )
 
@@ -13,8 +12,6 @@ const (
 	LARGE_TYPE_MORE = 1
 	LARGE_TYPE_DATA = 2
 )
-
-var ErrNotFound = errors.New("Record not found")
 
 type LargeEnt struct {
 	Hash [32]byte
@@ -234,6 +231,9 @@ func (eft *EFT) loadLargeItem(hash []byte, dst_path string) (_ ItemInfo, eret er
 		if err == ErrNotFound {
 			break
 		}
+		if err != nil {
+			return info, trace(err)
+		}
 
 		data, err := eft.LoadBlock(b_hash)
 		if err != nil {
@@ -261,5 +261,29 @@ func (eft *EFT) loadLargeItem(hash []byte, dst_path string) (_ ItemInfo, eret er
 	}
 
 	return info, nil
+}
+
+func (eft *EFT) killLargeItemBlocks(hash []byte) error {
+	root, err := eft.LoadLargeNode(hash)
+	if err != nil {
+		return trace(err)
+	}
+
+	for ii := uint64(0); true; ii++ {
+		b_hash, err := root.find(ii, 0)
+		if err == ErrNotFound {
+			break
+		}
+		if err != nil {
+			return trace(err)
+		}
+
+		err = eft.pushDead(b_hash)
+		if err != nil {
+			return trace(err)
+		}
+	}
+
+	return nil
 }
 

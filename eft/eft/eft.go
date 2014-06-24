@@ -2,6 +2,7 @@ package eft
 
 import (
 	"encoding/hex"
+	"errors"
 	"sync"
 	"path"
 	"os"
@@ -24,6 +25,8 @@ type EFT struct {
 	deadName string
 }
 
+var ErrNotFound = errors.New("EFT: record not found")
+
 func (eft *EFT) BlockPath(hash []byte) string {
 	text := hex.EncodeToString(hash)
 	d0 := text[0:3]
@@ -31,58 +34,83 @@ func (eft *EFT) BlockPath(hash []byte) string {
 	return path.Join(eft.Dir, d0, d1, text)
 }
 
+func (eft *EFT) getRootHash() []byte {
+	hash, err := hex.DecodeString(eft.Root)
+	if err != nil {
+		panic(err)
+	}
+	return hash
+}
+
+func (eft *EFT) setRootHash(hash []byte) {
+	eft.Root = hex.EncodeToString(hash)
+}
+
+func (eft *EFT) putItem(info ItemInfo, src_path string) error {
+	data_hash, err := eft.saveItem(info, src_path)
+	if err != nil {
+		return err
+	}
+
+	root, err := eft.putTree(info, data_hash)
+	if err != nil {
+		return err
+	}
+	eft.Root = hex.EncodeToString(root)
+
+	err = eft.putParent(info)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (eft *EFT) Put(info ItemInfo, src_path string) error {
 	eft.begin()
 
-	var data_hash []byte
-	var err error
-
-	// create the data blocks (for file)
-	// create the block list / metadata
-	if (info.Size <= 12 * 1024) {
-		data_hash, err = eft.saveSmallItem(info, src_path)
-	} else {
-		data_hash, err = eft.saveLargeItem(info, src_path)
-	}
+	err := eft.putItem(info, src_path)
 	if err != nil {
 		eft.abort()
 		return err
 	}
-
-	fmt.Println(data_hash)
-
-	// insert into tree
-	//err, root := eft.putTree(info, data_hash)
-	if err != nil {
-		eft.abort()
-		return err
-	}
-	//eft.Root = root
-
-	// update parent directories to root
-	//err, root := eft.
-
-	// update root
-	// remove dead blocks
-	// update global new/dead lists
-	// unlock
 
 	eft.commit()
 	
 	return nil
 }
 
-func (eft *EFT) Get(name string, dst_path string) (uint32, error) {
-	// lock
-	// find path in tree
-	// read metadata and blocks
-	// write out file
-	// unlock
+func (eft *EFT) getItem(name string, dst_path string) (ItemInfo, error) {
+	info0, data_hash, err := eft.getTree(name)
+	if err != nil {
+		return info0, err
+	}
 
-	// Writes out file data, directory listing, or link target
-	// Returns type of object.
+	info1, err := eft.loadItem(data_hash, dst_path)
+	if err != nil {
+		return info0, err
+	}
 
-	return 0, nil
+	if info0 != info1 {
+		return info0, trace(fmt.Errorf("Item info mismatch"))
+	}
+
+	return info0, nil
+}
+
+
+func (eft *EFT) Get(name string, dst_path string) (ItemInfo, error) {
+	eft.begin()
+
+	info, err := eft.getItem(name, dst_path)
+	if err != nil {
+		eft.abort()
+		return info, err
+	}
+
+	eft.commit()
+
+	return info, nil
 }
 
 func (eft *EFT) Del(name string) error {

@@ -24,6 +24,10 @@ func HashSlice(data []byte) []byte {
 	return sha.Sum(nil)
 }
 
+func HashString(data string) []byte {
+	return HashSlice([]byte(data))
+}
+
 func HashFile(file_path string) ([]byte, error) {
 	sha := sha256.New()
 
