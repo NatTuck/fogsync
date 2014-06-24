@@ -1,9 +1,16 @@
 package eft
 
 import (
+	"encoding/hex"
+	"path"
 	"os"
 	"io"
 )
+
+func tmpRandomName() string {
+	name := hex.EncodeToString(RandomBytes(16))
+	return path.Join("/tmp", name)
+}
 
 func concatFiles(srcName, dstName string) (eret error) {
 	src, err := os.Open(srcName)

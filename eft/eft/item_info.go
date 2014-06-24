@@ -29,7 +29,7 @@ func GetItemInfo(src_path string) (ItemInfo, error) {
 
 	sysi, err := os.Lstat(src_path)
 	if err != nil {
-		return info, err
+		return info, trace(err)
 	}
 
 	switch {
@@ -51,17 +51,17 @@ func GetItemInfo(src_path string) (ItemInfo, error) {
 
 	info.Hash, err = HashFile(src_path)
 	if err != nil {
-		return info, err
+		return info, trace(err)
 	}
 
 	uu, err := user.Current()
 	if err != nil {
-		return info, err
+		return info, trace(err)
 	}
 
 	host, err := os.Hostname()
 	if err != nil {
-		return info, err
+		return info, trace(err)
 	}
 
 	info.MoBy = fmt.Sprintf("%s (%s@%s)", uu.Name, uu.Username, host)

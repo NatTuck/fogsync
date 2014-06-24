@@ -106,7 +106,7 @@ blocks of the entity.
 The table is again 256 entries of 48 bytes each, making the table 12k.
 
 Block list node format:
-    [0,   4k]: Entity Metadata Header
+    [0,   4k]: Entity Metadata Header (root only)
     [4k, 16k]: Table
 
 Table entry structure:
@@ -115,6 +115,8 @@ Table entry structure:
         0 = Empty
         1 = Subtrie
         2 = Data block
+    [36, 44]: Data block #
+    [44, 48]: Reserved
 
 
 Large Entity Blocks:

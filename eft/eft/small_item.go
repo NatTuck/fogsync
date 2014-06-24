@@ -28,7 +28,17 @@ func (eft *EFT) saveSmallItem(info ItemInfo, src_path string) ([]byte, error) {
 
 	copy(block[4096:BLOCK_SIZE], data)
 
-	return eft.SaveBlock(block)
+	hash, err := eft.SaveBlock(block)
+	if err != nil {
+		return nil, err
+	}
+
+	err = eft.pushAdds(hash)
+	if err != nil {
+		return nil, err
+	}
+
+	return hash, nil
 }
 
 func (eft *EFT) loadSmallItem(hash []byte, dst_path string) (ItemInfo, error) {

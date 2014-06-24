@@ -42,7 +42,7 @@ func (eft *EFT) Put(info ItemInfo, src_path string) error {
 	if (info.Size <= 12 * 1024) {
 		data_hash, err = eft.saveSmallItem(info, src_path)
 	} else {
-		//data_hash, err = eft.saveLargeItem(info, src_path)
+		data_hash, err = eft.saveLargeItem(info, src_path)
 	}
 	if err != nil {
 		eft.abort()

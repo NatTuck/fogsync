@@ -1,17 +1,10 @@
 package eft
 
 import (
-	"encoding/hex"
 	"io/ioutil"
 	"testing"
-	"path"
 	"os"
 )
-
-func tmpRandomName() string {
-	name := hex.EncodeToString(RandomBytes(16))
-	return path.Join("/tmp", name)
-}
 
 func TestSmallRoundtrip(tt *testing.T) {
 	eft_dir := tmpRandomName()
@@ -34,12 +27,14 @@ func TestSmallRoundtrip(tt *testing.T) {
 	key := [32]byte{}
 	eft := EFT{Key: key, Dir: eft_dir} 
 
-	info, err := GetItemInfo(hi0_txt)
+	info0, err := GetItemInfo(hi0_txt)
 	if err != nil {
 		panic(err)
 	}
 
-	hash, err := eft.saveSmallItem(info, hi0_txt)
+	eft.begin()
+
+	hash, err := eft.saveSmallItem(info0, hi0_txt)
 	if err != nil {
 		panic(err)
 	}
@@ -49,7 +44,9 @@ func TestSmallRoundtrip(tt *testing.T) {
 		panic(err)
 	}
 
-	if info.Size != info1.Size {
+	eft.commit()
+
+	if info0.Size != info1.Size {
 		tt.Fail()
 	}
 
