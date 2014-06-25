@@ -8,9 +8,9 @@ import (
 )
 
 func TestSmallRoundtrip(tt *testing.T) {
-	eft_dir := tmpRandomName()
-	hi0_txt := tmpRandomName()
-	hi1_txt := tmpRandomName()
+	eft_dir := TmpRandomName()
+	hi0_txt := TmpRandomName()
+	hi1_txt := TmpRandomName()
 
 	defer func() {
 		if len(eft_dir) > 8 {

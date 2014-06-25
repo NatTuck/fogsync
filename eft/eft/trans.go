@@ -61,12 +61,15 @@ func (eft *EFT) begin() {
 }
 
 func (eft *EFT) commit() {
-	err := concatFiles(eft.addsName, eft.addsFile())
+	eft.adds.Close()
+	eft.dead.Close()
+
+	err := appendFile(eft.addsFile(), eft.addsName)
 	if err != nil {
 		panic(err)
 	}
 
-	err = concatFiles(eft.deadName, eft.deadFile())
+	err = appendFile(eft.deadFile(), eft.deadName)
 	if err != nil {
 		panic(err)
 	}
@@ -77,11 +80,9 @@ func (eft *EFT) commit() {
 	}
 
 	os.Remove(eft.addsName)
-	eft.adds.Close()
 	eft.addsName = ""
 	
 	os.Remove(eft.deadName)
-	eft.dead.Close()
 	eft.deadName = ""
 
 	eft.mutex.Unlock()

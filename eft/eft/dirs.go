@@ -31,6 +31,10 @@ func (eft *EFT) getDir(dpath string) (ItemInfo, Directory, error) {
 		return info, nil, trace(err)
 	}
 
+	if info.Type != INFO_DIR {
+		return info, nil, trace(fmt.Errorf("getDir on non-directory item"))
+	}
+
 	text, err := ioutil.ReadFile(temp)
 	if err != nil {
 		return info, nil, trace(err)
@@ -44,6 +48,7 @@ func (eft *EFT) getDir(dpath string) (ItemInfo, Directory, error) {
 	
 	err = json.Unmarshal(text, &dir)
 	if err != nil {
+		fmt.Println(string(text))
 		return info, nil, trace(err)
 	}
 
@@ -104,8 +109,11 @@ func (eft *EFT) putParent(info ItemInfo) error {
 }
 
 func (eft *EFT) ListDir(dpath string) ([]string, error) {
+	eft.begin()
+
 	_, dir, err := eft.getDir(dpath)
 	if err != nil {
+		eft.abort()
 		return nil, trace(err)
 	}
 
@@ -124,12 +132,15 @@ func (eft *EFT) ListDir(dpath string) ([]string, error) {
 		
 		info, _, err := eft.getTree(ipath)
 		if err != nil {
+			eft.abort()
 			return nil, trace(err)
 		}
 
 		desc := fmt.Sprintf("%s (%s) %d", name, info.TypeName(), info.Size)
 		items = append(items, desc)
 	}
+
+	eft.commit()
 
 	return items, nil
 }

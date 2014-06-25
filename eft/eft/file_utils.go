@@ -7,29 +7,51 @@ import (
 	"io"
 )
 
-func tmpRandomName() string {
+func TmpRandomName() string {
 	name := hex.EncodeToString(RandomBytes(16))
 	return path.Join("/tmp", name)
 }
 
-func concatFiles(srcName, dstName string) (eret error) {
+func appendFile(dstName, srcName string) (eret error) {
 	src, err := os.Open(srcName)
 	if err != nil {
 		return err
 	}
-	defer func() {
-		eret = src.Close()
-	}()
+	defer src.Close()
 
-	dst, err := os.OpenFile(dstName, os.O_APPEND | os.O_CREATE, 0600)
+	dst, err := os.OpenFile(dstName, os.O_CREATE | os.O_APPEND | os.O_WRONLY, 0600)
 	if err != nil {
 		return err
 	}
 	defer func() {
-		eret = dst.Close()
+		err := dst.Close()
+		if err != nil {
+			eret = err
+		}
 	}()
 
-	_, err = io.Copy(dst, src)
+	_, err = dst.Seek(0, 2)
+	if err != nil {
+		return trace(err)
+	}
+
+	temp := make([]byte, 64 * 1024)
+
+	for {
+		nn, err := src.Read(temp)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return trace(err)
+		}
+
+		_, err = dst.Write(temp[0:nn])
+		if err != nil {
+			return trace(err)
+		}
+	}
+
 	return err
 }
 
@@ -38,16 +60,17 @@ func copyFile(srcName, dstName string) (eret error) {
 	if err != nil {
 		return err
 	}
-	defer func() {
-		eret = src.Close()
-	}()
+	defer src.Close()
 
 	dst, err := os.Create(dstName)
 	if err != nil {
 		return err
 	}
 	defer func() {
-		eret = dst.Close()
+		err := dst.Close()
+		if err != nil {
+			eret = err
+		}
 	}()
 
 	_, err = io.Copy(dst, src)

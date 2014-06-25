@@ -8,13 +8,12 @@ import (
 )
 
 func TestFullRoundtrip(tt *testing.T) {
-	eft_dir := tmpRandomName()
-	hi0_txt := tmpRandomName()
-	hi1_txt := tmpRandomName()
+	eft_dir := TmpRandomName()
+	hi0_txt := TmpRandomName()
+	hi1_txt := TmpRandomName()
 
 	defer func() {
 		if len(eft_dir) > 8 {
-			fmt.Println(eft_dir)
 			//os.RemoveAll(eft_dir)
 			os.Remove(hi0_txt)
 			os.Remove(hi1_txt)
@@ -58,4 +57,8 @@ func TestFullRoundtrip(tt *testing.T) {
 		fmt.Println("Item data mismatch")
 		tt.Fail()
 	}
+
+	fmt.Println("dir:", eft.Dir)
+	fmt.Println(eft.ListDir("/"))
+	fmt.Println(eft.ListDir("/tmp"))
 }
