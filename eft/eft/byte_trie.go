@@ -17,23 +17,56 @@ type TrieEntry struct {
 	Meta [16]byte
 }
 
+type GetKeyFn func(TrieEntry) ([]byte, error)
+
 type TrieNode struct {
 	eft *EFT
+
+	key GetKeyFn
+	dep int
+
 	hdr [4096]byte
 	tab [256]TrieEntry 
 }
 
-type GetKeyFn func(TrieEntry) ([]byte, error)
-
 var ErrNotFound = errors.New("EFT: record not found")
 
-func (eft *EFT) loadTrieNode(hash []byte) (*TrieNode, error) {
+func (eft *EFT) loadTrieRoot(hash []byte, getKey GetKeyFn) (*TrieNode, error) {
+	tn := &TrieNode{ 
+		eft: eft,
+		key: getKey,
+		dep: 0,
+	}
+
+	err := tn.load(hash)
+	if err != nil {
+		return nil, err
+	}
+
+	return tn, nil
+}
+
+func (tn *TrieNode) loadNext(hash []byte) (*TrieNode, error) {
+	next := &TrieNode{
+		eft: tn.eft,
+		key: tn.key,
+		dep: tn.dep + 1,
+	}
+
+	err := next.load(hash)
+	if err != nil {
+		return nil, err
+	}
+
+	return next, nil
+}
+
+func (tn *TrieNode) load(hash []byte) error {
 	data, err := eft.LoadBlock(hash)
 	if err != nil {
 		return nil, trace(err)
 	}
-	
-	tn := &TrieNode{ eft: eft }
+
 	copy(tn.hdr[:], data[0:4096])
 
 	base := 4 * 1024
@@ -49,7 +82,7 @@ func (eft *EFT) loadTrieNode(hash []byte) (*TrieNode, error) {
 		tn.tab[ii] = ent
 	}
 
-	return tn, nil
+	return nil
 }
 
 func (tn *TrieNode) save() ([]byte, error) {
@@ -77,22 +110,22 @@ func (tn *TrieNode) save() ([]byte, error) {
 	return hash, nil
 }
 
-func (tn *TrieNode) find(key []byte, dd int) ([]byte, error) {
+func (tn *TrieNode) find(key []byte) ([]byte, error) {
 	slot := key[dd]
-	entry := node.tab[slot]
+	entry := tn.tab[slot]
 
 	switch entry.Type {
 	case TRIE_TYPE_NONE:
 		return nil, ErrNotFound
 	case TRIE_TYPE_MORE:
-		next_hash := tn.tab[slot].Hash[:]
+		next_hash := entry.Hash[:]
 
-		next, err := tn.eft.loadTrieNode(next_hash)
+		next, err := tn.loadNext(next_hash)
 		if err != nil {
 			return nil, err // Could be ErrNotFound, no trace
 		}
 
-		return next.find(ii, dd + 1)
+		return next.find(key)
 	case TRIE_TYPE_DATA:
 		return ent.Hash[:], nil
 	default:
@@ -100,10 +133,63 @@ func (tn *TrieNode) find(key []byte, dd int) ([]byte, error) {
 	}
 }
 
-func (tn *TrieNode) insert(key []byte, newEnt TrieEntry, getKey GetKeyFn, dd int) error {
+func (tn *TrieNode) insert(key []byte, newEnt TrieEntry) error {
 	slot := key[dd]
 	entry := tn.tab[slot]
 
-	return nil
+	switch entry.Type {
+	case TRIE_TYPE_NONE:
+		tb.Table[slot] = newEnt
+		return nil
+	case TRIE_TYPE_DATA:
+		if BytesEqual(key, tn.key(entry)) {
+			// Replace
+			tn.eft.killItemBlocks(entry.Hash[:])
+
+			tb.Table[slot] = newEnt
+
+			return nil
+		} else {
+			// Push down
+			next := &TrieNode{ 
+				eft: eft,
+				key: getKey,
+				dep: tn.dep + 1,
+			}
+
+			err := next.insert(key, entry)
+			if err != nil {
+				return trace(err)
+			}
+
+			err = next.insert(key, newEnt)
+			if err != nil {
+				return trace(err)
+			}
+
+			next_hash, err := next.save()
+			if err != nil {
+				return trace(err)
+			}
+
+			tb.Table[slot] = 
+
+			return nil
+		}
+	case TRIE_TYPE_MORE:
+		next_hash := entry.Hash[:]
+
+		next, err := tn.loadNext(next_hash)
+		if err != nil {
+			return nil, trace(err)
+		}
+
+		return next.insert(key, newEnt)
+	default:
+		return trace(fmt.Errorf("Invalid entry type: %d", entry.Type))
+	}
 }
 
+func (tn *TrieNode) remove(key []byte) error {
+	
+}
