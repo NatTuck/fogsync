@@ -33,11 +33,6 @@ func (eft *EFT) saveSmallItem(info ItemInfo, src_path string) ([]byte, error) {
 		return nil, err
 	}
 
-	err = eft.pushAdds(hash)
-	if err != nil {
-		return nil, err
-	}
-
 	return hash, nil
 }
 

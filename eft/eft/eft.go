@@ -2,7 +2,6 @@ package eft
 
 import (
 	"encoding/hex"
-	"errors"
 	"sync"
 	"path"
 	"os"
@@ -24,8 +23,6 @@ type EFT struct {
 	dead *os.File
 	deadName string
 }
-
-var ErrNotFound = errors.New("EFT: record not found")
 
 func (eft *EFT) BlockPath(hash []byte) string {
 	text := hex.EncodeToString(hash)
@@ -130,7 +127,7 @@ func (eft *EFT) Del(name string) error {
 	return nil
 }
 
-func (eft *EFT) SaveBlock(data []byte) ([]byte, error) {
+func (eft *EFT) saveBlock(data []byte) ([]byte, error) {
 	ctxt := EncryptBlock(data, eft.Key)
 	hash := HashSlice(ctxt)
 	name := eft.BlockPath(hash)
@@ -145,10 +142,15 @@ func (eft *EFT) SaveBlock(data []byte) ([]byte, error) {
 		return nil, err
 	}
 
+	err = eft.pushAdds(hash)
+	if err != nil {
+		return nil, err
+	}
+
 	return hash, nil
 }
 
-func (eft *EFT) LoadBlock(hash []byte) ([]byte, error) {
+func (eft *EFT) loadBlock(hash []byte) ([]byte, error) {
 	name := eft.BlockPath(hash)
 
 	ctxt, err := ioutil.ReadFile(name)
@@ -162,6 +164,10 @@ func (eft *EFT) LoadBlock(hash []byte) ([]byte, error) {
 	}
 
 	return data, nil
+}
+
+func (eft *EFT) freeBlock(hash []byte) error {
+	return eft.pushDead(hash)
 }
 
 func (eft *EFT) TempName() string {

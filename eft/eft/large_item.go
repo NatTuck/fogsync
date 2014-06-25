@@ -151,8 +151,6 @@ func (node *LargeNode) insert(ii uint64, hash []byte, dd int) error {
 		return trace(err)
 	}
 
-	node.eft.pushAdds(child_hash)
-
 	ent.Type = LARGE_TYPE_MORE
 	ent.Bnum = 0
 	copy(ent.Hash[:], child_hash)
@@ -187,11 +185,6 @@ func (eft *EFT) saveLargeItem(info ItemInfo, src_path string) ([]byte, error) {
 			return nil, trace(err)
 		}
 
-		err = eft.pushAdds(b_hash)
-		if err != nil {
-			return nil, trace(err)
-		}
-
 		err = root.insert(ii, b_hash, 0)
 		if err != nil {
 			return nil, trace(err)
@@ -202,8 +195,6 @@ func (eft *EFT) saveLargeItem(info ItemInfo, src_path string) ([]byte, error) {
 	if err != nil {
 		return nil, trace(err)
 	}
-
-	eft.pushAdds(hash)
 
 	return hash, nil
 }
