@@ -38,26 +38,15 @@ Directory Tree Blocks
 ~~~~~~~~~~~~~~~~~~~~~
 
 Each EFT store is has a single root block identified by its block hash. This
-block is the root of a hash-mapped trie. This trie maps file system paths to
-entities (directories, files, symbolic links) in the file system.
+block is the root of a hash trie. This trie maps file system paths to entities
+(directories, files, symbolic links) in the file system.
 
-Paths are hashed with SHA256.
+Paths are hashed with SHA256 to form the key.
 
-Each trie node has 256 entries, indexed by one byte in the hash. Entries are
-48 bytes, making the total table 12k in size.
+The trie structure is as described below.
 
-The overall structure of a trie node block is as follows:
-    [0,  4k]: Reserved
-    [4k,16k]: Table
-
-Each entry in the table is structured like this:
-    [0, 32]: Block address for subtrie or entry.
-    [32,36]: Type of entry:
-        0 = Empty
-        1 = Subtrie
-        2 = Item
-    [36,44]: Size of entity
-    [46,48]: Reserved
+The following tree-specific data is stored in each table entry:
+    [34,42]: Size of entity
 
 
 Small Entity Blocks
@@ -93,28 +82,17 @@ constitute the entity. This list is stored as a trie of block numbers
 to block hashes. This has the advantage of allowing reasonably efficient
 random reads and writes within a file.
 
-The block address from the directory trie points to the root of the block
-list trie.
-
 The key used to index the trie is a 64-bit unsigned integer in little-
 endian byte order with trailing zero bytes removed. This means that the
 depth of the trie will be the minimum that uniquely addresses all the
 blocks of the entity.
 
-The table is again 256 entries of 48 bytes each, making the table 12k.
+The byte-trie structure described below is used.
 
-Block list node format:
-    [0,   4k]: Entity Metadata Header (root only)
-    [4k, 16k]: Table
+In the root of the trie, the header is the Entity Metadata header.
 
-Table entry structure:
-    [0,  32]: Address of subtrie or block.
-    [32, 36]: Type of entry:
-        0 = Empty
-        1 = Subtrie
-        2 = Data block
-    [36, 44]: Data block #
-    [44, 48]: Reserved
+The following tree-specific data is used in table entries.
+    [34, 42]: Data block #
 
 
 Large Entity Blocks:
@@ -123,3 +101,55 @@ Large Entity Blocks:
 These have data in them.
 
 
+
+EFT On-Disk Byte Trie:
+~~~~~~~~~~~~~~~~~~~~~
+
+On-disk byte tries are used to store both Path -> Item mappings and, within
+an Item, Block # -> Block mappings.
+
+Both cases are instances of the generic problem of mapping a sequence of bytes
+derived from a key to a block hash.
+
+Each trie node has 256 entries, indexed by one byte in the hash. Entries are
+48 bytes, making the total table 12k in size.
+
+Each node in the Trie is structured as follows:
+
+Block list node format:
+    [0,   4k]: Header (Tree-specific data)
+    [4k, 16k]: Table
+
+Table entry structure:
+    [0,  32]: Block hash for target or subtrie.
+    [32, 33]: Entry type:
+        0 = Entry
+        1 = Sub-Trie
+        2 = An Item
+    [33, 34]: Previous key byte
+    [34, 48]: Tree-specific data
+
+In order to save disk space, multiple child nodes without conflicting
+entries may be shared. This complicates both insertion and deletion, without
+changing how lookups work.
+
+On insert:
+
+When you get a collison in a table, you'd normally just insert a new node
+for that branch in the trie. Instead, we first try two other options:
+
+ - If there is another subtrie for a different entry in the table where the
+   appopriate slot is free, that subtrie is shared. Note that this means that
+   any subtrie update needs to scan its parent and also update any matching
+   pointers.
+
+ - If the collison is from an item that is in a different subtrie due to
+   sharing, we split out this subtrie into its own node.
+
+On delete:
+
+When the last entry in a table is deleted, the node should be deleted. To
+do this we need to have the parent scan for references to the node.
+
+After a delete, we try to merge this table with a non-conflicting table
+in the parent. 

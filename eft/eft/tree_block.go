@@ -25,7 +25,7 @@ type TreeBlock struct {
 }
 
 func (eft *EFT) LoadTreeBlock(hash []byte) (*TreeBlock, error) {
-	data, err := eft.LoadBlock(hash)
+	data, err := eft.loadBlock(hash)
 	if err != nil {
 		return nil, trace(err)
 	}
@@ -72,7 +72,7 @@ func (tb *TreeBlock) Save() ([]byte, error) {
 		copy(data[offset:offset + 48], rec)
 	}
 
-	hash, err := tb.eft.SaveBlock(data)
+	hash, err := tb.eft.saveBlock(data)
 	if err != nil {
 		return nil, trace(err)
 	}

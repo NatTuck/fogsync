@@ -3,7 +3,7 @@ package eft
 func (eft *EFT) loadItemInfo(hash []byte) (ItemInfo, error) {
 	info := ItemInfo{}
 
-	data, err := eft.LoadBlock(hash)
+	data, err := eft.loadBlock(hash)
 	if err != nil {
 		return info, err
 	}

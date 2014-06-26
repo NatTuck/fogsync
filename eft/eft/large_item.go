@@ -32,7 +32,7 @@ func (eft *EFT) EmptyLargeNode() LargeNode {
 func (eft *EFT) LoadLargeNode(hash []byte) (LargeNode, error) {
 	node := LargeNode{ eft: eft }
 
-	data, err := eft.LoadBlock(hash)
+	data, err := eft.loadBlock(hash)
 	if err != nil {
 		return node, trace(err)
 	}
@@ -67,7 +67,7 @@ func (node *LargeNode) Save() ([]byte, error) {
 		be.PutUint32(data[offset + 32 : offset + 36], node.tab[ii].Type)
 	}
 
-	hash, err := node.eft.SaveBlock(data)
+	hash, err := node.eft.saveBlock(data)
 	if err != nil {
 		return nil, trace(err)
 	}
@@ -180,7 +180,7 @@ func (eft *EFT) saveLargeItem(info ItemInfo, src_path string) ([]byte, error) {
 			return nil, trace(err)
 		}
 
-		b_hash, err := eft.SaveBlock(data)
+		b_hash, err := eft.saveBlock(data)
 		if err != nil {
 			return nil, trace(err)
 		}
@@ -226,7 +226,7 @@ func (eft *EFT) loadLargeItem(hash []byte, dst_path string) (_ ItemInfo, eret er
 			return info, trace(err)
 		}
 
-		data, err := eft.LoadBlock(b_hash)
+		data, err := eft.loadBlock(b_hash)
 		if err != nil {
 			return info, trace(err)
 		}
