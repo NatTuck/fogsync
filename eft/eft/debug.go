@@ -3,7 +3,11 @@ package eft
 import (
 	"runtime"
 	"fmt"
+	"os"
+	"encoding/hex"
 )
+
+var DEBUG = false
 
 func trace(err error) error {
 	_, file, line, _ := runtime.Caller(1)
@@ -22,4 +26,13 @@ func printStack() {
 	text := make([]byte, 4096)
 	runtime.Stack(text, false)
 	fmt.Println(string(text))
+}
+
+func printStackFatal() {
+	printStack()
+	os.Exit(0)
+}
+
+func printHex(data []byte) {
+	fmt.Println(hex.EncodeToString(data))
 }

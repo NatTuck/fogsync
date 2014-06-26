@@ -7,156 +7,68 @@ import (
 	"encoding/binary"
 )
 
-const (
-	LARGE_TYPE_NONE = 0
-	LARGE_TYPE_MORE = 1
-	LARGE_TYPE_DATA = 2
-)
-
-type LargeEnt struct {
-	Hash [32]byte
-	Type uint32
-	Bnum uint64
+type LargeTrie struct {
+	info  ItemInfo
+	root *TrieNode
 }
 
-type LargeNode struct {
-	eft *EFT
-	hdr ItemInfo
-	tab [256]LargeEnt
+func getLargeKey(ee TrieEntry) ([]byte, error) {
+	return ee.Pkey[:], nil
 }
 
-func (eft *EFT) EmptyLargeNode() LargeNode {
-	return LargeNode{ eft: eft }
-}
-
-func (eft *EFT) LoadLargeNode(hash []byte) (LargeNode, error) {
-	node := LargeNode{ eft: eft }
-
-	data, err := eft.loadBlock(hash)
-	if err != nil {
-		return node, trace(err)
+func (eft *EFT) newLargeTrie(info ItemInfo) LargeTrie {
+	trie := LargeTrie{
+		info: info,
 	}
 
-	node.hdr = ItemInfoFromBytes(data[0:4096]) 
-
-	be := binary.BigEndian
-	base := 4096
-
-	for ii := 0; ii < 256; ii++ {
-		offset := base + ii * 48
-
-		copy(node.tab[ii].Hash[:], data[offset:offset + 32])
-		node.tab[ii].Type = be.Uint32(data[offset + 32 : offset + 36])
+	trie.root = &TrieNode{
+		eft: eft,
+		key: getLargeKey,
 	}
 
-	return node, nil
+	return trie
 }
 
-func (node *LargeNode) Save() ([]byte, error) {
-	data := make([]byte, BLOCK_SIZE)
+func (eft *EFT) loadLargeTrie(hash []byte) (LargeTrie, error) {
+	trie := LargeTrie{}
 
-	copy(data[0:4096], node.hdr.Bytes())
-
-	be := binary.BigEndian
-	base := 4096
+	trie.root = &TrieNode{
+		eft: eft,
+		key: getLargeKey,
+	}
 	
-	for ii := 0; ii < 256; ii++ {
-		offset := base + ii * 48
-
-		copy(data[offset:offset + 32], node.tab[ii].Hash[:])
-		be.PutUint32(data[offset + 32 : offset + 36], node.tab[ii].Type)
-	}
-
-	hash, err := node.eft.saveBlock(data)
+	err := trie.root.load(hash)
 	if err != nil {
-		return nil, trace(err)
+		return trie, trace(err)
 	}
 
-	return hash, nil
+	trie.info = ItemInfoFromBytes(trie.root.hdr[:])
+
+	return trie, nil
 }
 
-func (node *LargeNode) find(ii uint64, dd int) ([]byte, error) {
-	le := binary.LittleEndian
-	var iile [8]byte
-	le.PutUint64(iile[:], ii)
-	slot := iile[dd]
-
-	ent := node.tab[slot]
-
-	switch ent.Type {
-	case LARGE_TYPE_NONE:
-		return nil, ErrNotFound
-	case LARGE_TYPE_MORE:
-		next_hash := node.tab[slot].Hash[:]
-
-		next, err := node.eft.LoadLargeNode(next_hash)
-		if err != nil {
-			return nil, err // Could be not found, no trace
-		}
-
-		return next.find(ii, dd + 1)
-	case LARGE_TYPE_DATA:
-		return ent.Hash[:], nil
-	default:
-		return nil, trace(fmt.Errorf("Unknown type in node entry: %d", ent.Type))
-	}
+func (trie *LargeTrie) save() ([]byte, error) {
+	copy(trie.root.hdr[:], trie.info.Bytes())
+	return trie.root.save()
 }
 
-func (node *LargeNode) insert(ii uint64, hash []byte, dd int) error {
+func (trie *LargeTrie) find(ii uint64) ([]byte, error) {
 	le := binary.LittleEndian
+
 	var iile [8]byte
 	le.PutUint64(iile[:], ii)
-	slot := iile[dd]
 
-	ent := node.tab[slot]
+	return trie.root.find(iile[:], 0)
+}
 
-	if ent.Type > LARGE_TYPE_DATA {
-		return trace(fmt.Errorf("Unknown type in node entry: %d", ent.Type))
-	}
+func (trie *LargeTrie) insert(ii uint64, hash []byte) error {
+	le := binary.LittleEndian
 
-	if ent.Type == LARGE_TYPE_NONE {
-		// Nothing here, we can just insert
-		ent.Type = LARGE_TYPE_DATA
-		ent.Bnum = ii
-		copy(ent.Hash[:], hash)
-		node.tab[slot] = ent
+	entry := TrieEntry{}
+	copy(entry.Hash[:], hash)
+	le.PutUint64(entry.Pkey[:], ii)
 
-		return nil
-	}
-
-	child := node.eft.EmptyLargeNode()
-	var err error
-
-	if ent.Type == LARGE_TYPE_MORE {
-		prev_hash := node.tab[slot].Hash[:]
-
-		child, err = node.eft.LoadLargeNode(prev_hash)
-		if err != nil {
-			return trace(err)
-		}
-
-		node.eft.pushDead(prev_hash)
-	}
-
-	child.insert(ii, hash, dd + 1)
-
-	if ent.Type == LARGE_TYPE_DATA {
-		// If there was already data here, we need to push it down the tree.
-		prev := node.tab[slot]
-		child.insert(prev.Bnum, prev.Hash[:], dd + 1) 
-	}
-
-	child_hash, err := child.Save()
-	if err != nil {
-		return trace(err)
-	}
-
-	ent.Type = LARGE_TYPE_MORE
-	ent.Bnum = 0
-	copy(ent.Hash[:], child_hash)
-	node.tab[slot] = ent
-
-	return nil
+	return trie.root.insert(entry.Pkey[:], entry, 0)
 }
 
 func (eft *EFT) saveLargeItem(info ItemInfo, src_path string) ([]byte, error) {
@@ -166,8 +78,7 @@ func (eft *EFT) saveLargeItem(info ItemInfo, src_path string) ([]byte, error) {
 	}
 	defer src.Close()
 
-	root := eft.EmptyLargeNode()
-	root.hdr = info
+	trie := eft.newLargeTrie(info)
 
 	data := make([]byte, BLOCK_SIZE)
 
@@ -185,13 +96,25 @@ func (eft *EFT) saveLargeItem(info ItemInfo, src_path string) ([]byte, error) {
 			return nil, trace(err)
 		}
 
-		err = root.insert(ii, b_hash, 0)
+		err = trie.insert(ii, b_hash)
 		if err != nil {
 			return nil, trace(err)
 		}
+
+		// XX - Remove this nonsense
+		hash, err := trie.find(ii)
+		if err != nil {
+			fmt.Println("XX - Insert failed", ii)
+			panic(err)
+		}
+
+		if !BytesEqual(hash, b_hash) {
+			fmt.Println("XX - Insert failed", ii)
+			panic("Argh!")
+		}
 	}
 
-	hash, err := root.Save()
+	hash, err := trie.save()
 	if err != nil {
 		return nil, trace(err)
 	}
@@ -210,15 +133,15 @@ func (eft *EFT) loadLargeItem(hash []byte, dst_path string) (_ ItemInfo, eret er
 		eret = dst.Close()
 	}()
 
-	root, err := eft.LoadLargeNode(hash)
+	trie, err := eft.loadLargeTrie(hash)
 	if err != nil {
 		return info, trace(err)
 	}
 
-	info = root.hdr
+	info = trie.info
 
 	for ii := uint64(0); true; ii++ {
-		b_hash, err := root.find(ii, 0)
+		b_hash, err := trie.find(ii)
 		if err == ErrNotFound {
 			break
 		}
@@ -255,13 +178,13 @@ func (eft *EFT) loadLargeItem(hash []byte, dst_path string) (_ ItemInfo, eret er
 }
 
 func (eft *EFT) killLargeItemBlocks(hash []byte) error {
-	root, err := eft.LoadLargeNode(hash)
+	trie, err := eft.loadLargeTrie(hash)
 	if err != nil {
 		return trace(err)
 	}
 
 	for ii := uint64(0); true; ii++ {
-		b_hash, err := root.find(ii, 0)
+		b_hash, err := trie.find(ii)
 		if err == ErrNotFound {
 			break
 		}

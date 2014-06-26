@@ -92,7 +92,7 @@ The byte-trie structure described below is used.
 In the root of the trie, the header is the Entity Metadata header.
 
 The following tree-specific data is used in table entries.
-    [34, 42]: Data block #
+    [34, 42]: Data block # (stored as a little-endian uint64)
 
 
 Large Entity Blocks:
@@ -117,7 +117,8 @@ Each trie node has 256 entries, indexed by one byte in the hash. Entries are
 Each node in the Trie is structured as follows:
 
 Block list node format:
-    [0,   4k]: Header (Tree-specific data)
+    [0,   3k]: Header (Tree-specific data)
+    [3k,  4k]: List of overflow tables
     [4k, 16k]: Table
 
 Table entry structure:
@@ -126,30 +127,16 @@ Table entry structure:
         0 = Entry
         1 = Sub-Trie
         2 = An Item
-    [33, 34]: Previous key byte
-    [34, 48]: Tree-specific data
+    [34, 42]: (Partial) key
+    [42, 48]: Tree-specific data
 
-In order to save disk space, multiple child nodes without conflicting
-entries may be shared. This complicates both insertion and deletion, without
-changing how lookups work.
 
-On insert:
+In order to save disk space, each table has 16 overflow tables. These are used
+to store entries without creating subtries.
 
-When you get a collison in a table, you'd normally just insert a new node
-for that branch in the trie. Instead, we first try two other options:
+When a collision occurs, the first four bits of the next key byte are used to
+select an overflow table from the list. This overflow table is like a regular
+trie node, except the items in it are kept in no specific order.
 
- - If there is another subtrie for a different entry in the table where the
-   appopriate slot is free, that subtrie is shared. Note that this means that
-   any subtrie update needs to scan its parent and also update any matching
-   pointers.
-
- - If the collison is from an item that is in a different subtrie due to
-   sharing, we split out this subtrie into its own node.
-
-On delete:
-
-When the last entry in a table is deleted, the node should be deleted. To
-do this we need to have the parent scan for references to the node.
-
-After a delete, we try to merge this table with a non-conflicting table
-in the parent. 
+Once an overflow table is full, its entries are re-inserted into subtries as
+usual.
