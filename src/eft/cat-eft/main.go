@@ -1,7 +1,7 @@
 package main
 
 import (
-	"../eft"
+	"../../eft"
 	"io/ioutil"
 	"fmt"
 	"os"

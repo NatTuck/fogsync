@@ -132,6 +132,8 @@ Table entry structure:
     [42, 48]: Tree-specific data
 
 
+TODO: Implement overflow tables
+
 In order to save disk space, each table has 16 overflow tables. These are used
 to store entries without creating subtries.
 
