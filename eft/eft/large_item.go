@@ -100,18 +100,6 @@ func (eft *EFT) saveLargeItem(info ItemInfo, src_path string) ([]byte, error) {
 		if err != nil {
 			return nil, trace(err)
 		}
-
-		// XX - Remove this nonsense
-		hash, err := trie.find(ii)
-		if err != nil {
-			fmt.Println("XX - Insert failed", ii)
-			panic(err)
-		}
-
-		if !BytesEqual(hash, b_hash) {
-			fmt.Println("XX - Insert failed", ii)
-			panic("Argh!")
-		}
 	}
 
 	hash, err := trie.save()

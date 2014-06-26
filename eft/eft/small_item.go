@@ -24,7 +24,7 @@ func (eft *EFT) saveSmallItem(info ItemInfo, src_path string) ([]byte, error) {
 	block := make([]byte, BLOCK_SIZE)
 
 	header := info.Bytes()
-	copy(block[0:4096], header)
+	copy(block[0:2048], header)
 
 	copy(block[4096:BLOCK_SIZE], data)
 
@@ -48,7 +48,7 @@ func (eft *EFT) loadSmallItem(hash []byte, dst_path string) (ItemInfo, error) {
 		return nilInfo, fmt.Errorf("Bad block size: %d", len(block))
 	}
 
-	info := ItemInfoFromBytes(block[0:4096])
+	info := ItemInfoFromBytes(block[0:2048])
 
 	data := block[4096:4096 + info.Size]
 

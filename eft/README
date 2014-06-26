@@ -57,7 +57,8 @@ block. The extra 4k leaves space for storing keys for the directory tree
 trie.
 
 Structure:
-    [0,  4k]: Entity Metadata Header
+    [0,   2k]: Entity Metadata Header
+    [2k,  4k]: Reserved
     [4k, 16k]: Data
 
 Entity Metadata Header:
@@ -67,9 +68,8 @@ Entity Metadata Header:
     [20, 24]: Mode (0 = default, 1 = u+x)
     [24, 32]: Reserved
     [32, 64]: Hash
+    [512,1k]: Last Modified By (user@host) (4 byte length, 508 bytes data)
     [1k, 2k]: Path (4 byte length, 1020 bytes of data)
-    [2k, 3k]: Last Modified By (user@host) (4 byte length, 1020 bytes data)
-    [3k, 4k]: Reserved
 
 Note that this means directories are only needed for traversals. They store
 a JSON list of file names and nothing else.
@@ -117,8 +117,9 @@ Each trie node has 256 entries, indexed by one byte in the hash. Entries are
 Each node in the Trie is structured as follows:
 
 Block list node format:
-    [0,   3k]: Header (Tree-specific data)
-    [3k,  4k]: List of overflow tables
+    [0,   2k]: Header (Tree-specific data)
+    [2k,3.5k]: Reserved
+    [3.5k,4k]: List of overflow tables
     [4k, 16k]: Table
 
 Table entry structure:
@@ -139,4 +140,4 @@ select an overflow table from the list. This overflow table is like a regular
 trie node, except the items in it are kept in no specific order.
 
 Once an overflow table is full, its entries are re-inserted into subtries as
-usual.
+usual. 

@@ -50,7 +50,9 @@ func TestLargeRoundtrip(tt *testing.T) {
 	eft.commit()
 
 	if info0 != info1 {
-		fmt.Println("Item info mismatch")
+		fmt.Println("== Test Failed: Item Info Mismatch ==")
+		fmt.Println(info0)
+		fmt.Println(info1)
 		tt.Fail()
 	}
 

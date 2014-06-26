@@ -26,7 +26,8 @@ type TrieNode struct {
 	eft *EFT
 	key getKeyFn
 
-	hdr [4096]byte
+	hdr [2048]byte
+	ovr [16][32]byte
 	tab [256]TrieEntry 
 }
 
@@ -56,12 +57,15 @@ func (tn *TrieNode) load(hash []byte) error {
 		return trace(err)
 	}
 
-	copy(tn.hdr[:], data[0:4096])
+	copy(tn.hdr[:], data[0:2048])
 
-	base := 4 * 1024
+	for ii := 0; ii < 16; ii++ {
+		offset := 3584 + 32 * ii
+		copy(tn.ovr[ii][:], data[offset:offset + 32])
+	}
 
 	for ii := 0; ii < 256; ii++ {
-		offset := base + 48 * ii
+		offset := 4096 + 48 * ii
 		rec := data[offset:offset + 48]
 
 		entry := TrieEntry{}
@@ -78,12 +82,15 @@ func (tn *TrieNode) load(hash []byte) error {
 func (tn *TrieNode) save() ([]byte, error) {
 	data := make([]byte, BLOCK_SIZE)
 
-	copy(data[0:4096], tn.hdr[:])
+	copy(data[0:2048], tn.hdr[:])
 
-	base := 4 * 1024
+	for ii := 0; ii < 16; ii++ {
+		offset := 3584 + 32 * ii
+		copy(data[offset:offset + 32], tn.ovr[ii][:])
+	}
 
 	for ii := 0; ii < 256; ii++ {
-		offset := base + 48 * ii
+		offset := 4096 + 48 * ii
 		rec := data[offset:offset + 48]
 
 		entry := tn.tab[ii]

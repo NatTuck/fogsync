@@ -8,7 +8,7 @@ func (eft *EFT) loadItemInfo(hash []byte) (ItemInfo, error) {
 		return info, err
 	}
 
-	info = ItemInfoFromBytes(data[0:4096])
+	info = ItemInfoFromBytes(data[0:2048])
 
 	return info, nil
 }
