@@ -4,13 +4,9 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
-	"path"
-	"../fs"
 )
 
 func StartTest() {
-	aroot := AssetRoot()
-
 	tt, err := ioutil.TempDir("", "testHome")
 	if err != nil {
 		panic(err)
@@ -22,20 +18,6 @@ func StartTest() {
 	}
 	
 	testHome = tt
-	
-	zkey := "00000000000000000000000000000000"
-
-	share := Share{
-		Name: "sync",
-		Root: "",
-		Ckey: zkey,
-		Hkey: zkey,
-	}
-
-	AddShare(share)
-
-	err = fs.CopyAll(share.Path(), path.Join(aroot, "test"))
-	fs.CheckError(err)
 }
 
 func EndTest() {

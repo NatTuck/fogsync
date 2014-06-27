@@ -23,10 +23,15 @@ func RandomBytes(nn int) []byte {
     return bs
 }
 
-func RandomName() string {
-    bs := RandomBytes(16)
+func RandomHex(nn int) string {
+    bs := RandomBytes(nn)
     return hex.EncodeToString(bs)
 }
+
+func RandomName() string {
+	return RandomHex(16)
+}
+
 
 func HashFile(file_path string) ([]byte, error) {
 	sha := sha256.New()

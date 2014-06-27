@@ -31,4 +31,11 @@ clean:
 	rm -f public/*
 	touch public/.keep
 
-.PHONY: all clean sassy
+prereqs:
+	sudo apt-get install npm
+	sudo ln -s /usr/bin/nodejs /usr/bin/node
+	sudo npm install -g coffee-script
+	sudo npm install -g scss
+	sudo npm install -g ember-precompile
+
+.PHONY: all clean sassy prereqs

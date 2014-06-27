@@ -1,13 +1,23 @@
-package main
+package shares
 
 import (
-	"../cache"
+	"testing"
+	"fmt"
 	"../config"
-	"../client"
-	"../fs"
 )
 
-func main() {
+func TestShares(tt *testing.T) {
+	config.StartTest()
+
+	mgr := GetMgr()
+
+	fmt.Println(mgr.List())
+
+	config.EndTest()
+}
+
+/*
+func NotATestYet() {
 	zkey := "00000000000000000000000000000000"
 
 	docs := config.Share{
@@ -35,3 +45,4 @@ func main() {
 		client.SendBlock(block_path)
 	})
 }
+*/
