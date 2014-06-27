@@ -73,7 +73,7 @@ func (mm *ShareMgr) Put(name string, share *Share) {
 	mm.Shares[name] = share
 }
 
-func (mm *ShareMgr) List() []string {
+func (mm *ShareMgr) List() []*Share {
 	mm.Lock.Lock()
 	defer mm.Lock.Unlock()
 	
@@ -85,7 +85,13 @@ func (mm *ShareMgr) List() []string {
 
 	sort.Strings(names)
 
-	return names
+	shares := make([]*Share, 0)
+
+	for _, nn := range(names) {
+		shares = append(shares, mm.Shares[nn])
+	}
+
+	return shares
 }
 
 func (mm *ShareMgr) saveShares() {
