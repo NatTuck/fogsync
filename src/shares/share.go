@@ -182,12 +182,12 @@ func (ss *Share) gotLocalChange(up_path string) {
 			fs.PanicHere("Can't handle symlinks right yet.")
 		}
 
-		ss.insertItem(info, rel_path)
+		ss.insertItem(rel_path, info)
 	}
 }
 
 
-func (ss *Share) insertItem(name string, info ItemInfo) {
+func (ss *Share) insertItem(name string, info eft.ItemInfo) {
 	panic("TODO: Figure out what I'm doing")
 }
 
