@@ -72,11 +72,23 @@ func ReadN(file *os.File, nn int64) []byte {
 }
 
 func FindFiles(base_path string, fn func(string)) {
+	FindAll(base_path, func(pp string) {
+		info, err := os.Lstat(pp)
+		CheckError(err)
+
+		if !info.Mode().IsDir() {
+			fn(pp)
+		}
+	})
+}
+
+func FindAll(base_path string, fn func(string)) {
 	info, err := os.Lstat(base_path)
 	CheckError(err)
+		
+	fn(base_path)
 
 	if !info.Mode().IsDir() {
-		fn(base_path)
 		return
 	}
 
@@ -88,6 +100,7 @@ func FindFiles(base_path string, fn func(string)) {
 	CheckError(err)
 
 	for _, name := range(names) {
-		FindFiles(path.Join(base_path, name), fn)
+		FindAll(path.Join(base_path, name), fn)
 	}
 }
+

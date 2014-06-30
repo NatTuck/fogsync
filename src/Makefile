@@ -2,7 +2,7 @@
 
 all: bin/fogsync assets
 
-bin/fogsync:
+bin/fogsync: $(wildcard */*.go)
 	(cd fogsync && go build)
 	mkdir -p bin
 	cp fogsync/fogsync bin

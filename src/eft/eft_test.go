@@ -28,7 +28,7 @@ func TestFullRoundtrip(tt *testing.T) {
 	key := [32]byte{}
 	eft := EFT{Key: key, Dir: eft_dir} 
 
-	info0, err := GetItemInfo(hi0_txt)
+	info0, err := FastItemInfo(hi0_txt)
 	if err != nil {
 		panic(err)
 	}

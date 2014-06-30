@@ -110,6 +110,19 @@ func (eft *EFT) Get(name string, dst_path string) (ItemInfo, error) {
 	return info, nil
 }
 
+func (eft *EFT) GetInfo(name string) (ItemInfo, error) {
+	eft.begin()
+
+	info, _, err := eft.getTree(name)
+	if err != nil {
+		return info, err
+	}
+
+	eft.commit()
+
+	return info, nil
+}
+
 func (eft *EFT) Del(name string) error {
 	// lock
 	// create trans new list

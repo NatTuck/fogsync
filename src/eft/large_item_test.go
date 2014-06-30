@@ -30,7 +30,7 @@ func TestLargeRoundtrip(tt *testing.T) {
 		panic(err)
 	}
 
-	info0, err := GetItemInfo(big_dat0)
+	info0, err := FastItemInfo(big_dat0)
 	if err != nil {
 		panic(err)
 	}

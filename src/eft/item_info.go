@@ -36,14 +36,9 @@ func (info *ItemInfo) TypeName() string {
 	}
 }
 
-func GetItemInfo(src_path string) (ItemInfo, error) {
+func NewItemInfo(name string, src_path string, sysi os.FileInfo) (ItemInfo, error) {
 	info := ItemInfo{}
-	info.Path = src_path
-
-	sysi, err := os.Lstat(src_path)
-	if err != nil {
-		return info, trace(err)
-	}
+	info.Path = name
 
 	switch {
 	case sysi.Mode().IsRegular():
@@ -81,6 +76,17 @@ func GetItemInfo(src_path string) (ItemInfo, error) {
 	info.MoBy = fmt.Sprintf("%s (%s@%s)", uu.Name, uu.Username, host)
 
 	return info, nil
+}
+
+func FastItemInfo(src_path string) (ItemInfo, error) {
+	info := ItemInfo{}
+
+	sysi, err := os.Lstat(src_path)
+	if err != nil {
+		return info, trace(err)
+	}
+
+	return NewItemInfo(src_path, src_path, sysi)
 }
 
 func ItemInfoFromBytes(data []byte) ItemInfo {

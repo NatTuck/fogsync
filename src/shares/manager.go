@@ -5,81 +5,89 @@ import (
 	"sort"
 	"fmt"
 	"../fs"
-	"../eft"
 	"../config"
 )
 
-type ShareMgr struct {
-	Lock   sync.Mutex
-	Shares map[string]*Share
+type Manager struct {
+	mutex  sync.Mutex
+	shares map[string]*Share
 }
 
-var shareMgr *ShareMgr
+var shareMgr *Manager
 
-func GetMgr() *ShareMgr {
+func GetMgr() *Manager {
 	if shareMgr == nil {
-		shareMgr = &ShareMgr{}
-		shareMgr.Shares = make(map[string]*Share)
+		shareMgr = &Manager{}
+		shareMgr.shares = make(map[string]*Share)
+		shareMgr.loadList()
+		shareMgr.startAll()
 	}
-
-	shareMgr.loadShares()
 
 	return shareMgr
 }
 
-func (mm *ShareMgr) Get(name string) *Share {
+func (mm *Manager) Lock() {
+	mm.mutex.Lock()
+}
+
+func (mm *Manager) Unlock() {
+	mm.mutex.Unlock()
+}
+
+func (mm *Manager) Get(name string) *Share {
 	if len(name) == 0 {
 		fs.PanicHere("Invalid share name")
 	}
 	
-	mm.Lock.Lock()
-	defer mm.Lock.Unlock()
+	mm.Lock()
+	defer mm.Unlock()
 
-	mm.loadShares()
-	
-	ss, ok := mm.Shares[name]
+	ss, ok := mm.shares[name]
 	if !ok {
-		ss = mm.addEmptyShare(name)
+		ss = mm.NewShare(name)
+		mm.saveList()
 	}
-
-	ss.Trie = &eft.EFT{}
-	copy(ss.Trie.Key[:], ss.GetKey())
-	ss.Trie.Dir = ss.CacheDir()
-	
-	ss.Mgr = mm
 
 	return ss
 }
 
-func (mm *ShareMgr) Put(name string, share *Share) {
-	// Validate the share before adding.
-	if len(share.Key) != 32 {
-		fs.PanicHere("Invalid share key")
+func (mm *Manager) Del(name string) {
+	mm.Lock()
+	defer mm.Unlock()
+
+	ss, ok := mm.shares[name]
+	if ok {
+		ss.Stop()
+		delete(mm.shares, name)
+		mm.saveList()
+
+		fmt.Println("Removed share", name)
 	}
-
-	mm.Lock.Lock()
-	defer mm.Lock.Unlock()
-
-	_, ok := mm.Shares[name]
-
-	if !ok {
-		for _, ss := range(mm.Shares) {
-			if ss.Id > share.Id {
-				share.Id = ss.Id + 1
-			}
-		}
-	}
-
-	mm.Shares[name] = share
 }
 
-func (mm *ShareMgr) List() []*Share {
-	mm.Lock.Lock()
-	defer mm.Lock.Unlock()
+func (mm *Manager) ScanAll() {
+	shares := mm.List()
+		
+	for _, ss := range(shares) {
+		ss.FullScan()
+	}
+}
+
+func (mm *Manager) startAll() {
+	shares := mm.List()
+
+	for _, ss := range(shares) {
+		ss.Start()
+	}
+}
+
+func (mm *Manager) List() []*Share {
+	mm.Lock()
+	defer mm.Unlock()
 	
 	names := make([]string, 0)
 
-	for nn, _ := range(mm.Shares) {
+	for nn, _ := range(mm.shares) {
 		names = append(names, nn)
 	}
 
@@ -88,33 +96,37 @@ func (mm *ShareMgr) List() []*Share {
 	shares := make([]*Share, 0)
 
 	for _, nn := range(names) {
-		shares = append(shares, mm.Shares[nn])
+		shares = append(shares, mm.shares[nn])
 	}
 
 	return shares
 }
 
-func (mm *ShareMgr) saveShares() {
-	err := config.PutObj("shares", &mm.Shares)
+func (mm *Manager) saveList() {
+	names := make([]string, 0)
+
+	for name, _ := range(mm.shares) {
+		names = append(names, name)
+	}
+
+	err := config.PutObj("shares.json", &names)
 	fs.CheckError(err)
 }
 
-func (mm *ShareMgr) loadShares() {
-	err := config.GetObj("shares", &mm.Shares)
+func (mm *Manager) loadList() {
+	names := make([]string, 0)
+	err := config.GetObj("shares.json", &names)
+
 	if err != nil {
 		fmt.Println("Could not read shares list. Using default list.")
-		mm.addEmptyShare("Documents")
+		names = append(names, "Documents")
+	}
+
+	for _, name := range(names) {
+		_, ok := mm.shares[name]
+		if !ok {
+			mm.shares[name] = mm.NewShare(name)
+		}
 	}
 }
 
-func (mm *ShareMgr) addEmptyShare(name string) *Share {
-	ss := &Share{ 
-		Name: name,
-		Key:  fs.RandomHex(32),
-	}
-
-	mm.Shares[name] = ss
-	mm.saveShares()
-
-	return ss
-}

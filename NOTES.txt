@@ -1,0 +1,14 @@
+
+
+Startup:
+    Start Up Shares
+    Start Cloud Client
+    Start WebUI
+
+Shares have:
+    Cache (an EFT)
+    Watcher
+    Client
+
+ 
+
