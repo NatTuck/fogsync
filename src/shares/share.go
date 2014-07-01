@@ -147,54 +147,54 @@ func (ss *Share) RelPath(full_path string) string {
 	return clean_path[len(share_path):]
 }
 
-func (ss *Share) gotLocalChange(up_path string) {
-	rel_path := ss.RelPath(up_path)
+func (ss *Share) gotLocalUpdate(full_path string, sysi os.FileInfo) {
+	rel_path := ss.RelPath(full_path)
 
-	// First, see if it exists in the EFT.
 	prev_info, err := ss.Trie.GetInfo(rel_path)
-	if err != nil && err != eft.ErrNotFound {
-		fs.PanicHere("EFT Error: " + err.Error())
-	}
-
-	var trie_modt uint64
-
 	if err == eft.ErrNotFound {
-		// Will be wrong when running before 1970.
-		trie_modt = 0
-	} else {
-		trie_modt = prev_info.ModT
+		prev_info.ModT = 0
+		err = nil
 	}
+	fs.CheckError(err)
 
-	// Now we see if the file has changed.
-	sysi, err := os.Lstat(up_path)
-	if err != nil {
-		ss.deleteItem(rel_path)
-	}
+	stamp := uint64(sysi.ModTime().UnixNano())
 
-	info, err := eft.NewItemInfo(rel_path, up_path, sysi)
-
-	if trie_modt > 0 && prev_info.Type == eft.INFO_DIR {
+	if prev_info.ModT > stamp {
+		ss.gotRemoteUpdate(rel_path, prev_info.ModT)
 		return
 	}
 
-	if trie_modt < uint64(sysi.ModTime().UnixNano()) {
-		if info.Type == eft.INFO_LINK {
-			fs.PanicHere("Can't handle symlinks right yet.")
-		}
+	info, err := eft.NewItemInfo(rel_path, full_path, sysi)
+	fs.CheckError(err)
 
-		ss.insertItem(info, rel_path)
+	err = ss.Trie.Put(info, full_path)
+	fs.CheckError(err)
+
+	ss.logEvent("update", stamp, rel_path)
+}
+
+func (ss *Share) gotLocalDelete(full_path string, stamp uint64) {
+	rel_path := ss.RelPath(full_path)
+
+	prev_info, err := ss.Trie.GetInfo(rel_path)
+	fs.CheckError(err)
+
+	if prev_info.ModT > stamp {
+		ss.gotRemoteUpdate(rel_path, prev_info.ModT)
+		return
 	}
+
+	err = ss.Trie.Del(rel_path)
+	fs.CheckError(err)
+
+	ss.logEvent("delete", stamp, rel_path) 
 }
 
 
-func (ss *Share) insertItem(name string, info ItemInfo) {
-	panic("TODO: Figure out what I'm doing")
+func (ss *Share) gotRemoteUpdate(full_path string, stamp uint64) {
+	panic("TODO: Handle remote updates")
 }
 
-func (ss *Share) deleteItem(name string) {
-	err := ss.Trie.Del(name)
-	if err != eft.ErrNotFound {
-		fs.CheckError(err)
-	}
+func (ss *Share) gotRemoteDelete(full_path string, stamp uint64) {
+	panic("TODO: Handle remote deletes")
 }
-

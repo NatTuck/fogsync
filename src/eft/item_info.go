@@ -55,13 +55,13 @@ func NewItemInfo(name string, src_path string, sysi os.FileInfo) (ItemInfo, erro
 
 	if info.Type == INFO_FILE {
 		info.Mode = uint32(sysi.Mode().Perm() & 1)
+	
+		data_hash, err := HashFile(src_path)
+		if err != nil {
+			return info, trace(err)
+		}
+		copy(info.Hash[:], data_hash)
 	}
-
-	data_hash, err := HashFile(src_path)
-	if err != nil {
-		return info, trace(err)
-	}
-	copy(info.Hash[:], data_hash)
 
 	uu, err := user.Current()
 	if err != nil {
