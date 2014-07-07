@@ -115,6 +115,7 @@ func (eft *EFT) GetInfo(name string) (ItemInfo, error) {
 
 	info, _, err := eft.getTree(name)
 	if err != nil {
+		eft.abort()
 		return info, err
 	}
 
@@ -124,19 +125,16 @@ func (eft *EFT) GetInfo(name string) (ItemInfo, error) {
 }
 
 func (eft *EFT) Del(name string) error {
-	// lock
-	// create trans new list
-	// create trans dead list
-	// find path in tree
-	// read block list
-	// add blocks to dead list
-	// remove from tree
-	// remove from parent directories
-	// update root
-	// remove dead blocks
-	// update global new/dead lists
-	// unlock
+	eft.begin()
 
+	root, err := eft.delTree(name)
+	if err != nil {
+		eft.abort()
+		return err
+	}
+	eft.Root = hex.EncodeToString(root)
+
+	eft.commit()
 	return nil
 }
 

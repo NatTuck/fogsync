@@ -9,6 +9,26 @@ import (
 	"encoding/hex"
 )
 
+func ReadLink(dst string, src string) error {
+	link, err := os.Readlink(src)
+	if err != nil {
+		return err
+	}
+
+	temp, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer temp.Close()
+
+	_, err = temp.WriteString(link)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func CopyFile(dst string, src string) error {
     in, err := os.Open(src)
     if err != nil { 

@@ -4,8 +4,10 @@ package webui
 import (
 	"net/http"
 	"encoding/json"
-	"fmt"
+	"os"
+	"io/ioutil"
 	"../shares"
+	"../config"
 	"../fs"
 )
 
@@ -14,14 +16,22 @@ type Shares struct {
 }
 
 func serveShares(ww http.ResponseWriter, req *http.Request) {
+	elems := splitPath(req)
+
+	if len(elems) == 1 {
+		serveSharesIndex(ww, req)
+	} else {
+		serveShare(elems[1], ww, req)
+	}
+
+}
+
+func serveSharesIndex(ww http.ResponseWriter, req *http.Request) {
 	hdrs := ww.Header()
 	hdrs["Content-Type"] = []string{"application/json"}
 
-	fmt.Println("XX - Serving shares")
-
 	cfgs := make([]*shares.ShareConfig, 0)
 	for _, ss := range(shares.GetMgr().List()) {
-		fmt.Println("XX - Appending share", ss)
 		cfgs = append(cfgs, ss.Config)
 	}
 
@@ -33,3 +43,42 @@ func serveShares(ww http.ResponseWriter, req *http.Request) {
 	ww.Write(data)
 }
 
+type FileData struct {
+	Name string
+	Type string
+	Size uint64
+}
+
+type FileList struct {
+	Files []*FileData `json:"files"`
+}
+
+func serveShare(name string, ww http.ResponseWriter, req *http.Request) {
+	hdrs := ww.Header()
+	hdrs["Content-Type"] = []string{"application/json"}
+
+	ss := shares.GetMgr().Get(name)
+	pp := req.URL.RawQuery
+
+	if pp == "" {
+		pp = "/"
+	}
+
+	temp := config.TempName()
+	defer os.Remove(temp)
+
+	info, err := ss.Trie.Get(pp, temp)
+	fs.CheckError(err)
+
+	if info.Type == eft.INFO_DIR {
+
+	} else {
+		
+	}
+
+
+	data, err := ioutil.ReadFile(temp)
+	fs.CheckError(err)
+
+	ww.Write(data)
+}

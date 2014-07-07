@@ -250,6 +250,14 @@ func (tn *TrieNode) remove(key []byte, dd int) error {
 			return err
 		}
 
+		hash, err := next.save()
+		if err != nil {
+			return trace(err)
+		}
+
+		copy(entry.Hash[:], hash)
+		tn.tab[slot] = entry
+
 	default:
 		return trace(fmt.Errorf("Invalid entry type: %d", entry.Type))
 	}

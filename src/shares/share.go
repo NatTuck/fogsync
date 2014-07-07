@@ -164,10 +164,30 @@ func (ss *Share) gotLocalUpdate(full_path string, sysi os.FileInfo) {
 		return
 	}
 
+	// Ok, we have an update
+	if sysi.Mode().IsDir() {
+		// nothing to do
+		return
+	}
+
 	info, err := eft.NewItemInfo(rel_path, full_path, sysi)
 	fs.CheckError(err)
+	
+	temp := config.TempName()
+	defer os.Remove(temp)
 
-	err = ss.Trie.Put(info, full_path)
+	switch info.Type {
+	case eft.INFO_FILE:
+		err := fs.CopyFile(temp, full_path)
+		fs.CheckError(err)
+	case eft.INFO_LINK:
+		err := fs.ReadLink(temp, full_path)
+		fs.CheckError(err)
+	default:
+		fs.PanicHere("Unknown type")
+	}
+
+	err = ss.Trie.Put(info, temp)
 	fs.CheckError(err)
 
 	ss.logEvent("update", stamp, rel_path)
