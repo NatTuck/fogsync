@@ -1,4 +1,4 @@
-<p>Share: {{Name}}</p>
+<h2>Share: {{Name}}</h2>
 
 <table class="table table-striped">
   <thead>
@@ -10,12 +10,12 @@
     </tr>
   </thead>
   <tbody>
-    {{#each file in Files}}
+    {{#each model.Files}}
     <tr>
-      <td>{{file.Path}}</td>
-      <td>{{file.Type}}</td>
-      <td>{{file.Size}}</td>
-      <td>{{file.MoBy}}</td>
+      <td>{{Path}}</td>
+      <td>{{Type}}</td>
+      <td>{{Size}}</td>
+      <td>{{MoBy}}</td>
     </tr>
     {{/each}}
   </tbody>

@@ -4,15 +4,10 @@ package webui
 import (
 	"net/http"
 	"encoding/json"
-	"strconv"
 	"../eft"
 	"../shares"
 	"../fs"
 )
-
-type Shares struct {
-	Shares []*shares.ShareConfig `json:"shares"`
-}
 
 func serveShares(ww http.ResponseWriter, req *http.Request) {
 	elems := splitPath(req)
@@ -20,10 +15,7 @@ func serveShares(ww http.ResponseWriter, req *http.Request) {
 	if len(elems) == 1 {
 		serveSharesIndex(ww, req)
 	} else {
-		id, err := strconv.Atoi(elems[1])
-		fs.CheckError(err)
-
-		serveShare(id, ww, req)
+		serveShare(elems[1], ww, req)
 	}
 
 }
@@ -37,9 +29,7 @@ func serveSharesIndex(ww http.ResponseWriter, req *http.Request) {
 		cfgs = append(cfgs, ss.Config)
 	}
 
-	resp := Shares{cfgs}
-
-	data, err := json.MarshalIndent(&resp, "", "  ")
+	data, err := json.MarshalIndent(&cfgs, "", "  ")
 	fs.CheckError(err)
 
 	ww.Write(data)
@@ -56,7 +46,6 @@ type FileInfo struct {
 }
 
 type LongShare struct {
-	Id    int    `json:"id"`
 	Name  string
 	Key   string
 	Files []*FileInfo
@@ -74,15 +63,11 @@ func toFileInfo(info *eft.ItemInfo) *FileInfo {
 	}
 }
 
-type ShareWrapper struct {
-	Share LongShare `json:"share"`
-}
-
-func serveShare(id int, ww http.ResponseWriter, req *http.Request) {
+func serveShare(name string, ww http.ResponseWriter, req *http.Request) {
 	hdrs := ww.Header()
 	hdrs["Content-Type"] = []string{"application/json"}
 
-	ss := shares.GetMgr().GetById(id)
+	ss := shares.GetMgr().Get(name)
 
 	infos, err := ss.Trie.ListAllInfos()
 	if err != nil {
@@ -98,16 +83,13 @@ func serveShare(id int, ww http.ResponseWriter, req *http.Request) {
 		fis = append(fis, fi)
 	}
 
-	files := ShareWrapper{
-		Share: LongShare{
-			Id:   ss.Config.Id,
-			Key : ss.Config.Key,
-			Name: ss.Config.Name,
-			Files: fis,
-		}, 
-	}
+	share := LongShare{
+		Key : ss.Config.Key,
+		Name: ss.Config.Name,
+		Files: fis,
+	} 
 
-	data, err := json.MarshalIndent(&files, "", "  ")
+	data, err := json.MarshalIndent(&share, "", "  ")
 	fs.CheckError(err)
 
 	ww.Write(data)
