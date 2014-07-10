@@ -7,7 +7,9 @@
       <div class="col-sm-2">
         <ul>
           {{#each}}
-          <li>{{#link-to share}}{{Name}}{{/link-to}}</li>
+          <li>{{#link-to 'share' Name}}{{Name}}{{/link-to}}</li>
+          {{else}}
+          <li>No shares</li>
           {{/each}}
         </ul>
       </div>

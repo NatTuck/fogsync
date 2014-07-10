@@ -1,0 +1,22 @@
+<p>Share: {{Name}}</p>
+
+<table class="table table-striped">
+  <thead>
+    <tr>
+      <th>Path</th>
+      <th>Type</th>
+      <th>Size</th>
+      <th>MoBy</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{#each file in Files}}
+    <tr>
+      <td>{{file.Path}}</td>
+      <td>{{file.Type}}</td>
+      <td>{{file.Size}}</td>
+      <td>{{file.MoBy}}</td>
+    </tr>
+    {{/each}}
+  </tbody>
+</table>

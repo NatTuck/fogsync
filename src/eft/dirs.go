@@ -108,7 +108,7 @@ func (eft *EFT) putParent(info ItemInfo) error {
 	return nil
 }
 
-func (eft *EFT) ListDir(dpath string) ([]string, error) {
+func (eft *EFT) ListInfos(dpath string) ([]ItemInfo, error) {
 	eft.begin()
 
 	_, dir, err := eft.getDir(dpath)
@@ -116,6 +116,8 @@ func (eft *EFT) ListDir(dpath string) ([]string, error) {
 		eft.abort()
 		return nil, trace(err)
 	}
+	
+	eft.commit()
 
 	names := make([]string, 0)
 
@@ -125,23 +127,96 @@ func (eft *EFT) ListDir(dpath string) ([]string, error) {
 
 	sort.Strings(names)
 
-	items := make([]string, 0)
+	infos := make([]ItemInfo, 0)
 
-	for _, name := range(names) {
-		ipath := path.Join(dpath, name)
-		
-		info, _, err := eft.getTree(ipath)
+	for _, nn := range(names) {
+		info, err := eft.GetInfo(path.Join(dpath, nn))
 		if err != nil {
-			eft.abort()
-			return nil, trace(err)
+			return infos, trace(err)
 		}
 
+		infos = append(infos, info)
+	}
+
+	return infos, nil
+}
+
+func (eft *EFT) ListDir(dpath string) ([]string, error) {
+	infos, err := eft.ListInfos(dpath)
+	if err != nil {
+		return nil, trace(err)
+	}
+
+	items := make([]string, 0)
+
+	for _, info := range(infos) {
+		_, name := path.Split(info.Path)
 		desc := fmt.Sprintf("%s (%s) %d", name, info.TypeName(), info.Size)
 		items = append(items, desc)
 	}
 
+	return items, nil
+}
+
+func (eft *EFT) listSubInfos(dpath string) ([]*ItemInfo, error) {
+	infos := make([]*ItemInfo, 0)
+
+	dinfo, dir, err := eft.getDir(dpath)
+	if err != nil {
+		eft.abort()
+		return nil, trace(err)
+	}
+
+	infos = append(infos, &dinfo)
+
+	for kk, _ := range(dir) {
+		info, _, err := eft.getTree(path.Join(dpath, kk))
+		if err != nil {
+			return nil, trace(err)
+		}
+
+		if info.Type == INFO_DIR {
+			sub_infos, err := eft.listSubInfos(info.Path)
+			if err != nil {
+				return nil, trace(err)
+			}
+
+			infos = append(infos, sub_infos...)
+		} else {
+			infos = append(infos, &info)
+		}
+	}
+
+	return infos, nil
+}
+
+func (eft *EFT) ListAllInfos() ([]*ItemInfo, error) {
+	eft.begin()
+
+	infos, err := eft.listSubInfos("/")
+	if err != nil {
+		eft.abort()
+		return nil, trace(err)
+	}
+
 	eft.commit()
 
-	return items, nil
+	paths := make([]string, 0)
+	p_map := make(map[string]*ItemInfo)
+
+	for _, info := range(infos) {
+		paths = append(paths, info.Path)
+		p_map[info.Path] = info
+	}
+
+	sort.Strings(paths)
+
+	sorted := make([]*ItemInfo, 0) 
+
+	for _, pp := range(paths) {
+		sorted = append(sorted, p_map[pp])
+	}
+
+	return sorted, nil
 }
 

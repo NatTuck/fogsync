@@ -4,10 +4,9 @@ package webui
 import (
 	"net/http"
 	"encoding/json"
-	"os"
-	"io/ioutil"
+	"strconv"
+	"../eft"
 	"../shares"
-	"../config"
 	"../fs"
 )
 
@@ -21,7 +20,10 @@ func serveShares(ww http.ResponseWriter, req *http.Request) {
 	if len(elems) == 1 {
 		serveSharesIndex(ww, req)
 	} else {
-		serveShare(elems[1], ww, req)
+		id, err := strconv.Atoi(elems[1])
+		fs.CheckError(err)
+
+		serveShare(id, ww, req)
 	}
 
 }
@@ -43,41 +45,69 @@ func serveSharesIndex(ww http.ResponseWriter, req *http.Request) {
 	ww.Write(data)
 }
 
-type FileData struct {
-	Name string
+type FileInfo struct {
 	Type string
 	Size uint64
+	ModT string
+	Exec bool
+	Hash string
+	Path string
+	MoBy string
 }
 
-type FileList struct {
-	Files []*FileData `json:"files"`
+type LongShare struct {
+	Id    int    `json:"id"`
+	Name  string
+	Key   string
+	Files []*FileInfo
 }
 
-func serveShare(name string, ww http.ResponseWriter, req *http.Request) {
+func toFileInfo(info *eft.ItemInfo) *FileInfo {
+	return &FileInfo{
+		Type: info.TypeName(),
+		Size: info.Size,
+		ModT: info.DateText(),
+		Exec: info.IsExec(),
+		Hash: info.HashText(),
+		Path: info.Path,
+		MoBy: info.MoBy,
+	}
+}
+
+type ShareWrapper struct {
+	Share LongShare `json:"share"`
+}
+
+func serveShare(id int, ww http.ResponseWriter, req *http.Request) {
 	hdrs := ww.Header()
 	hdrs["Content-Type"] = []string{"application/json"}
 
-	ss := shares.GetMgr().Get(name)
-	pp := req.URL.RawQuery
+	ss := shares.GetMgr().GetById(id)
 
-	if pp == "" {
-		pp = "/"
+	infos, err := ss.Trie.ListAllInfos()
+	if err != nil {
+		ww.WriteHeader(500)
+		ww.Write([]byte("Error: " + err.Error()))
+		fs.CheckError(err)
 	}
 
-	temp := config.TempName()
-	defer os.Remove(temp)
+	fis := make([]*FileInfo, 0)
 
-	info, err := ss.Trie.Get(pp, temp)
-	fs.CheckError(err)
-
-	if info.Type == eft.INFO_DIR {
-
-	} else {
-		
+	for _, info := range(infos) {
+		fi := toFileInfo(info)
+		fis = append(fis, fi)
 	}
 
+	files := ShareWrapper{
+		Share: LongShare{
+			Id:   ss.Config.Id,
+			Key : ss.Config.Key,
+			Name: ss.Config.Name,
+			Files: fis,
+		}, 
+	}
 
-	data, err := ioutil.ReadFile(temp)
+	data, err := json.MarshalIndent(&files, "", "  ")
 	fs.CheckError(err)
 
 	ww.Write(data)
