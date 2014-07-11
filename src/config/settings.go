@@ -7,7 +7,6 @@ import (
 )
 
 type Settings struct {
-	Id int `json:"id"`
 	Email string
 	Cloud string
 	Passwd string

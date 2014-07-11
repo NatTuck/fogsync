@@ -9,27 +9,52 @@ skip = ->
 logError = (msg) ->
   console.log("Error:", msg)
 
+$.extend({
+	putJSON: (url, data, callback) ->
+		$.ajax({
+			type: 'put',
+			url: url,
+			processData: false,
+			data: JSON.stringify(data, null, 2),
+			success: callback,
+			contentType: 'application/json',
+			dataType: 'json'
+    })
+})
+
 App.ApplicationController = Ember.Controller.extend({})
 
-App.Settings = Ember.Object.extend({})
-App.Settings.reopenClass({
-  findAll: () ->
-    $.getJSON('/settings')
+App.Settings = Ember.Object.extend({
+  dirty: false
+
   save: () ->
-    console.log("TODO: Save settings")
+    data = this.getProperties('Email', 'Cloud', 'Passwd', 'Master')
+    $.putJSON '/settings', data,  () =>
+      this.set('dirty', false)
+
+  changed: (() ->
+    this.set('dirty', true)
+  ).observes('Email', 'Cloud', 'Passwd', 'Master')
+})
+App.Settings.reopenClass({
+  find: () ->
+    $.getJSON('/settings').then (data) ->
+      App.Settings.create(data)
 })
 
 App.Share = Ember.Object.extend({})
 App.Share.reopenClass({
   findAll: () ->
-    $.getJSON('/shares')
+    $.getJSON('/shares').then (shares) ->
+      shares.map (ss) -> App.Share.create(ss)
   find: (name) ->
-    $.getJSON("/shares/#{name}")
+    $.getJSON("/shares/#{name}").then (data) ->
+      App.Share.create(data)
 })
 
 App.IndexRoute = Ember.Route.extend({
   model: (params) ->
-    {}
+    App.Settings.find()
 })
 
 App.IndexController = Ember.Controller.extend({
@@ -43,6 +68,10 @@ App.IndexController = Ember.Controller.extend({
 App.SharesRoute = Ember.Route.extend({
   model: (params) ->
     App.Share.findAll()
+})
+
+App.SharesIndexView = Ember.View.extend({
+  templateName: 'shares-index'
 })
 
 App.ShareRoute = Ember.Route.extend({
