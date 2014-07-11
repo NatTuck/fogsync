@@ -54,6 +54,11 @@ App.Share.reopenClass({
 
 App.IndexRoute = Ember.Route.extend({
   model: (params) ->
+    {}
+})
+
+App.SettingsRoute = Ember.Route.extend({
+  model: (params) ->
     App.Settings.find()
 })
 
