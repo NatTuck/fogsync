@@ -13,12 +13,13 @@ SCSS := $(wildcard css/*.scss)
 # Identify handlebars files.
 HBS := $(wildcard html/*.hbs)
 
-public/index.html: $(CSJS) public/fogsync.css public/templates.js html/index.html.erb
+public/index.html: public/coffee-brewed public/fogsync.css public/templates.js html/index.html.erb
 	cp js/*.* js/bootstrap/* css/*.* images/*.* fonts/*.* public
 	erb -T - html/index.html.erb > public/index.html
 
-$(CSJS): $(CS)
-	coffee -c -m -o public $<
+public/coffee-brewed: $(CS)
+	echo "$(CS)" | xargs -n 1 coffee -c -m -o public
+	touch public/coffee-brewed
 
 public/fogsync.css: $(SCSS)
 	scss --sourcemap --unix-newlines css/fogsync.scss public/fogsync.css

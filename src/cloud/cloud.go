@@ -9,6 +9,18 @@ type Cloud struct {
 	Auth string
 }
 
+func Connect() *Cloud {
+	cloud := &Cloud{}
+	cloud.Load()
+
+	// If we have auth data, try it.
+	// If not or if it doesn't work, relog with email / password.
+}
+
+func (cc *Cloud) Load() {
+
+}
+
 func (cc *Cloud) Save() {
 	clouds := make(map[string]Cloud, 0)
 	err := config.GetObj("clouds", &clouds)

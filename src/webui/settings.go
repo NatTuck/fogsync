@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"encoding/json"
 	"io/ioutil"
+	"fmt"
 	"../config"
 	"../fs"
 )
@@ -36,6 +37,8 @@ func saveSettings(ww http.ResponseWriter, req *http.Request) {
 	settings.Save()
 
 	ww.WriteHeader(204)
+
+	fmt.Println("Saved settings")
 
 	return
 }
