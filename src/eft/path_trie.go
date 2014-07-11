@@ -107,3 +107,22 @@ func (eft *EFT) getTree(item_path string) (ItemInfo, []byte, error) {
 
 	return info, item_hash, nil
 }
+
+func (eft *EFT) delTree(item_path string) ([]byte, error) {
+	trie, err := eft.loadPathTrie(eft.getRootHash())
+	if err != nil {
+		return nil, trace(err)
+	}
+	
+	err = trie.remove(item_path)
+	if err != nil {
+		return nil, trace(err)
+	}
+
+	root_hash, err := trie.save()
+	if err != nil {
+		return nil, trace(err)
+	}
+
+	return root_hash, nil
+}

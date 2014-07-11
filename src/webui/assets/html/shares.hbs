@@ -3,19 +3,19 @@
     <h1>Shares</h1>
   </div>
   <div class="col-sm-12">
-    <table class="table">
-      <thead>
-        <th>Share</th>
-        <th>Actions</th>
-      </thead>
-      <tbody>
-        {{#each}}
-        <tr>
-          <td>{{Name}}</td>
-          <td>{{Root}}</td>
-        </tr>
-        {{/each}}
-      </tbody>
-    </table>
+    <div class="row">
+      <div class="col-sm-2">
+        <ul>
+          {{#each}}
+          <li>{{#link-to 'share' Name}}{{Name}}{{/link-to}}</li>
+          {{else}}
+          <li>No shares</li>
+          {{/each}}
+        </ul>
+      </div>
+      <div class="col-sm-10">
+        {{outlet}}
+      </div>
+    </div>
   </div>
 </div>

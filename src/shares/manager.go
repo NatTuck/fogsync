@@ -34,6 +34,19 @@ func (mm *Manager) Unlock() {
 	mm.mutex.Unlock()
 }
 
+func (mm *Manager) GetById(id int) *Share {
+	mm.Lock()
+	defer mm.Unlock()
+
+	for _, ss := range(mm.shares) {
+		if ss.Config.Id == id {
+			return ss
+		}
+	}
+
+	panic("Bad share id")
+}
+
 func (mm *Manager) Get(name string) *Share {
 	if len(name) == 0 {
 		fs.PanicHere("Invalid share name")

@@ -8,13 +8,14 @@ import (
 	"os"
 	"path"
 	"fmt"
+	"time"
 	"../fs"
 )
 
 type Watcher struct {
 	share    *Share
 	fswatch  *fsnotify.Watcher
-	changes  chan string
+	updates  chan string
 	shutdown chan bool
 }
 
@@ -25,7 +26,7 @@ func (ss *Share) startWatcher() *Watcher {
 	ww := &Watcher{
 		share:   ss,
 		fswatch: fswatch,
-		changes: make(chan string, 64),
+		updates:  make(chan string, 64),
 		shutdown: make(chan bool),
 	}
 
@@ -35,10 +36,11 @@ func (ss *Share) startWatcher() *Watcher {
 }
 
 func (ww *Watcher) scanTree(scan_path string) {
-	ww.share.gotLocalChange(scan_path)
-
-	info, err := os.Lstat(scan_path)
-	if err != nil || !info.Mode().IsDir() {
+	sysi, err := os.Lstat(scan_path)
+	if err == nil {
+		ww.share.gotLocalUpdate(scan_path, sysi)
+	}
+	if err != nil || !sysi.Mode().IsDir() {
 		return
 	}
 
@@ -57,7 +59,7 @@ func (ww *Watcher) scanTree(scan_path string) {
 }
 
 func (ww *Watcher) Changed(change string) {
-	ww.changes<- change
+	ww.updates<- change
 }
 
 func (ww *Watcher) Shutdown() {
@@ -68,12 +70,17 @@ func (ww *Watcher) watcherLoop() {
 	for {
 		select {
 		case evt := <-ww.fswatch.Event:
-			ww.scanTree(evt.Name)
+			if evt.IsDelete() || evt.IsRename() {
+				stamp := uint64(time.Now().UnixNano())
+				ww.share.gotLocalDelete(evt.Name, stamp)
+			} else {
+				ww.scanTree(evt.Name)
+			}
 		case err := <-ww.fswatch.Error:
 			fmt.Println("XX - error:", err)
 			fs.PanicHere("Giving up")
-		case chg := <-ww.changes:
-			ww.scanTree(chg)
+		case upd := <-ww.updates:
+			ww.scanTree(upd)
 		case _    = <-ww.shutdown:
 			fmt.Println("XX - Shutting down watcher")
 			ww.fswatch.Close()

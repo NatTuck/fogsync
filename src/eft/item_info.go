@@ -2,6 +2,8 @@ package eft
 
 import (
 	"encoding/binary"
+	"encoding/hex"
+	"time"
 	"os/user"
 	"fmt"
 	"os"
@@ -32,8 +34,23 @@ func (info *ItemInfo) TypeName() string {
 	case INFO_LINK:
 		return "link"
 	default:
-		return "bad"
+		panic("Bad type in ItemInfo")
 	}
+}
+
+func (info *ItemInfo) DateText() string {
+	modt := int64(info.ModT)
+	nano := int64(1000000000)
+	date := time.Unix(modt / nano, modt % nano)
+	return date.Format(time.RubyDate)
+}
+
+func (info *ItemInfo) HashText() string {
+	return hex.EncodeToString(info.Hash[:])
+}
+
+func (info *ItemInfo) IsExec() bool {
+	return info.Mode & 1 > 0
 }
 
 func NewItemInfo(name string, src_path string, sysi os.FileInfo) (ItemInfo, error) {
@@ -55,13 +72,13 @@ func NewItemInfo(name string, src_path string, sysi os.FileInfo) (ItemInfo, erro
 
 	if info.Type == INFO_FILE {
 		info.Mode = uint32(sysi.Mode().Perm() & 1)
+	
+		data_hash, err := HashFile(src_path)
+		if err != nil {
+			return info, trace(err)
+		}
+		copy(info.Hash[:], data_hash)
 	}
-
-	data_hash, err := HashFile(src_path)
-	if err != nil {
-		return info, trace(err)
-	}
-	copy(info.Hash[:], data_hash)
 
 	uu, err := user.Current()
 	if err != nil {

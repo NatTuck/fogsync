@@ -1,4 +1,3 @@
 
 test:
-	-go test
-	make
+	go test
