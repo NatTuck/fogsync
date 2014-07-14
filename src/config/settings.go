@@ -27,6 +27,11 @@ func GetSettings() Settings {
 	return ss
 }
 
+func (ss *Settings) Ready() bool {
+	return ss.Email != "" && ss.Cloud != "" &&
+	  ss.Passwd != "" && ss.Master != ""
+}
+
 func (ss *Settings) Save() {
 	err := PutObj("settings", ss)
 	fs.CheckError(err)

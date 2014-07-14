@@ -24,6 +24,7 @@ type Share struct {
 	Watcher *Watcher
 	Mutex   sync.Mutex
 	Changes chan string
+	Uploads chan bool
 }
 
 func (ss *Share) Lock() {
@@ -191,6 +192,7 @@ func (ss *Share) gotLocalUpdate(full_path string, sysi os.FileInfo) {
 	fs.CheckError(err)
 
 	ss.logEvent("update", stamp, rel_path)
+	ss.upload()
 }
 
 func (ss *Share) gotLocalDelete(full_path string, stamp uint64) {
@@ -207,7 +209,8 @@ func (ss *Share) gotLocalDelete(full_path string, stamp uint64) {
 	err = ss.Trie.Del(rel_path)
 	fs.CheckError(err)
 
-	ss.logEvent("delete", stamp, rel_path) 
+	ss.logEvent("delete", stamp, rel_path)
+	ss.upload()
 }
 
 
@@ -218,3 +221,4 @@ func (ss *Share) gotRemoteUpdate(full_path string, stamp uint64) {
 func (ss *Share) gotRemoteDelete(full_path string, stamp uint64) {
 	panic("TODO: Handle remote deletes")
 }
+

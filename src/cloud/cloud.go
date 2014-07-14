@@ -1,6 +1,8 @@
 package cloud
 
 import (
+	"fmt"
+	"../fs"
 	"../config"
 )
 
@@ -9,22 +11,36 @@ type Cloud struct {
 	Auth string
 }
 
-func Connect() *Cloud {
-	cloud := &Cloud{}
-	cloud.Load()
+func New() *Cloud {
+	ss := config.GetSettings()
 
-	// If we have auth data, try it.
-	// If not or if it doesn't work, relog with email / password.
+	cc := &Cloud{
+		Host: ss.Cloud,
+	}
+
+	cc.load()
+
+	if cc.Auth == "" {
+		cc.getAuth(ss)
+		cc.save()
+	}
+
+	return cc
 }
 
-func (cc *Cloud) Load() {
-
+func (cc *Cloud) load() {
+	cfg := fmt.Sprintf("clouds/%s", cc.Host)
+	err := config.GetObj(cfg, cc)
+	if err != nil {
+		cc.Auth = ""
+		fmt.Printf("No auth token for host %s\n", cc.Host)
+	}
 }
 
-func (cc *Cloud) Save() {
-	clouds := make(map[string]Cloud, 0)
-	err := config.GetObj("clouds", &clouds)
-	clouds[cc.Host] = cc
-	config.PutObj("clouds", &clouds)
+func (cc *Cloud) save() {
+	cfg := fmt.Sprintf("clouds/%s", cc.Host)
+	err := config.PutObj(cfg, cc)
+	fs.CheckError(err)
 }
+
 
