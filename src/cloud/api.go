@@ -4,9 +4,12 @@ import (
 	"fmt"
 	"net/http"
 	"encoding/json"
+	"io/ioutil"
+	"../config"
+	"../fs"
 )
 
-func (cc *Cloud) reqURL(path string) {
+func (cc *Cloud) reqURL(path string) string {
 	proto := "https"
 
 	if cc.Host == "localhost:3000" {
@@ -16,7 +19,7 @@ func (cc *Cloud) reqURL(path string) {
 	return fmt.Sprintf("%s://%s/%s", proto, cc.Host, path)
 }
 
-func (cc *Cloud) getQuery(path string, query string) (http.Response, error) {
+func (cc *Cloud) getQuery(path string, query string) (*http.Response, error) {
 	url := fmt.Sprintf("%s?%s", cc.reqURL(path), query)
 	return http.Get(url)
 }
@@ -27,7 +30,7 @@ type AuthResp struct {
 }
 
 func (cc *Cloud) getAuth(ss config.Settings) {
-	query = fmt.Sprintf("email=%s?password=%s", ss.Email, ss.Password)
+	query := fmt.Sprintf("email=%s?password=%s", ss.Email, ss.Passwd)
 	resp, err := cc.getQuery("/main/auth", query)
 	fs.CheckError(err)
 

@@ -87,10 +87,13 @@ func (ss *Share) Start() {
 	fmt.Println("XX - Starting share", ss.Name())
 	ss.Watcher = ss.startWatcher()
 	fmt.Println("XX - Watcher started")
+
+	go ss.uploadLoop()
 }
 
 func (ss *Share) Stop() {
 	ss.Watcher.Shutdown()
+	ss.Uploads<- false
 }
 
 func (ss *Share) FullScan() {
@@ -105,6 +108,7 @@ func (mm *Manager) NewShare(name string) *Share {
 			Name: name,
 		},
 		Changes: make(chan string, 256),
+		Uploads: make(chan bool, 4),
 	}
 	
 	ss.load()
@@ -199,7 +203,12 @@ func (ss *Share) gotLocalDelete(full_path string, stamp uint64) {
 	rel_path := ss.RelPath(full_path)
 
 	prev_info, err := ss.Trie.GetInfo(rel_path)
-	fs.CheckError(err)
+	if err == eft.ErrNotFound {
+		fmt.Println("XX - Delete of unknown path:", full_path)
+		return
+	} else {
+		fs.CheckError(err)
+	}
 
 	if prev_info.ModT > stamp {
 		ss.gotRemoteUpdate(rel_path, prev_info.ModT)
@@ -212,7 +221,6 @@ func (ss *Share) gotLocalDelete(full_path string, stamp uint64) {
 	ss.logEvent("delete", stamp, rel_path)
 	ss.upload()
 }
-
 
 func (ss *Share) gotRemoteUpdate(full_path string, stamp uint64) {
 	panic("TODO: Handle remote updates")

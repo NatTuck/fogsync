@@ -4,14 +4,10 @@ import (
 	"fmt"
 	"time"
 	"../shares"
-	"../cloud"
 	"../webui"
 )
 
 func main() {
-	fmt.Println("Starting Cloud...")
-	cloud.Start()
-
 	fmt.Println("Starting Shares...")
 	mgr := shares.GetMgr()
 	fmt.Println("XX - Starting scanner")

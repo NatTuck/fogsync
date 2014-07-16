@@ -191,3 +191,40 @@ func (eft *EFT) TempName() string {
 	bytes := RandomBytes(16)
 	return path.Join(temp, hex.EncodeToString(bytes))
 }
+
+func (eft *EFT) Changes() (string, string, error) {
+	eft.begin()
+	defer eft.commit()
+
+	adds := eft.TempName()
+	err := copyFile(eft.addsFile(), adds)
+	if err != nil {
+		return "", "", trace(err)
+	}
+	
+	dead := eft.TempName()
+	err = copyFile(eft.deadFile(), dead)
+	if err != nil {
+		return "", "", trace(err)
+	}
+
+	return adds, dead, nil
+}
+
+func (eft *EFT) ClearChanges() error {
+	eft.begin()
+	defer eft.commit()
+
+	err := os.Remove(eft.addsFile())
+	if err != nil {
+		return err
+	}
+
+	err = os.Remove(eft.deadFile())
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+

@@ -2,6 +2,7 @@ package cloud
 
 import (
 	"fmt"
+	"errors"
 	"../fs"
 	"../config"
 )
@@ -11,8 +12,14 @@ type Cloud struct {
 	Auth string
 }
 
-func New() *Cloud {
+var ErrNotSetup = errors.New("Cloud not setup yet")
+
+func New() (*Cloud, error) {
 	ss := config.GetSettings()
+
+	if !ss.Ready {
+		return nil, ErrNotSetup
+	}
 
 	cc := &Cloud{
 		Host: ss.Cloud,
@@ -25,7 +32,7 @@ func New() *Cloud {
 		cc.save()
 	}
 
-	return cc
+	return cc, nil
 }
 
 func (cc *Cloud) load() {
