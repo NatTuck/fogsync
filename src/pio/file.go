@@ -97,3 +97,4 @@ func (ff *File) Seek(pos int64, whence int) {
 	_, err := ff.file.Seek(pos, whence)
 	checkError(err)
 }
+

@@ -13,19 +13,6 @@ func (eft *EFT) loadItemInfo(hash []byte) (ItemInfo, error) {
 	return info, nil
 }
 
-func (eft *EFT) killItemBlocks(hash []byte) error {
-	info, err := eft.loadItemInfo(hash)
-	if err != nil {
-		return trace(err)
-	}
-
-	if info.Size <= 12 * 1024 {
-		return eft.pushDead(hash)
-	} else {
-		return eft.killLargeItemBlocks(hash)
-	}
-}
-
 func (eft *EFT) loadItem(hash []byte, dst_path string) (ItemInfo, error) {
 	info, err := eft.loadItemInfo(hash)
 	if err != nil {

@@ -17,11 +17,10 @@ type EFT struct {
 	Root string   // Hash of root block (hex)
 
 	mutex sync.Mutex
+	lockf *os.File
 
-	adds *os.File
-	addsName string
-	dead *os.File
-	deadName string
+	added *os.File
+	addedName string
 }
 
 func (eft *EFT) BlockPath(hash []byte) string {
@@ -153,7 +152,7 @@ func (eft *EFT) saveBlock(data []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	err = eft.pushAdds(hash)
+	err = eft.logAdded(hash)
 	if err != nil {
 		return nil, err
 	}
@@ -177,10 +176,6 @@ func (eft *EFT) loadBlock(hash []byte) ([]byte, error) {
 	return data, nil
 }
 
-func (eft *EFT) freeBlock(hash []byte) error {
-	return eft.pushDead(hash)
-}
-
 func (eft *EFT) TempName() string {
 	temp  := path.Join(eft.Dir, "tmp")
 	err := os.MkdirAll(temp, 0700)
@@ -190,41 +185,5 @@ func (eft *EFT) TempName() string {
 	
 	bytes := RandomBytes(16)
 	return path.Join(temp, hex.EncodeToString(bytes))
-}
-
-func (eft *EFT) Changes() (string, string, error) {
-	eft.begin()
-	defer eft.commit()
-
-	adds := eft.TempName()
-	err := copyFile(eft.addsFile(), adds)
-	if err != nil {
-		return "", "", trace(err)
-	}
-	
-	dead := eft.TempName()
-	err = copyFile(eft.deadFile(), dead)
-	if err != nil {
-		return "", "", trace(err)
-	}
-
-	return adds, dead, nil
-}
-
-func (eft *EFT) ClearChanges() error {
-	eft.begin()
-	defer eft.commit()
-
-	err := os.Remove(eft.addsFile())
-	if err != nil {
-		return err
-	}
-
-	err = os.Remove(eft.deadFile())
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 

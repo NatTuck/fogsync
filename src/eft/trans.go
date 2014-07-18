@@ -5,87 +5,125 @@ import (
 	"io/ioutil"
 	"strings"
 	"bufio"
+	"syscall"
 	"path"
 	"fmt"
 	"io"
 	"os"
 )
 
-func (eft *EFT) lockFile() string {
-	return path.Join(eft.Dir, "lock")
+func (eft *EFT) Lock() (eret error) {
+	eft.mutex.Lock()
+
+	defer func() {
+		if eret != nil {
+			eft.mutex.Unlock()
+		}
+	}()
+
+	err := os.MkdirAll(eft.Dir, 0700)
+	if err != nil {
+		return trace(err)
+	}
+
+	lockf_name := path.Join(eft.Dir, "lock")
+	flags := os.O_CREATE | os.O_RDWR
+	lockf, err := os.OpenFile(lockf_name, flags, 0600)
+	if err != nil {
+		return trace(err)
+	}
+
+	eft.lockf = lockf
+
+	err = syscall.Flock(int(eft.lockf.Fd()), syscall.LOCK_EX)
+	if err != nil {
+		return trace(err)
+	}
+
+	err = eft.lockf.Truncate(0)
+	if err != nil {
+		return trace(err)
+	}
+
+	_, err = eft.lockf.Write([]byte(fmt.Sprintf("%d\n", os.Getpid())))
+	if err != nil {
+		return trace(err)
+	}
+
+	return nil
 }
 
-func (eft *EFT) rootFile() string {
-	return path.Join(eft.Dir, "root")
+func (eft *EFT) Unlock() error {
+	err := syscall.Flock(int(eft.lockf.Fd()), syscall.LOCK_UN)
+	if err != nil {
+		return trace(err)
+	}
+
+	err = eft.lockf.Truncate(0)
+	if err != nil {
+		return trace(err)
+	}
+
+	err = eft.lockf.Close()
+	if err != nil {
+		return trace(err)
+	}
+
+	eft.mutex.Unlock()
+
+	return nil
 }
 
-func (eft *EFT) addsFile() string {
-	return path.Join(eft.Dir, "adds")
-}
-
-func (eft *EFT) deadFile() string {
-	return path.Join(eft.Dir, "dead")
-}
-
-func (eft *EFT) pushAdds(hash []byte) error {
+func (eft *EFT) logAdded(hash []byte) error {
 	text := hex.EncodeToString(hash)
-	_, err := eft.adds.WriteString(text + "\n")
-	return err
-}
-
-func (eft *EFT) pushDead(hash []byte) error {
-	text := hex.EncodeToString(hash)
-	_, err := eft.dead.WriteString(text + "\n")
+	_, err := eft.added.WriteString(text + "\n")
 	return err
 }
 
 func (eft *EFT) begin() {
-	eft.mutex.Lock()
+	err := eft.Lock()
+	if err != nil {
+		panic("Failed to get lock:" + err.Error())
+	}
 
-	root, err := ioutil.ReadFile(eft.rootFile())
+	root_file := path.Join(eft.Dir, "root")
+	root, err := ioutil.ReadFile(root_file)
 	if err == nil {
 		eft.Root = string(root)
 	}
 
-	eft.addsName = eft.TempName()
-	eft.adds, err = os.Create(eft.addsName)
+	eft.addedName = eft.TempName()
+	eft.added, err = os.Create(eft.addedName)
 	if err != nil {
-		panic("Could not create adds: " + err.Error())
-	}
-
-	eft.deadName = eft.TempName()
-	eft.dead, err = os.Create(eft.deadName)
-	if err != nil {
-		panic("Could not create dead: " + err.Error())
+		panic("Could not create added list: " + err.Error())
 	}
 }
 
 func (eft *EFT) commit() {
-	eft.adds.Close()
-	eft.dead.Close()
-
-	err := appendFile(eft.addsFile(), eft.addsName)
+	err := eft.added.Close()
 	if err != nil {
 		panic(err)
 	}
 
-	err = appendFile(eft.deadFile(), eft.deadName)
+	added_file := path.Join(eft.Dir, "added")
+	err = appendFile(added_file, eft.addedName)
 	if err != nil {
 		panic(err)
 	}
 
-	err = ioutil.WriteFile(eft.rootFile(), []byte(eft.Root), 0600)
+	root_file := path.Join(eft.Dir, "root")
+	err = ioutil.WriteFile(root_file, []byte(eft.Root), 0600)
 	if err != nil {
 		panic(err)
 	}
 
-	os.Remove(eft.addsName)
-	eft.addsName = ""
+	os.Remove(eft.addedName)
+	eft.addedName = ""
 	
-	os.Remove(eft.deadName)
-	eft.deadName = ""
-
-	eft.mutex.Unlock()
+	err = eft.Unlock()
+	if err != nil {
+		panic(err);
+	}
 }
 
 func (eft *EFT) removeBlocks(list *os.File) error {
@@ -119,19 +157,18 @@ func (eft *EFT) removeBlocks(list *os.File) error {
 }
 
 func (eft *EFT) abort() {
-	err := eft.removeBlocks(eft.adds)
+	err := eft.removeBlocks(eft.added)
 	if err != nil {
 		fmt.Println(err.Error())
 	}
 
-	os.Remove(eft.addsName)
-	eft.adds.Close()
-	eft.addsName = ""
-	
-	os.Remove(eft.deadName)
-	eft.dead.Close()
-	eft.deadName = ""
+	os.Remove(eft.addedName)
+	eft.added.Close()
+	eft.addedName = ""
 
-	eft.mutex.Unlock()
+	err = eft.Unlock()
+	if err != nil {
+		panic(err)
+	}
 }
 

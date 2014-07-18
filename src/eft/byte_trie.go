@@ -162,13 +162,8 @@ func (tn *TrieNode) insert(key []byte, new_ent TrieEntry, dd int) error {
 		
 		if BytesEqual(key, curr_key) {
 			// Replace
-
-			err := tn.eft.killItemBlocks(entry.Hash[:])
-			if err != nil {
-				return trace(err)
-			}
-			
 			tn.tab[slot] = new_ent
+
 		} else {
 			// Push down
 
@@ -230,14 +225,9 @@ func (tn *TrieNode) remove(key []byte, dd int) error {
 		return ErrNotFound
 
 	case TRIE_TYPE_ITEM:
-		err := tn.eft.killItemBlocks(entry.Hash[:])
-		if err != nil {
-			return trace(err)
-		}
-
 		tn.tab[slot] = TrieEntry{}
 
-		fmt.Println("TODO: Figure out merge on remove")
+		fmt.Println("TODO (EFT): Figure out merge on remove")
 
 	case TRIE_TYPE_MORE:
 		next, err := tn.loadChild(entry.Hash[:])

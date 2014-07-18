@@ -165,27 +165,3 @@ func (eft *EFT) loadLargeItem(hash []byte, dst_path string) (_ ItemInfo, eret er
 	return info, nil
 }
 
-func (eft *EFT) killLargeItemBlocks(hash []byte) error {
-	trie, err := eft.loadLargeTrie(hash)
-	if err != nil {
-		return trace(err)
-	}
-
-	for ii := uint64(0); true; ii++ {
-		b_hash, err := trie.find(ii)
-		if err == ErrNotFound {
-			break
-		}
-		if err != nil {
-			return trace(err)
-		}
-
-		err = eft.pushDead(b_hash)
-		if err != nil {
-			return trace(err)
-		}
-	}
-
-	return nil
-}
-
