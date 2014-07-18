@@ -1,5 +1,9 @@
 package eft
 
+import (
+	"fmt"
+)
+
 type PathTrie struct {
 	root *TrieNode
 }
@@ -125,4 +129,36 @@ func (eft *EFT) delTree(item_path string) ([]byte, error) {
 	}
 
 	return root_hash, nil
+}
+
+func (pt *PathTrie) visitEachBlock(fn func(hash []byte) error) error {
+	return pt.root.visitEachEntry(func (ent *TrieEntry) error {
+		switch ent.Type {
+		case TRIE_TYPE_MORE:
+			return fn(ent.Hash[:])
+
+		case TRIE_TYPE_ITEM:
+			err := fn(ent.Hash[:])
+			if err != nil {
+				return trace(err)
+			}
+
+			eft := pt.root.eft
+		
+			info, err := eft.loadItemInfo(ent.Hash[:])
+			if err != nil {
+				return trace(err)
+			}
+
+			err = eft.visitItemBlocks(info, fn)
+			if err != nil {
+				return trace(err)
+			}
+
+			return nil
+
+		default:
+			panic(fmt.Sprintf("Can't handle entry of type %d\n", ent.Type))
+		}
+	})
 }

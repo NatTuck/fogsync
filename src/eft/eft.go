@@ -27,7 +27,7 @@ func (eft *EFT) BlockPath(hash []byte) string {
 	text := hex.EncodeToString(hash)
 	d0 := text[0:3]
 	d1 := text[3:6]
-	return path.Join(eft.Dir, d0, d1, text)
+	return path.Join(eft.Dir, "blocks", d0, d1, text)
 }
 
 func (eft *EFT) getRootHash() []byte {

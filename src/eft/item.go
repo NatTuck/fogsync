@@ -33,3 +33,17 @@ func (eft *EFT) saveItem(info ItemInfo, src_path string) ([]byte, error) {
 		return eft.saveLargeItem(info, src_path)
 	}
 }
+
+func (eft *EFT) visitItemBlocks(info ItemInfo, fn func(hash []byte) error) error {
+	if (info.Size <= 12 * 1024) {
+		return nil
+	} else {
+		trie, err := eft.loadLargeTrie(info.Hash[:])
+		if err != nil {
+			return trace(err)
+		}
+
+		return trie.visitEachBlock(fn)
+	}
+}
+

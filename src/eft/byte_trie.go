@@ -8,7 +8,7 @@ import (
 const (
 	TRIE_TYPE_NONE = 0
 	TRIE_TYPE_MORE = 1
-	TREE_TYPE_OVRF = 2
+	TRIE_TYPE_OVRF = 2
 	TRIE_TYPE_ITEM = 3
 )
 
@@ -250,6 +250,39 @@ func (tn *TrieNode) remove(key []byte, dd int) error {
 
 	default:
 		return trace(fmt.Errorf("Invalid entry type: %d", entry.Type))
+	}
+
+	return nil
+}
+
+func (tn *TrieNode) visitEachEntry(fn func(ent *TrieEntry) error) error {
+	for ii := 0; ii < 256; ii++ {
+		ent := &tn.tab[ii]
+
+		if ent.Type == TRIE_TYPE_NONE {
+			continue
+		}
+
+		err := fn(ent)
+		if err != nil {
+			return trace(err)
+		}
+
+		if ent.Type == TRIE_TYPE_MORE {
+			next, err := tn.loadChild(ent.Hash[:])
+			if err != nil {
+				return err
+			}
+
+			err = next.visitEachEntry(fn)
+			if err != nil {
+				return trace(err)
+			}
+		}
+
+		if ent.Type == TRIE_TYPE_OVRF {
+			panic("TODO: Handle overflow tables")
+		}
 	}
 
 	return nil

@@ -38,6 +38,12 @@ func TestFullRoundtrip(tt *testing.T) {
 		panic(err)
 	}
 
+	dead, err := eft.Collect()
+	if err != nil {
+		panic(err)
+	}
+	os.Remove(dead)
+
 	info1, err := eft.Get(info0.Path, hi1_txt)
 	if err != nil {
 		panic(err)

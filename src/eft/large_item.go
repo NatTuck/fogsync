@@ -165,3 +165,9 @@ func (eft *EFT) loadLargeItem(hash []byte, dst_path string) (_ ItemInfo, eret er
 	return info, nil
 }
 
+func (lt *LargeTrie) visitEachBlock(fn func(hash []byte) error) error {
+	return lt.root.visitEachEntry(func(ent *TrieEntry) error {
+		return fn(ent.Hash[:])
+	})
+}
+
