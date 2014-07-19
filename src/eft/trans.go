@@ -2,7 +2,6 @@ package eft
 
 import (
 	"encoding/hex"
-	"io/ioutil"
 	"strings"
 	"bufio"
 	"syscall"
@@ -77,7 +76,10 @@ func (eft *EFT) Unlock() error {
 func (eft *EFT) logAdded(hash []byte) error {
 	text := hex.EncodeToString(hash)
 	_, err := eft.added.WriteString(text + "\n")
-	return err
+	if err != nil {
+		return trace(err)
+	}
+	return nil
 }
 
 func (eft *EFT) begin() {
@@ -86,10 +88,11 @@ func (eft *EFT) begin() {
 		panic("Failed to get lock:" + err.Error())
 	}
 
-	root_file := path.Join(eft.Dir, "root")
-	root, err := ioutil.ReadFile(root_file)
-	if err == nil {
-		eft.Root = string(root)
+	err = eft.loadSnaps()
+	if err == ErrNotFound {
+		fmt.Println("No snaps to load")
+	} else if err != nil {
+		panic("Couldn't load snaps:" + err.Error())
 	}
 
 	eft.addedName = eft.TempName()
@@ -100,19 +103,18 @@ func (eft *EFT) begin() {
 }
 
 func (eft *EFT) commit() {
-	err := eft.added.Close()
+	err := eft.saveSnaps()
+	if err != nil {
+		panic(err)
+	}
+
+	err = eft.added.Close()
 	if err != nil {
 		panic(err)
 	}
 
 	added_file := path.Join(eft.Dir, "added")
 	err = appendFile(added_file, eft.addedName)
-	if err != nil {
-		panic(err)
-	}
-
-	root_file := path.Join(eft.Dir, "root")
-	err = ioutil.WriteFile(root_file, []byte(eft.Root), 0600)
 	if err != nil {
 		panic(err)
 	}

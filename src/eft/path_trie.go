@@ -62,13 +62,13 @@ func (pt *PathTrie) remove(name string) error {
 	return pt.root.remove(path_hash, 0)
 }
 
-func (eft *EFT) putTree(info ItemInfo, data_hash []byte) ([]byte, error) {
+func (eft *EFT) putTree(snap *Snapshot, info ItemInfo, data_hash []byte) ([]byte, error) {
 	trie := eft.emptyPathTrie()
 
 	var err error
 
-	if eft.Root != "" {
-		trie, err = eft.loadPathTrie(eft.getRootHash())
+	if !snap.isEmpty() {
+		trie, err = eft.loadPathTrie(snap.Root[:])
 		if err != nil {
 			return nil, trace(err)
 		}
@@ -87,14 +87,14 @@ func (eft *EFT) putTree(info ItemInfo, data_hash []byte) ([]byte, error) {
 	return root_hash, nil
 }
 
-func (eft *EFT) getTree(item_path string) (ItemInfo, []byte, error) {
+func (eft *EFT) getTree(snap *Snapshot, item_path string) (ItemInfo, []byte, error) {
 	info := ItemInfo{}
 
-	if eft.Root == "" {
+	if snap.isEmpty() {
 		return info, nil, ErrNotFound 
 	}
 
-	trie, err := eft.loadPathTrie(eft.getRootHash())
+	trie, err := eft.loadPathTrie(snap.Root[:])
 	if err != nil {
 		return info, nil, trace(err)
 	}
@@ -112,8 +112,8 @@ func (eft *EFT) getTree(item_path string) (ItemInfo, []byte, error) {
 	return info, item_hash, nil
 }
 
-func (eft *EFT) delTree(item_path string) ([]byte, error) {
-	trie, err := eft.loadPathTrie(eft.getRootHash())
+func (eft *EFT) delTree(snap *Snapshot, item_path string) ([]byte, error) {
+	trie, err := eft.loadPathTrie(snap.Root[:])
 	if err != nil {
 		return nil, trace(err)
 	}

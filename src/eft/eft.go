@@ -14,7 +14,8 @@ const BLOCK_SIZE = 16 * 1024
 type EFT struct {
 	Key  [32]byte // Key for cipher and MAC
 	Dir  string   // Path to block store
-	Root string   // Hash of root block (hex)
+
+	Snaps []Snapshot
 
 	mutex sync.Mutex
 	lockf *os.File
@@ -30,31 +31,20 @@ func (eft *EFT) BlockPath(hash []byte) string {
 	return path.Join(eft.Dir, "blocks", d0, d1, text)
 }
 
-func (eft *EFT) getRootHash() []byte {
-	hash, err := hex.DecodeString(eft.Root)
-	if err != nil {
-		panic(err)
-	}
-	return hash
-}
 
-func (eft *EFT) setRootHash(hash []byte) {
-	eft.Root = hex.EncodeToString(hash)
-}
-
-func (eft *EFT) putItem(info ItemInfo, src_path string) error {
+func (eft *EFT) putItem(snap *Snapshot, info ItemInfo, src_path string) error {
 	data_hash, err := eft.saveItem(info, src_path)
 	if err != nil {
 		return err
 	}
 
-	root, err := eft.putTree(info, data_hash)
+	root, err := eft.putTree(snap, info, data_hash)
 	if err != nil {
 		return err
 	}
-	eft.Root = hex.EncodeToString(root)
+	copy(snap.Root[:], root)
 
-	err = eft.putParent(info)
+	err = eft.putParent(snap, info)
 	if err != nil {
 		return err
 	}
@@ -65,7 +55,7 @@ func (eft *EFT) putItem(info ItemInfo, src_path string) error {
 func (eft *EFT) Put(info ItemInfo, src_path string) error {
 	eft.begin()
 
-	err := eft.putItem(info, src_path)
+	err := eft.putItem(eft.mainSnap(), info, src_path)
 	if err != nil {
 		eft.abort()
 		return err
@@ -76,8 +66,8 @@ func (eft *EFT) Put(info ItemInfo, src_path string) error {
 	return nil
 }
 
-func (eft *EFT) getItem(name string, dst_path string) (ItemInfo, error) {
-	info0, data_hash, err := eft.getTree(name)
+func (eft *EFT) getItem(snap *Snapshot, name string, dst_path string) (ItemInfo, error) {
+	info0, data_hash, err := eft.getTree(snap, name)
 	if err != nil {
 		return info0, err
 	}
@@ -98,7 +88,7 @@ func (eft *EFT) getItem(name string, dst_path string) (ItemInfo, error) {
 func (eft *EFT) Get(name string, dst_path string) (ItemInfo, error) {
 	eft.begin()
 
-	info, err := eft.getItem(name, dst_path)
+	info, err := eft.getItem(eft.mainSnap(), name, dst_path)
 	if err != nil {
 		eft.abort()
 		return info, err
@@ -112,7 +102,7 @@ func (eft *EFT) Get(name string, dst_path string) (ItemInfo, error) {
 func (eft *EFT) GetInfo(name string) (ItemInfo, error) {
 	eft.begin()
 
-	info, _, err := eft.getTree(name)
+	info, _, err := eft.getTree(eft.mainSnap(), name)
 	if err != nil {
 		eft.abort()
 		return info, err
@@ -126,12 +116,14 @@ func (eft *EFT) GetInfo(name string) (ItemInfo, error) {
 func (eft *EFT) Del(name string) error {
 	eft.begin()
 
-	root, err := eft.delTree(name)
+	snap := eft.mainSnap()
+
+	root, err := eft.delTree(snap, name)
 	if err != nil {
 		eft.abort()
 		return err
 	}
-	eft.Root = hex.EncodeToString(root)
+	copy(snap.Root[:], root)
 
 	eft.commit()
 	return nil
@@ -144,17 +136,17 @@ func (eft *EFT) saveBlock(data []byte) ([]byte, error) {
 
 	err := os.MkdirAll(path.Dir(name), 0700)
 	if err != nil {
-		return nil, err
+		return nil, trace(err)
 	}
 
 	err = ioutil.WriteFile(name, ctxt, 0600)
 	if err != nil {
-		return nil, err
+		return nil, trace(err)
 	}
 
 	err = eft.logAdded(hash)
 	if err != nil {
-		return nil, err
+		return nil, trace(err)
 	}
 
 	return hash, nil
@@ -165,12 +157,12 @@ func (eft *EFT) loadBlock(hash []byte) ([]byte, error) {
 
 	ctxt, err := ioutil.ReadFile(name)
 	if err != nil {
-		return nil, err
+		return nil, trace(err)
 	}
 
 	data, err := DecryptBlock(ctxt, eft.Key)
 	if err != nil {
-		return nil, err
+		return nil, trace(err)
 	}
 
 	return data, nil

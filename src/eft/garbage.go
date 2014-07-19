@@ -180,8 +180,26 @@ func (mm *MarkList) mark() error {
 	// and mark all used blocks.
 	sort.Sort(mm)
 
-	// TODO: For each snapshot, mark root & log
-	return mm.markPathTrie(mm.eft.getRootHash())
+	hash, err := mm.eft.loadSnapsHash()
+	if err != nil {
+		return trace(err)
+	}
+
+	err = mm.markBlock(hash)
+	if err != nil {
+		return trace(err)
+	}
+
+	for _, snap := range(mm.eft.Snaps) {
+		err := mm.markPathTrie(snap.Root[:])
+		if err != nil {
+			return trace(err)
+		}
+
+		// TODO: Mark log
+	}
+
+	return nil
 }
 
 func (mm *MarkList) markBlock(hash []byte) error {
@@ -223,9 +241,6 @@ func (mm *MarkList) markPathTrie(hash []byte) error {
 }
 
 func (mm *MarkList) sweep() (string, error) {
-	// To sweep, traverse the list to find unused blocks. Delete
-	// them and add them to the dead file.
-
 	dead_name := mm.eft.TempName()
 	dead, err := os.Create(dead_name)
 	if err != nil {

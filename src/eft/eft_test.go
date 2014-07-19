@@ -14,7 +14,8 @@ func TestFullRoundtrip(tt *testing.T) {
 
 	defer func() {
 		if len(eft_dir) > 8 {
-			os.RemoveAll(eft_dir)
+			//os.RemoveAll(eft_dir)
+			fmt.Println("XX - eft_dir =", eft_dir)
 			os.Remove(hi0_txt)
 			os.Remove(hi1_txt)
 		}
@@ -44,10 +45,14 @@ func TestFullRoundtrip(tt *testing.T) {
 	}
 	os.Remove(dead)
 
+	fmt.Println("XX - About to Get")
+
 	info1, err := eft.Get(info0.Path, hi1_txt)
 	if err != nil {
 		panic(err)
 	}
+	
+	fmt.Println("XX - Done with Get")
 
 	if info0 != info1 {
 		fmt.Println("Item info mismatch")
