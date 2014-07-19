@@ -1,6 +1,7 @@
 package eft
 
 import (
+	"encoding/hex"
 	"crypto/rand"
 	"crypto/sha256"
 	"code.google.com/p/go.crypto/nacl/secretbox"
@@ -18,22 +19,27 @@ func RandomBytes(nn int) []byte {
     return bs
 }
 
-func HashSlice(data []byte) []byte {
+func HashSlice(data []byte) [32]byte {
 	sha := sha256.New()
 	sha.Write(data)
-	return sha.Sum(nil)
+	
+	hash := [32]byte{}
+	copy(hash[:], sha.Sum(nil))
+
+	return hash
 }
 
-func HashString(data string) []byte {
+func HashString(data string) [32]byte {
 	return HashSlice([]byte(data))
 }
 
-func HashFile(file_path string) ([]byte, error) {
-	sha := sha256.New()
+func HashFile(file_path string) ([32]byte, error) {
+	sha  := sha256.New()
+	hash := [32]byte{}
 
 	file, err := os.Open(file_path)
 	if err != nil {
-		return nil, err
+		return hash, err
 	}
 	defer file.Close()
 
@@ -45,14 +51,13 @@ func HashFile(file_path string) ([]byte, error) {
 			break
 		}
 		if err != nil {
-			return nil, err
+			return hash, err
 		}
 
 		sha.Write(chunk[0:nn])
 	}
 
-	hash := sha.Sum(nil)
-
+	copy(hash[:], sha.Sum(nil))
 	return hash, nil
 }
 
@@ -88,16 +93,10 @@ func DecryptBlock(ctxt []byte, key [32]byte) ([]byte, error) {
 }
 
 
-func BytesEqual(aa []byte, bb []byte) bool {
-	size := len(aa)
-
-	if len(bb) != size {
-		return false
-	}
-
+func HashesEqual(aa [32]byte, bb [32]byte) bool {
 	equal := true
 
-	for ii := 0; ii < size; ii++ {
+	for ii := 0; ii < 32; ii++ {
 		if aa[ii] != bb[ii] {
 			equal = false
 		}
@@ -106,3 +105,18 @@ func BytesEqual(aa []byte, bb []byte) bool {
 	return equal
 }
 
+func HashToHex(hash [32]byte) string {
+	return hex.EncodeToString(hash[:])
+}
+
+func HexToHash(text string) [32]byte {
+	hash := [32]byte{}
+
+	hash_slice, err := hex.DecodeString(text)
+	if err != nil {
+		panic(err)
+	}
+
+	copy(hash[:], hash_slice)
+	return hash
+}

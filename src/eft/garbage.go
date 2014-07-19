@@ -191,7 +191,7 @@ func (mm *MarkList) mark() error {
 	}
 
 	for _, snap := range(mm.eft.Snaps) {
-		err := mm.markPathTrie(snap.Root[:])
+		err := mm.markPathTrie(snap.Root)
 		if err != nil {
 			return trace(err)
 		}
@@ -202,16 +202,16 @@ func (mm *MarkList) mark() error {
 	return nil
 }
 
-func (mm *MarkList) markBlock(hash []byte) error {
+func (mm *MarkList) markBlock(hash [32]byte) error {
 	// Find entry
 	ii := sort.Search(mm.Len(), func (jj int) bool {
 		aa, _ := mm.get(jj)
-		return bytes.Compare(aa[:], hash) >= 0
+		return bytes.Compare(aa[:], hash[:]) >= 0
 	})
 
 	aa, _ := mm.get(ii)
-	if !bytes.Equal(aa[:], hash) {
-		text := hex.EncodeToString(hash)
+	if !HashesEqual(aa, hash) {
+		text := hex.EncodeToString(hash[:])
 		return trace(fmt.Errorf("Attempted to mark non-existant block: %s", text))
 	}
 
@@ -219,7 +219,7 @@ func (mm *MarkList) markBlock(hash []byte) error {
 	return nil
 }
 
-func (mm *MarkList) markPathTrie(hash []byte) error {
+func (mm *MarkList) markPathTrie(hash [32]byte) error {
 	err := mm.markBlock(hash)
 	if err != nil {
 		return trace(err)
@@ -230,7 +230,7 @@ func (mm *MarkList) markPathTrie(hash []byte) error {
 		return trace(err)
 	}
 
-	err = trie.visitEachBlock(func (hash []byte) error {
+	err = trie.visitEachBlock(func (hash [32]byte) error {
 		return mm.markBlock(hash)
 	})
 	if err != nil {

@@ -3,6 +3,7 @@ package eft
 import (
 	"io/ioutil"
 	"testing"
+	"bytes"
 	"fmt"
 	"os"
 )
@@ -61,7 +62,7 @@ func TestLargeRoundtrip(tt *testing.T) {
 		panic(err)
 	}
 
-	if !BytesEqual(tmp, data) {
+	if bytes.Compare(tmp, data) != 0 {
 		fmt.Println("Item data mismatch")
 		tt.Fail()
 	}

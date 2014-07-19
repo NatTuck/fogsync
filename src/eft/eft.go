@@ -24,8 +24,8 @@ type EFT struct {
 	addedName string
 }
 
-func (eft *EFT) BlockPath(hash []byte) string {
-	text := hex.EncodeToString(hash)
+func (eft *EFT) BlockPath(hash [32]byte) string {
+	text := hex.EncodeToString(hash[:])
 	d0 := text[0:3]
 	d1 := text[3:6]
 	return path.Join(eft.Dir, "blocks", d0, d1, text)
@@ -42,7 +42,7 @@ func (eft *EFT) putItem(snap *Snapshot, info ItemInfo, src_path string) error {
 	if err != nil {
 		return err
 	}
-	copy(snap.Root[:], root)
+	snap.Root = root
 
 	err = eft.putParent(snap, info)
 	if err != nil {
@@ -123,36 +123,36 @@ func (eft *EFT) Del(name string) error {
 		eft.abort()
 		return err
 	}
-	copy(snap.Root[:], root)
+	snap.Root = root
 
 	eft.commit()
 	return nil
 }
 
-func (eft *EFT) saveBlock(data []byte) ([]byte, error) {
+func (eft *EFT) saveBlock(data []byte) ([32]byte, error) {
 	ctxt := EncryptBlock(data, eft.Key)
 	hash := HashSlice(ctxt)
 	name := eft.BlockPath(hash)
 
 	err := os.MkdirAll(path.Dir(name), 0700)
 	if err != nil {
-		return nil, trace(err)
+		return hash, trace(err)
 	}
 
 	err = ioutil.WriteFile(name, ctxt, 0600)
 	if err != nil {
-		return nil, trace(err)
+		return hash, trace(err)
 	}
 
-	err = eft.logAdded(hash)
+	err = eft.blockAdded(hash)
 	if err != nil {
-		return nil, trace(err)
+		return hash, trace(err)
 	}
 
 	return hash, nil
 }
 
-func (eft *EFT) loadBlock(hash []byte) ([]byte, error) {
+func (eft *EFT) loadBlock(hash [32]byte) ([]byte, error) {
 	name := eft.BlockPath(hash)
 
 	ctxt, err := ioutil.ReadFile(name)

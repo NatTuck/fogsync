@@ -1,6 +1,6 @@
 package eft
 
-func (eft *EFT) loadItemInfo(hash []byte) (ItemInfo, error) {
+func (eft *EFT) loadItemInfo(hash [32]byte) (ItemInfo, error) {
 	info := ItemInfo{}
 
 	data, err := eft.loadBlock(hash)
@@ -13,7 +13,7 @@ func (eft *EFT) loadItemInfo(hash []byte) (ItemInfo, error) {
 	return info, nil
 }
 
-func (eft *EFT) loadItem(hash []byte, dst_path string) (ItemInfo, error) {
+func (eft *EFT) loadItem(hash [32]byte, dst_path string) (ItemInfo, error) {
 	info, err := eft.loadItemInfo(hash)
 	if err != nil {
 		return info, err
@@ -26,7 +26,7 @@ func (eft *EFT) loadItem(hash []byte, dst_path string) (ItemInfo, error) {
 	}
 }
 
-func (eft *EFT) saveItem(info ItemInfo, src_path string) ([]byte, error) {
+func (eft *EFT) saveItem(info ItemInfo, src_path string) ([32]byte, error) {
 	if (info.Size <= 12 * 1024) {
 		return eft.saveSmallItem(info, src_path)
 	} else {
@@ -34,11 +34,11 @@ func (eft *EFT) saveItem(info ItemInfo, src_path string) ([]byte, error) {
 	}
 }
 
-func (eft *EFT) visitItemBlocks(info ItemInfo, fn func(hash []byte) error) error {
+func (eft *EFT) visitItemBlocks(info ItemInfo, fn func(hash [32]byte) error) error {
 	if (info.Size <= 12 * 1024) {
 		return nil
 	} else {
-		trie, err := eft.loadLargeTrie(info.Hash[:])
+		trie, err := eft.loadLargeTrie(info.Hash)
 		if err != nil {
 			return trace(err)
 		}

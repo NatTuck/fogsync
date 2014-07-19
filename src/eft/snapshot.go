@@ -28,24 +28,27 @@ type Snapshot struct {
 	Desc string
 }
 
-func (eft *EFT) loadSnapsHash() ([]byte, error) {
+func (eft *EFT) loadSnapsHash() ([32]byte, error) {
+	hash := [32]byte{}
+
 	snaps_path := path.Join(eft.Dir, "snaps")
 	hash_text, err := ioutil.ReadFile(snaps_path)
 	if err != nil {
-		return nil, ErrNotFound
+		return hash, ErrNotFound
 	}
 
-	hash, err := hex.DecodeString(string(hash_text))
+	hash_slice, err := hex.DecodeString(string(hash_text))
 	if err != nil {
-		return nil, trace(err)
+		return hash, trace(err)
 	}
 
+	copy(hash[:], hash_slice) 
 	return hash, nil
 }
 
-func (eft *EFT) saveSnapsHash(hash []byte) error {
+func (eft *EFT) saveSnapsHash(hash [32]byte) error {
 	snaps_path := path.Join(eft.Dir, "snaps")
-	hash_text := hex.EncodeToString(hash)
+	hash_text := hex.EncodeToString(hash[:])
 
 	err := ioutil.WriteFile(snaps_path, []byte(hash_text), 0600)
 	if err != nil {

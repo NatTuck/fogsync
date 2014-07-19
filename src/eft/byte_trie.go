@@ -1,6 +1,7 @@
 package eft
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 )
@@ -40,7 +41,7 @@ func (tn *TrieNode) emptyChild() *TrieNode {
 	}
 }
 
-func (tn *TrieNode) loadChild(hash []byte) (*TrieNode, error) {
+func (tn *TrieNode) loadChild(hash [32]byte) (*TrieNode, error) {
 	cc := tn.emptyChild()
 
 	err := cc.load(hash)
@@ -51,7 +52,7 @@ func (tn *TrieNode) loadChild(hash []byte) (*TrieNode, error) {
 	return cc, nil
 }
 
-func (tn *TrieNode) load(hash []byte) error {
+func (tn *TrieNode) load(hash [32]byte) error {
 	data, err := tn.eft.loadBlock(hash)
 	if err != nil {
 		return trace(err)
@@ -79,7 +80,7 @@ func (tn *TrieNode) load(hash []byte) error {
 	return nil
 }
 
-func (tn *TrieNode) save() ([]byte, error) {
+func (tn *TrieNode) save() ([32]byte, error) {
 	data := make([]byte, BLOCK_SIZE)
 
 	copy(data[0:2048], tn.hdr[:])
@@ -102,26 +103,24 @@ func (tn *TrieNode) save() ([]byte, error) {
 
 	hash, err := tn.eft.saveBlock(data)
 	if err != nil {
-		return nil, trace(err)
+		return hash, trace(err)
 	}
 
 	return hash, nil
 }
 
-func (tn *TrieNode) find(key []byte, dd int) ([]byte, error) {
+func (tn *TrieNode) find(key []byte, dd int) ([32]byte, error) {
 	slot := key[dd]
 	entry := tn.tab[slot]
 
 	switch entry.Type {
 	case TRIE_TYPE_NONE:
-		return nil, ErrNotFound
+		return [32]byte{}, ErrNotFound
 
 	case TRIE_TYPE_MORE:
-		next_hash := entry.Hash[:]
-
-		next, err := tn.loadChild(next_hash)
+		next, err := tn.loadChild(entry.Hash)
 		if err != nil {
-			return nil, err // Could be ErrNotFound, no trace
+			return [32]byte{}, err // Could be ErrNotFound, no trace
 		}
 
 		return next.find(key, dd + 1)
@@ -129,17 +128,17 @@ func (tn *TrieNode) find(key []byte, dd int) ([]byte, error) {
 	case TRIE_TYPE_ITEM:
 		key1, err := tn.key(entry)
 		if err != nil {
-			return nil, trace(err)
+			return [32]byte{}, trace(err)
 		}
 
-		if BytesEqual(key, key1) {
-			return entry.Hash[:], nil
+		if bytes.Compare(key, key1) == 0 {
+			return entry.Hash, nil
 		} else {
-			return nil, ErrNotFound
+			return [32]byte{}, ErrNotFound
 		}
 
 	default:
-		return nil, trace(fmt.Errorf("Unknown type in node entry: %d", entry.Type))
+		return [32]byte{}, trace(fmt.Errorf("Unknown type in node entry: %d", entry.Type))
 	}
 }
 
@@ -160,7 +159,7 @@ func (tn *TrieNode) insert(key []byte, new_ent TrieEntry, dd int) error {
 			return trace(err)
 		}
 		
-		if BytesEqual(key, curr_key) {
+		if bytes.Compare(key, curr_key) == 0 {
 			// Replace
 			tn.tab[slot] = new_ent
 
@@ -185,13 +184,13 @@ func (tn *TrieNode) insert(key []byte, new_ent TrieEntry, dd int) error {
 			}
 
 			next_entry := TrieEntry{ Type: TRIE_TYPE_MORE }
-			copy(next_entry.Hash[:], next_hash)
+			next_entry.Hash = next_hash
 
 			tn.tab[slot] = next_entry
 		}
 
 	case TRIE_TYPE_MORE:
-		next, err := tn.loadChild(entry.Hash[:])
+		next, err := tn.loadChild(entry.Hash)
 		if err != nil {
 			return trace(err)
 		}
@@ -206,7 +205,7 @@ func (tn *TrieNode) insert(key []byte, new_ent TrieEntry, dd int) error {
 			return trace(err)
 		}
 
-		copy(entry.Hash[:], next_hash)
+		entry.Hash = next_hash
 		tn.tab[slot] = entry
 
 	default:
@@ -230,7 +229,7 @@ func (tn *TrieNode) remove(key []byte, dd int) error {
 		fmt.Println("TODO (EFT): Figure out merge on remove")
 
 	case TRIE_TYPE_MORE:
-		next, err := tn.loadChild(entry.Hash[:])
+		next, err := tn.loadChild(entry.Hash)
 		if err != nil {
 			return trace(err)
 		}
@@ -245,7 +244,7 @@ func (tn *TrieNode) remove(key []byte, dd int) error {
 			return trace(err)
 		}
 
-		copy(entry.Hash[:], hash)
+		entry.Hash = hash
 		tn.tab[slot] = entry
 
 	default:
@@ -269,7 +268,7 @@ func (tn *TrieNode) visitEachEntry(fn func(ent *TrieEntry) error) error {
 		}
 
 		if ent.Type == TRIE_TYPE_MORE {
-			next, err := tn.loadChild(ent.Hash[:])
+			next, err := tn.loadChild(ent.Hash)
 			if err != nil {
 				return err
 			}

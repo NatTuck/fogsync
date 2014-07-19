@@ -73,8 +73,8 @@ func (eft *EFT) Unlock() error {
 	return nil
 }
 
-func (eft *EFT) logAdded(hash []byte) error {
-	text := hex.EncodeToString(hash)
+func (eft *EFT) blockAdded(hash [32]byte) error {
+	text := hex.EncodeToString(hash[:])
 	_, err := eft.added.WriteString(text + "\n")
 	if err != nil {
 		return trace(err)
@@ -146,10 +146,7 @@ func (eft *EFT) removeBlocks(list *os.File) error {
 		}
 
 		line = strings.TrimSpace(line)
-		hash, err := hex.DecodeString(line)
-		if err != nil {
-			return err
-		}
+		hash := HexToHash(line)
 
 		b_path := eft.BlockPath(hash)
 		os.Remove(b_path)

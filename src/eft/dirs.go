@@ -40,7 +40,7 @@ func (eft *EFT) getDir(snap *Snapshot, dpath string) (ItemInfo, Directory, error
 		return info, nil, trace(err)
 	}
 	
-	if !BytesEqual(info.Hash[:], HashSlice(text)) {
+	if !HashesEqual(info.Hash, HashSlice(text)) {
 		return info, nil, fmt.Errorf("Directory hash didn't match")
 	}
 	
@@ -64,8 +64,7 @@ func (eft *EFT) putDir(snap *Snapshot, info ItemInfo, dir Directory) error {
 		return trace(err)
 	}
 
-	dhash := HashSlice(text)
-	copy(info.Hash[:], dhash)
+	info.Hash = HashSlice(text)
 	info.Size = uint64(len(text))
 
 	err = ioutil.WriteFile(temp, text, 0600)

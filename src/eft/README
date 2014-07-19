@@ -181,12 +181,24 @@ Update Log
 A log is maintained of all changes to the EFT. This allows EFTs to be merged
 by replaying the logs.
 
-Logs are only maintained for a set amount of time (30 days?). This limits the
+Logs should only be maintained for a set amount of time. This limits the
 space used by the log and means that evidence of deleted file names is only
-preserved for a limited time.
+preserved for a limited time. This isn't actually implemented yet.
 
-Log format:
-   ... 
+The log is a text file with one event per line. The format is:
+
+Time\tOperation\tPath-or-Hash
+
+The possible events are
+
+T  PUT  /some/path
+T  DEL  /some/path
+T  CPT  ROOT_HASH
+
+CPT indiates that this is an upload or download checkpoint. These points
+are where the EFT was synced with a remote server.
+
+
 
 
 TODO: Implement update log.
