@@ -244,17 +244,7 @@ func (mm *MarkList) markPathTrie(hash [32]byte) error {
 }
 
 func (mm *MarkList) markItem(hash [32]byte) error {
-	err := mm.markBlock(hash)
-	if err != nil {
-		return trace(err)
-	}
-
-	info, err := mm.eft.loadItemInfo(hash)
-	if err != nil {
-		return trace(err)
-	}
-
-	err = mm.eft.visitItemBlocks(info, func(hash [32]byte) error {
+	err := mm.eft.visitItemBlocks(hash, func(hash [32]byte) error {
 		return mm.markBlock(hash)
 	})
 	if err != nil {

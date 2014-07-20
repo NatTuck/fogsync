@@ -110,6 +110,7 @@ func (eft *EFT) putParent(snap *Snapshot, info ItemInfo) error {
 }
 
 func (eft *EFT) ListInfos(dpath string) ([]ItemInfo, error) {
+	eft.Lock()
 	eft.begin()
 
 	_, dir, err := eft.getDir(eft.mainSnap(), dpath)
@@ -119,6 +120,7 @@ func (eft *EFT) ListInfos(dpath string) ([]ItemInfo, error) {
 	}
 	
 	eft.commit()
+	eft.Unlock()
 
 	names := make([]string, 0)
 

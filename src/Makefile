@@ -15,4 +15,9 @@ clean:
 	rm -f bin/fogsync
 	(cd webui/assets && make clean)
 
+live-test:
+	rm -rf ~/.cache/fogsync/Documents
+	make
+	bin/fogsync
+
 .PHONY: all clean assets

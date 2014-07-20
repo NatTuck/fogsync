@@ -98,19 +98,22 @@ func (eft *EFT) saveItem(info ItemInfo, src_path string) ([32]byte, error) {
 	}
 }
 
-func (eft *EFT) visitItemBlocks(info ItemInfo, fn func(hash [32]byte) error) error {
-	err := fn(info.Hash)
+func (eft *EFT) visitItemBlocks(hash [32]byte, fn func(hash [32]byte) error) error {
+	info, err := eft.loadItemInfo(hash)
 	if err != nil {
-		fmt.Println("XX - Lost block for", info.Path)
 		return trace(err)
 	}
 
 	if (info.Size <= 12 * 1024) {
-		return nil
+		return fn(hash)
 	} else {
-		trie, err := eft.loadLargeTrie(info.Hash)
+		err :=  fn(hash)
 		if err != nil {
-			fmt.Println("XX - Derp at", info.Path)
+			return trace(err)
+		}
+
+		trie, err := eft.loadLargeTrie(hash)
+		if err != nil {
 			return trace(err)
 		}
 

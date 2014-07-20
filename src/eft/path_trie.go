@@ -144,19 +144,9 @@ func (pt *PathTrie) visitEachBlock(fn func(hash [32]byte) error) error {
 			return fn(ent.Hash)
 
 		case TRIE_TYPE_ITEM:
-			err := fn(ent.Hash)
-			if err != nil {
-				return trace(err)
-			}
-
 			eft := pt.root.eft
 		
-			info, err := eft.loadItemInfo(ent.Hash)
-			if err != nil {
-				return trace(err)
-			}
-
-			err = eft.visitItemBlocks(info, fn)
+			err := eft.visitItemBlocks(ent.Hash, fn)
 			if err != nil {
 				return trace(err)
 			}

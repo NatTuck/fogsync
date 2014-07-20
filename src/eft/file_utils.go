@@ -89,3 +89,19 @@ func printFile(src_name string) error {
 
 	return nil
 }
+
+func filesEqual(aa, bb string) (bool, error) {
+	aa_hash, err := HashFile(aa)
+	if err != nil {
+		return false, trace(err)
+	}
+
+	bb_hash, err := HashFile(bb)
+	if err != nil {
+		return false, trace(err)
+	}
+
+	return HashesEqual(aa_hash, bb_hash), nil
+}
+
+

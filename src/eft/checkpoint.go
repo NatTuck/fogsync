@@ -43,9 +43,8 @@ func (eft *EFT) MakeCheckpoint() (*Checkpoint, error) {
 
 	adds := eft.TempName()
 
-	err = os.Rename(path.Join(eft.Dir, "adds"), adds)
+	err = os.Rename(path.Join(eft.Dir, "added"), adds)
 	if err != nil {
-		eft.abort()
 		return nil, trace(err)
 	}
 
