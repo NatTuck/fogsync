@@ -137,7 +137,7 @@ func (eft *EFT) commit() {
 func (eft *EFT) removeBlocks(list *os.File) error {
 	_, err := list.Seek(0, 0)
 	if err != nil {
-		return err
+		return trace(err)
 	}
 
 	bh := bufio.NewReader(list)
@@ -148,14 +148,17 @@ func (eft *EFT) removeBlocks(list *os.File) error {
 			break
 		}
 		if err != nil {
-			return err
+			return trace(err)
 		}
 
 		line = strings.TrimSpace(line)
 		hash := HexToHash(line)
 
 		b_path := eft.BlockPath(hash)
-		os.Remove(b_path)
+		err = os.Remove(b_path)
+		if err != nil {
+			return ErrNotFound
+		}
 	}
 
 	return nil
@@ -167,8 +170,8 @@ func (eft *EFT) abort() {
 	}
 
 	err := eft.removeBlocks(eft.added)
-	if err != nil {
-		fmt.Println(err.Error())
+	if err != nil && err != ErrNotFound {
+		panic(err)
 	}
 
 	os.Remove(eft.addedName)

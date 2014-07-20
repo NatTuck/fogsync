@@ -54,7 +54,6 @@ func (eft *EFT) Get(name string, dst_path string) (ItemInfo, error) {
 
 	info, err := eft.getItem(eft.mainSnap(), name, dst_path)
 	if err != nil {
-		eft.abort()
 		return info, err
 	}
 
@@ -67,7 +66,6 @@ func (eft *EFT) GetInfo(name string) (ItemInfo, error) {
 
 	info, _, err := eft.getTree(eft.mainSnap(), name)
 	if err != nil {
-		eft.abort()
 		return info, err
 	}
 

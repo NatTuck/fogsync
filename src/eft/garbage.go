@@ -196,7 +196,10 @@ func (mm *MarkList) mark() error {
 			return trace(err)
 		}
 
-		// TODO: Mark log
+		err = mm.markItem(snap.Log)
+		if err != nil {
+			return trace(err)
+		}
 	}
 
 	return nil
@@ -231,6 +234,27 @@ func (mm *MarkList) markPathTrie(hash [32]byte) error {
 	}
 
 	err = trie.visitEachBlock(func (hash [32]byte) error {
+		return mm.markBlock(hash)
+	})
+	if err != nil {
+		return trace(err)
+	}
+
+	return nil
+}
+
+func (mm *MarkList) markItem(hash [32]byte) error {
+	err := mm.markBlock(hash)
+	if err != nil {
+		return trace(err)
+	}
+
+	info, err := mm.eft.loadItemInfo(hash)
+	if err != nil {
+		return trace(err)
+	}
+
+	err = mm.eft.visitItemBlocks(info, func(hash [32]byte) error {
 		return mm.markBlock(hash)
 	})
 	if err != nil {

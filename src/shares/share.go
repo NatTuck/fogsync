@@ -157,6 +157,7 @@ func (ss *Share) gotLocalUpdate(full_path string, sysi os.FileInfo) {
 
 	prev_info, err := ss.Trie.GetInfo(rel_path)
 	if err == eft.ErrNotFound {
+		fmt.Println("XX - Nothing found for", full_path)
 		prev_info.ModT = 0
 		err = nil
 	}
@@ -165,7 +166,9 @@ func (ss *Share) gotLocalUpdate(full_path string, sysi os.FileInfo) {
 	stamp := uint64(sysi.ModTime().UnixNano())
 
 	if prev_info.ModT > stamp {
-		ss.gotRemoteUpdate(rel_path, prev_info.ModT)
+		if !sysi.Mode().IsDir() {
+			ss.gotRemoteUpdate(rel_path, prev_info.ModT)
+		}
 		return
 	}
 

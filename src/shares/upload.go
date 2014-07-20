@@ -3,7 +3,6 @@ package shares
 import (
 	"fmt"
 	"time"
-	"os"
 	"../fs"
 	"../pio"
 	"../config"
@@ -40,16 +39,15 @@ func (ss *Share) reallyUpload() {
 		return
 	}
 
-	adds, dead, err := ss.Trie.Changes()
+	cp, err := ss.Trie.MakeCheckpoint()
 	fs.CheckError(err)
-	defer os.Remove(adds)
-	defer os.Remove(dead)
+	defer cp.Cleanup()
 
 	fmt.Println("== Added Blocks ==")
-	addsData := pio.ReadFile(adds)
+	addsData := pio.ReadFile(cp.Adds)
 	fmt.Println(string(addsData))
 
 	fmt.Println("== Dead Blocks ==")
-	deadData := pio.ReadFile(dead)
+	deadData := pio.ReadFile(cp.Dels)
 	fmt.Println(string(deadData))
 }
