@@ -60,6 +60,10 @@ func (ss *Share) Name() string {
 	return ss.Config.Name
 }
 
+func (ss *Share) HmacName() string {
+
+}
+
 func (ss *Share) Key() []byte {
 	ss.Lock()
 	defer ss.Unlock()
@@ -68,6 +72,15 @@ func (ss *Share) Key() []byte {
 	fs.CheckError(err)
 
 	return key
+}
+
+func (ss *Share) CipherKey() (ckey [32]byte) {
+	kk := fs.DeriveKey(ss.Key(), "cipher")
+	copy(ckey[:], kk)
+}
+
+func (ss *Share) HmacKey() []byte {
+	return fs.DeriveKey(ss.Key(), "hmac")
 }
 
 func (ss *Share) SetKey(key []byte) {
@@ -113,12 +126,9 @@ func (mm *Manager) NewShare(name string) *Share {
 	
 	ss.load()
 
-	var key [32]byte
-	copy(key[:], ss.Key())
-
 	ss.Trie = &eft.EFT{
 		Dir: ss.CacheDir(),
-		Key: key,
+		Key: ss.CipherKey(),
 	}
 
 	ss.save()
@@ -198,7 +208,6 @@ func (ss *Share) gotLocalUpdate(full_path string, sysi os.FileInfo) {
 	err = ss.Trie.Put(info, temp)
 	fs.CheckError(err)
 
-	ss.logEvent("update", stamp, rel_path)
 	ss.upload()
 }
 
@@ -221,7 +230,6 @@ func (ss *Share) gotLocalDelete(full_path string, stamp uint64) {
 	err = ss.Trie.Del(rel_path)
 	fs.CheckError(err)
 
-	ss.logEvent("delete", stamp, rel_path)
 	ss.upload()
 }
 

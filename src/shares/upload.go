@@ -39,10 +39,16 @@ func (ss *Share) reallyUpload() {
 		return
 	}
 
+	// Check Cloud Share Setup
+	cloud.GetShare(ss.HashedName())
+
+	// Download
+
 	cp, err := ss.Trie.MakeCheckpoint()
 	fs.CheckError(err)
 	defer cp.Cleanup()
 
+	/*
 	fmt.Println("== Added Blocks ==")
 	addsData := pio.ReadFile(cp.Adds)
 	fmt.Println(string(addsData))
@@ -50,4 +56,5 @@ func (ss *Share) reallyUpload() {
 	fmt.Println("== Dead Blocks ==")
 	deadData := pio.ReadFile(cp.Dels)
 	fmt.Println(string(deadData))
+	*/
 }
