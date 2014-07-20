@@ -3,6 +3,7 @@ package eft
 import (
 	"io/ioutil"
 	"testing"
+	"path"
 	"fmt"
 	"os"
 )
@@ -14,7 +15,7 @@ func TestFullRoundtrip(tt *testing.T) {
 
 	defer func() {
 		if len(eft_dir) > 8 {
-			//os.RemoveAll(eft_dir)
+			os.RemoveAll(eft_dir)
 			fmt.Println("XX - eft_dir =", eft_dir)
 			os.Remove(hi0_txt)
 			os.Remove(hi1_txt)
@@ -39,7 +40,7 @@ func TestFullRoundtrip(tt *testing.T) {
 		panic(err)
 	}
 
-	dead, err := eft.Collect()
+	dead, err := eft.collect()
 	if err != nil {
 		panic(err)
 	}
@@ -68,6 +69,8 @@ func TestFullRoundtrip(tt *testing.T) {
 		fmt.Println("Item data mismatch")
 		tt.Fail()
 	}
+
+	printFile(path.Join(eft.Dir, "updates"))
 
 	/*
 	fmt.Println("dir:", eft.Dir)

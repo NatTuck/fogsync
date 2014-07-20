@@ -36,19 +36,15 @@ func TestLargeRoundtrip(tt *testing.T) {
 		panic(err)
 	}
 	
-	eft.begin()
-
-	hash, err := eft.saveLargeItem(info0, big_dat0)
+	err = eft.Put(info0, big_dat0)
 	if err != nil {
 		panic(err)
 	}
 
-	info1, err := eft.loadLargeItem(hash, big_dat1)
+	info1, err := eft.Get(info0.Path, big_dat1)
 	if err != nil {
 		panic(err)
 	}
-	
-	eft.commit()
 
 	if info0 != info1 {
 		fmt.Println("== Test Failed: Item Info Mismatch ==")

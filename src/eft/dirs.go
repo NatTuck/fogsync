@@ -99,6 +99,8 @@ func (eft *EFT) putParent(snap *Snapshot, info ItemInfo) error {
 
 	dir[name] = info.Type
 
+	dinfo.ModT = info.ModT
+
 	err = eft.putDir(snap, dinfo, dir)
 	if err != nil {
 		return trace(err)

@@ -17,6 +17,7 @@ func (eft *EFT) Lock() (eret error) {
 	defer func() {
 		if eret != nil {
 			eft.mutex.Unlock()
+			panic(eret)
 		}
 	}()
 
@@ -49,10 +50,19 @@ func (eft *EFT) Lock() (eret error) {
 		return trace(err)
 	}
 
+	eft.locked = true
 	return nil
 }
 
-func (eft *EFT) Unlock() error {
+func (eft *EFT) Unlock() (eret error) {
+	defer func() {
+		if eret != nil {
+			panic(eret)
+		}
+	}()
+
+	eft.locked = false
+
 	err := syscall.Flock(int(eft.lockf.Fd()), syscall.LOCK_UN)
 	if err != nil {
 		return trace(err)
@@ -83,15 +93,12 @@ func (eft *EFT) blockAdded(hash [32]byte) error {
 }
 
 func (eft *EFT) begin() {
-	err := eft.Lock()
-	if err != nil {
-		panic("Failed to get lock:" + err.Error())
+	if !eft.locked {
+		panic("EFT: Can't begin() without Lock()")
 	}
 
-	err = eft.loadSnaps()
-	if err == ErrNotFound {
-		fmt.Println("No snaps to load")
-	} else if err != nil {
+	err := eft.loadSnaps()
+	if err != nil && err != ErrNotFound {
 		panic("Couldn't load snaps:" + err.Error())
 	}
 
@@ -103,6 +110,10 @@ func (eft *EFT) begin() {
 }
 
 func (eft *EFT) commit() {
+	if !eft.locked {
+		panic("EFT: Can't commit() without Lock()")
+	}
+
 	err := eft.saveSnaps()
 	if err != nil {
 		panic(err)
@@ -121,11 +132,6 @@ func (eft *EFT) commit() {
 
 	os.Remove(eft.addedName)
 	eft.addedName = ""
-	
-	err = eft.Unlock()
-	if err != nil {
-		panic(err);
-	}
 }
 
 func (eft *EFT) removeBlocks(list *os.File) error {
@@ -156,6 +162,10 @@ func (eft *EFT) removeBlocks(list *os.File) error {
 }
 
 func (eft *EFT) abort() {
+	if !eft.locked {
+		panic("EFT: Can't abort() without Lock()")
+	}
+
 	err := eft.removeBlocks(eft.added)
 	if err != nil {
 		fmt.Println(err.Error())
@@ -164,10 +174,5 @@ func (eft *EFT) abort() {
 	os.Remove(eft.addedName)
 	eft.added.Close()
 	eft.addedName = ""
-
-	err = eft.Unlock()
-	if err != nil {
-		panic(err)
-	}
 }
 

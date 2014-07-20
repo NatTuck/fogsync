@@ -19,7 +19,7 @@ import (
 	"fmt"
 )
 
-func (eft *EFT) Collect() (_ string, eret error) {
+func (eft *EFT) collect() (_ string, eret error) {
 	mm, err := eft.newMarkList()
 	if err != nil {
 		return "", trace(err)
