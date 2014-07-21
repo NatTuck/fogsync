@@ -10,6 +10,8 @@ import (
 	"fmt"
 )
 
+var BLOCK_OVERHEAD = 24 + secretbox.Overhead 
+
 func RandomBytes(nn int) []byte {
     bs := make([]byte, nn)
     mm, err := rand.Read(bs)

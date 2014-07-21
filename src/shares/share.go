@@ -60,8 +60,9 @@ func (ss *Share) Name() string {
 	return ss.Config.Name
 }
 
-func (ss *Share) HmacName() string {
-
+func (ss *Share) NameHmac() string {
+	data := fs.HmacSlice([]byte(ss.Name()), ss.HmacKey())
+	return hex.EncodeToString(data)
 }
 
 func (ss *Share) Key() []byte {
@@ -77,6 +78,7 @@ func (ss *Share) Key() []byte {
 func (ss *Share) CipherKey() (ckey [32]byte) {
 	kk := fs.DeriveKey(ss.Key(), "cipher")
 	copy(ckey[:], kk)
+	return ckey
 }
 
 func (ss *Share) HmacKey() []byte {

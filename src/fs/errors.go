@@ -53,7 +53,7 @@ func TagError(err error, tag string) error {
      return errors.New(msg)
 }
 
-func TraceError(err error) error {
+func Trace(err error) error {
      _, file, line, _ := runtime.Caller(1)
 	 msg := fmt.Sprintf("%s\n  ...@ %s:%d", err.Error(), file, line)
      return errors.New(msg)

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 	"../fs"
-	"../pio"
 	"../config"
+	"../cloud"
 )
 
 var upload_delay = 5 * time.Second
@@ -40,10 +40,22 @@ func (ss *Share) reallyUpload() {
 	}
 
 	// Check Cloud Share Setup
-	cloud.GetShare(ss.HashedName())
+	cc, err := cloud.New()
+	if err != nil {
+		fmt.Println(fs.Trace(err))
+		return
+	}
+
+	sdata, err := cc.GetShare(ss.NameHmac())
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(sdata)
+
+	return
 
 	// Download
-
 	cp, err := ss.Trie.MakeCheckpoint()
 	fs.CheckError(err)
 	defer cp.Cleanup()
