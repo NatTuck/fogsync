@@ -29,7 +29,7 @@ func (eft *EFT) newLargeTrie(info ItemInfo) LargeTrie {
 	return trie
 }
 
-func (eft *EFT) loadLargeTrie(hash []byte) (LargeTrie, error) {
+func (eft *EFT) loadLargeTrie(hash [32]byte) (LargeTrie, error) {
 	trie := LargeTrie{}
 
 	trie.root = &TrieNode{
@@ -47,12 +47,12 @@ func (eft *EFT) loadLargeTrie(hash []byte) (LargeTrie, error) {
 	return trie, nil
 }
 
-func (trie *LargeTrie) save() ([]byte, error) {
+func (trie *LargeTrie) save() ([32]byte, error) {
 	copy(trie.root.hdr[:], trie.info.Bytes())
 	return trie.root.save()
 }
 
-func (trie *LargeTrie) find(ii uint64) ([]byte, error) {
+func (trie *LargeTrie) find(ii uint64) ([32]byte, error) {
 	le := binary.LittleEndian
 
 	var iile [8]byte
@@ -61,20 +61,22 @@ func (trie *LargeTrie) find(ii uint64) ([]byte, error) {
 	return trie.root.find(iile[:], 0)
 }
 
-func (trie *LargeTrie) insert(ii uint64, hash []byte) error {
+func (trie *LargeTrie) insert(ii uint64, hash [32]byte) error {
 	le := binary.LittleEndian
 
 	entry := TrieEntry{}
-	copy(entry.Hash[:], hash)
+	entry.Hash = hash
 	le.PutUint64(entry.Pkey[:], ii)
 
 	return trie.root.insert(entry.Pkey[:], entry, 0)
 }
 
-func (eft *EFT) saveLargeItem(info ItemInfo, src_path string) ([]byte, error) {
+func (eft *EFT) saveLargeItem(info ItemInfo, src_path string) ([32]byte, error) {
+	hash := [32]byte{}
+
 	src, err := os.Open(src_path)
 	if err != nil {
-		return nil, trace(err)
+		return hash, trace(err)
 	}
 	defer src.Close()
 
@@ -88,29 +90,29 @@ func (eft *EFT) saveLargeItem(info ItemInfo, src_path string) ([]byte, error) {
 			break
 		}
 		if err != nil {
-			return nil, trace(err)
+			return hash, trace(err)
 		}
 
 		b_hash, err := eft.saveBlock(data)
 		if err != nil {
-			return nil, trace(err)
+			return hash, trace(err)
 		}
 
 		err = trie.insert(ii, b_hash)
 		if err != nil {
-			return nil, trace(err)
+			return hash, trace(err)
 		}
 	}
 
-	hash, err := trie.save()
+	hash, err = trie.save()
 	if err != nil {
-		return nil, trace(err)
+		return hash, trace(err)
 	}
 
 	return hash, nil
 }
 
-func (eft *EFT) loadLargeItem(hash []byte, dst_path string) (_ ItemInfo, eret error) {
+func (eft *EFT) loadLargeItem(hash [32]byte, dst_path string) (_ ItemInfo, eret error) {
 	info := ItemInfo{}
 
 	dst, err := os.Create(dst_path)
@@ -165,27 +167,9 @@ func (eft *EFT) loadLargeItem(hash []byte, dst_path string) (_ ItemInfo, eret er
 	return info, nil
 }
 
-func (eft *EFT) killLargeItemBlocks(hash []byte) error {
-	trie, err := eft.loadLargeTrie(hash)
-	if err != nil {
-		return trace(err)
-	}
-
-	for ii := uint64(0); true; ii++ {
-		b_hash, err := trie.find(ii)
-		if err == ErrNotFound {
-			break
-		}
-		if err != nil {
-			return trace(err)
-		}
-
-		err = eft.pushDead(b_hash)
-		if err != nil {
-			return trace(err)
-		}
-	}
-
-	return nil
+func (lt *LargeTrie) visitEachBlock(fn func(hash [32]byte) error) error {
+	return lt.root.visitEachEntry(func(ent *TrieEntry) error {
+		return fn(ent.Hash)
+	})
 }
 

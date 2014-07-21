@@ -32,13 +32,13 @@ func ReadLink(dst string, src string) error {
 func CopyFile(dst string, src string) error {
     in, err := os.Open(src)
     if err != nil { 
-		return TraceError(err)
+		return Trace(err)
 	}
     defer in.Close()
 
     out, err := os.Create(dst)
     if err != nil { 
-		return TraceError(err)
+		return Trace(err)
 	}
     
 	_, err = io.Copy(out, in)
@@ -46,11 +46,11 @@ func CopyFile(dst string, src string) error {
 	cerr := out.Close()
 
     if err != nil {
-		return TraceError(err)
+		return Trace(err)
 	}
 
 	if cerr != nil {
-		return TraceError(cerr)
+		return Trace(cerr)
 	}
 
     return nil
@@ -62,7 +62,7 @@ func CopyAll(dst string, src string) error {
 	err := cp.Run()
 	if err != nil {
 		msg := fmt.Errorf("Error in 'cp' command: %v\n", err)
-		return TraceError(msg)
+		return Trace(msg)
 	}
 
 	return nil

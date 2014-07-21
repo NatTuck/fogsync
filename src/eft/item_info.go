@@ -77,7 +77,7 @@ func NewItemInfo(name string, src_path string, sysi os.FileInfo) (ItemInfo, erro
 		if err != nil {
 			return info, trace(err)
 		}
-		copy(info.Hash[:], data_hash)
+		info.Hash = data_hash
 	}
 
 	uu, err := user.Current()

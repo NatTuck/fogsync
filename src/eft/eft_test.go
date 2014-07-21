@@ -1,66 +1,94 @@
 package eft
 
 import (
-	"io/ioutil"
 	"testing"
+	"path/filepath"
 	"fmt"
 	"os"
 )
 
-func TestFullRoundtrip(tt *testing.T) {
+func tryRoundtripFile(eft *EFT, file_name string) error {
+	info0, err := FastItemInfo(file_name)
+	if err != nil {
+		return trace(err)
+	}
+
+	err = eft.Put(info0, file_name)
+	if err != nil {
+		return trace(err)
+	}
+
+	temp := eft.TempName()
+	defer os.Remove(temp)
+
+	info1, err := eft.Get(info0.Path, temp)
+	if err != nil {
+		return trace(err)
+	}
+	
+	if info0 != info1 {
+		return fmt.Errorf("Item info mismatch")
+	}
+
+	eq, err := filesEqual(file_name, temp)
+	if err != nil {
+		panic(err)
+	}
+	if !eq { 
+		return fmt.Errorf("Item data mismatch")
+	}
+
+	return nil
+}
+
+func TestSomeRoundtrips(tt *testing.T) {
 	eft_dir := TmpRandomName()
-	hi0_txt := TmpRandomName()
-	hi1_txt := TmpRandomName()
+
+	key := [32]byte{}
+	eft := &EFT{Key: key, Dir: eft_dir}
 
 	defer func() {
 		if len(eft_dir) > 8 {
 			os.RemoveAll(eft_dir)
-			os.Remove(hi0_txt)
-			os.Remove(hi1_txt)
 		}
 	}()
 
-	err := ioutil.WriteFile(hi0_txt, []byte("hai there"), 0600)
+	cwd, err := os.Getwd()
 	if err != nil {
 		panic(err)
 	}
 
-	key := [32]byte{}
-	eft := EFT{Key: key, Dir: eft_dir} 
+	test_data := filepath.Join(cwd, "test-data")
 
-	info0, err := FastItemInfo(hi0_txt)
-	if err != nil {
-		panic(err)
-	}
+	filepath.Walk(test_data, func(pp string, sysi os.FileInfo, err error) error {
+		if err != nil {
+			panic(err)
+		}
 
-	err = eft.Put(info0, hi0_txt)
-	if err != nil {
-		panic(err)
-	}
+		if sysi.Mode().IsDir() {
+			return nil
+		}
 
-	info1, err := eft.Get(info0.Path, hi1_txt)
-	if err != nil {
-		panic(err)
-	}
-
-	if info0 != info1 {
-		fmt.Println("Item info mismatch")
-		tt.Fail()
-	}
-
-	data, err := ioutil.ReadFile(hi1_txt)
-	if err != nil {
-		panic(err)
-	}
-
-	if string(data) != "hai there" {
-		fmt.Println("Item data mismatch")
-		tt.Fail()
-	}
+		err = tryRoundtripFile(eft, pp)
+		if err != nil {
+			panic(err)
+		}
+		
+		return nil
+	})
 
 	/*
-	fmt.Println("dir:", eft.Dir)
-	fmt.Println(eft.ListDir("/"))
-	fmt.Println(eft.ListDir("/tmp"))
+	text, err := eft.ListDir("/home")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("== /home ==\n", text)
 	*/
+
+	cp, err := eft.MakeCheckpoint()
+	if err != nil {
+		panic(err)
+	}
+
+	cp.Cleanup()
 }

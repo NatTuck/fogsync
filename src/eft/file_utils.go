@@ -3,8 +3,10 @@ package eft
 import (
 	"encoding/hex"
 	"path"
+	"fmt"
 	"os"
 	"io"
+	"io/ioutil"
 )
 
 func TmpRandomName() string {
@@ -75,6 +77,31 @@ func copyFile(srcName, dstName string) (eret error) {
 
 	_, err = io.Copy(dst, src)
 	return err
+}
+
+func printFile(src_name string) error {
+	data, err := ioutil.ReadFile(src_name)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(string(data))
+
+	return nil
+}
+
+func filesEqual(aa, bb string) (bool, error) {
+	aa_hash, err := HashFile(aa)
+	if err != nil {
+		return false, trace(err)
+	}
+
+	bb_hash, err := HashFile(bb)
+	if err != nil {
+		return false, trace(err)
+	}
+
+	return HashesEqual(aa_hash, bb_hash), nil
 }
 
 

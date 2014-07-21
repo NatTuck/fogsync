@@ -12,12 +12,12 @@ type Cloud struct {
 	Auth string
 }
 
-var ErrNotSetup = errors.New("Cloud not setup yet")
+var ErrNotSetup = errors.New("Cloud server not setup yet")
 
 func New() (*Cloud, error) {
 	ss := config.GetSettings()
 
-	if !ss.Ready {
+	if !ss.Ready() {
 		return nil, ErrNotSetup
 	}
 
@@ -28,7 +28,11 @@ func New() (*Cloud, error) {
 	cc.load()
 
 	if cc.Auth == "" {
-		cc.getAuth(ss)
+		err := cc.getAuth(ss)
+		if err != nil {
+			return nil, fs.Trace(err)
+		}
+
 		cc.save()
 	}
 

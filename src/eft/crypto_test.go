@@ -1,8 +1,8 @@
 package eft
 
 import (
+	"bytes"
 	"testing"
-	"encoding/hex"
 )
 
 func TestRandomBytes(tt *testing.T) {
@@ -17,7 +17,7 @@ func TestHashSlice(tt *testing.T) {
 	hash := HashSlice([]byte("goats!"))
 
 	correct := "892600b929a02a5598a857c91a889c7a6cec16e9b397e7cba44e64cb9ca38348"
-	if hex.EncodeToString(hash) != correct {
+	if HashToHex(hash) != correct {
 		tt.Fail()
 	}
 }
@@ -35,7 +35,7 @@ func TestRoundtripBlock(tt *testing.T) {
 		panic(err)
 	}
 
-	if !BytesEqual(data, ptxt) {
+	if bytes.Compare(data, ptxt) != 0 {
 		tt.Fail()
 	}
 }

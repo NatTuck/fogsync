@@ -5,18 +5,20 @@ import (
 	"fmt"
 )
 
-func (eft *EFT) saveSmallItem(info ItemInfo, src_path string) ([]byte, error) {
+func (eft *EFT) saveSmallItem(info ItemInfo, src_path string) ([32]byte, error) {
+	empty := [32]byte{}
+
 	data, err := ioutil.ReadFile(src_path)
 	if err != nil {
-		return nil, err
+		return empty, err
 	}
 
 	if len(data) > 12 * 1024 {
-		return nil, fmt.Errorf("Maximum size for small item is 12k")
+		return empty, fmt.Errorf("Maximum size for small item is 12k")
 	}
 
 	if uint64(len(data)) != info.Size {
-		return nil, fmt.Errorf(
+		return empty, fmt.Errorf(
 			"Size (%d) does not match ItemInfo (%d)", 
 			len(data), info.Size)
 	}
@@ -30,13 +32,13 @@ func (eft *EFT) saveSmallItem(info ItemInfo, src_path string) ([]byte, error) {
 
 	hash, err := eft.saveBlock(block)
 	if err != nil {
-		return nil, err
+		return empty, err
 	}
 
 	return hash, nil
 }
 
-func (eft *EFT) loadSmallItem(hash []byte, dst_path string) (ItemInfo, error) {
+func (eft *EFT) loadSmallItem(hash [32]byte, dst_path string) (ItemInfo, error) {
 	nilInfo := ItemInfo{}
 
 	block, err := eft.loadBlock(hash)

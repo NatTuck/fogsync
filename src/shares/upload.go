@@ -3,10 +3,9 @@ package shares
 import (
 	"fmt"
 	"time"
-	"os"
 	"../fs"
-	"../pio"
 	"../config"
+	"../cloud"
 )
 
 var upload_delay = 5 * time.Second
@@ -40,16 +39,34 @@ func (ss *Share) reallyUpload() {
 		return
 	}
 
-	adds, dead, err := ss.Trie.Changes()
-	fs.CheckError(err)
-	defer os.Remove(adds)
-	defer os.Remove(dead)
+	// Check Cloud Share Setup
+	cc, err := cloud.New()
+	if err != nil {
+		fmt.Println(fs.Trace(err))
+		return
+	}
 
+	sdata, err := cc.GetShare(ss.NameHmac())
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(sdata)
+
+	return
+
+	// Download
+	cp, err := ss.Trie.MakeCheckpoint()
+	fs.CheckError(err)
+	defer cp.Cleanup()
+
+	/*
 	fmt.Println("== Added Blocks ==")
-	addsData := pio.ReadFile(adds)
+	addsData := pio.ReadFile(cp.Adds)
 	fmt.Println(string(addsData))
 
 	fmt.Println("== Dead Blocks ==")
-	deadData := pio.ReadFile(dead)
+	deadData := pio.ReadFile(cp.Dels)
 	fmt.Println(string(deadData))
+	*/
 }

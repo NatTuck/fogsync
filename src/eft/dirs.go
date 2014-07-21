@@ -13,11 +13,11 @@ import (
 // A directory maps names to ItemInfo types.
 type Directory map[string]uint32
 
-func (eft *EFT) getDir(dpath string) (ItemInfo, Directory, error) {
+func (eft *EFT) getDir(snap *Snapshot, dpath string) (ItemInfo, Directory, error) {
 	temp := eft.TempName()
 	defer os.Remove(temp)
 
-	info, err := eft.getItem(dpath, temp)
+	info, err := eft.getItem(snap, dpath, temp)
 	if err == ErrNotFound {
 		info = ItemInfo{
 			Path: dpath,
@@ -40,7 +40,7 @@ func (eft *EFT) getDir(dpath string) (ItemInfo, Directory, error) {
 		return info, nil, trace(err)
 	}
 	
-	if !BytesEqual(info.Hash[:], HashSlice(text)) {
+	if !HashesEqual(info.Hash, HashSlice(text)) {
 		return info, nil, fmt.Errorf("Directory hash didn't match")
 	}
 	
@@ -55,7 +55,7 @@ func (eft *EFT) getDir(dpath string) (ItemInfo, Directory, error) {
 	return info, dir, nil
 }
 
-func (eft *EFT) putDir(info ItemInfo, dir Directory) error {
+func (eft *EFT) putDir(snap *Snapshot, info ItemInfo, dir Directory) error {
 	temp := eft.TempName()
 	defer os.Remove(temp)
 
@@ -64,8 +64,7 @@ func (eft *EFT) putDir(info ItemInfo, dir Directory) error {
 		return trace(err)
 	}
 
-	dhash := HashSlice(text)
-	copy(info.Hash[:], dhash)
+	info.Hash = HashSlice(text)
 	info.Size = uint64(len(text))
 
 	err = ioutil.WriteFile(temp, text, 0600)
@@ -73,7 +72,7 @@ func (eft *EFT) putDir(info ItemInfo, dir Directory) error {
 		return trace(err)
 	}
 
-	err = eft.putItem(info, temp)
+	err = eft.putItem(snap, info, temp)
 	if err != nil {
 		return trace(err)
 	}
@@ -81,7 +80,7 @@ func (eft *EFT) putDir(info ItemInfo, dir Directory) error {
 	return nil
 }
 
-func (eft *EFT) putParent(info ItemInfo) error {
+func (eft *EFT) putParent(snap *Snapshot, info ItemInfo) error {
 	if info.Path == "/" {
 		return nil
 	}
@@ -93,14 +92,16 @@ func (eft *EFT) putParent(info ItemInfo) error {
 		dpath = "/"
 	}
 
-	dinfo, dir, err := eft.getDir(dpath)
+	dinfo, dir, err := eft.getDir(snap, dpath)
 	if err != nil {
 		return trace(err)
 	}
 
 	dir[name] = info.Type
 
-	err = eft.putDir(dinfo, dir)
+	dinfo.ModT = info.ModT
+
+	err = eft.putDir(snap, dinfo, dir)
 	if err != nil {
 		return trace(err)
 	}
@@ -109,15 +110,17 @@ func (eft *EFT) putParent(info ItemInfo) error {
 }
 
 func (eft *EFT) ListInfos(dpath string) ([]ItemInfo, error) {
+	eft.Lock()
 	eft.begin()
 
-	_, dir, err := eft.getDir(dpath)
+	_, dir, err := eft.getDir(eft.mainSnap(), dpath)
 	if err != nil {
 		eft.abort()
 		return nil, trace(err)
 	}
 	
 	eft.commit()
+	eft.Unlock()
 
 	names := make([]string, 0)
 
@@ -158,10 +161,10 @@ func (eft *EFT) ListDir(dpath string) ([]string, error) {
 	return items, nil
 }
 
-func (eft *EFT) listSubInfos(dpath string) ([]*ItemInfo, error) {
+func (eft *EFT) listSubInfos(snap *Snapshot, dpath string) ([]*ItemInfo, error) {
 	infos := make([]*ItemInfo, 0)
 
-	dinfo, dir, err := eft.getDir(dpath)
+	dinfo, dir, err := eft.getDir(snap, dpath)
 	if err != nil {
 		eft.abort()
 		return nil, trace(err)
@@ -170,13 +173,13 @@ func (eft *EFT) listSubInfos(dpath string) ([]*ItemInfo, error) {
 	infos = append(infos, &dinfo)
 
 	for kk, _ := range(dir) {
-		info, _, err := eft.getTree(path.Join(dpath, kk))
+		info, _, err := eft.getTree(snap, path.Join(dpath, kk))
 		if err != nil {
 			return nil, trace(err)
 		}
 
 		if info.Type == INFO_DIR {
-			sub_infos, err := eft.listSubInfos(info.Path)
+			sub_infos, err := eft.listSubInfos(snap, info.Path)
 			if err != nil {
 				return nil, trace(err)
 			}
@@ -193,7 +196,7 @@ func (eft *EFT) listSubInfos(dpath string) ([]*ItemInfo, error) {
 func (eft *EFT) ListAllInfos() ([]*ItemInfo, error) {
 	eft.begin()
 
-	infos, err := eft.listSubInfos("/")
+	infos, err := eft.listSubInfos(eft.mainSnap(), "/")
 	if err != nil {
 		eft.abort()
 		return nil, trace(err)

@@ -1,17 +1,22 @@
 package eft
 
+import (
+	"fmt"
+)
+
 type PathTrie struct {
 	root *TrieNode
 }
 
 func (eft *EFT) emptyPathTrie() PathTrie {
 	getPathKey := func(ee TrieEntry) ([]byte, error) {
-		info, err := eft.loadItemInfo(ee.Hash[:])
+		info, err := eft.loadItemInfo(ee.Hash)
 		if err != nil {
 			return nil, err
 		}
 
-		return HashString(info.Path), nil
+		hash := HashString(info.Path)
+		return hash[:], nil
 	}
 
 	trie := PathTrie{}
@@ -24,7 +29,7 @@ func (eft *EFT) emptyPathTrie() PathTrie {
 	return trie
 }
 
-func (eft *EFT) loadPathTrie(hash []byte) (PathTrie, error) {
+func (eft *EFT) loadPathTrie(hash [32]byte) (PathTrie, error) {
 	trie := eft.emptyPathTrie()
 
 	err := trie.root.load(hash)
@@ -35,94 +40,121 @@ func (eft *EFT) loadPathTrie(hash []byte) (PathTrie, error) {
 	return trie, nil
 }
 
-func (pt *PathTrie) save() ([]byte, error) {
+func (pt *PathTrie) save() ([32]byte, error) {
 	return pt.root.save()
 }
 
-func (pt *PathTrie) find(item_path string) ([]byte, error) {
+func (pt *PathTrie) find(item_path string) ([32]byte, error) {
 	path_hash := HashString(item_path)
-	return pt.root.find(path_hash, 0)
+	return pt.root.find(path_hash[:], 0)
 }
 
-func (pt *PathTrie) insert(item_path string, data_hash []byte) error {
+func (pt *PathTrie) insert(item_path string, data_hash [32]byte) error {
 	path_hash := HashString(item_path)
 
 	entry := TrieEntry{}
-	copy(entry.Hash[:], data_hash)
+	entry.Hash = data_hash
 
-	return pt.root.insert(path_hash, entry, 0)
+	return pt.root.insert(path_hash[:], entry, 0)
 }
 
 func (pt *PathTrie) remove(name string) error {
 	path_hash := HashString(name)
-	return pt.root.remove(path_hash, 0)
+	return pt.root.remove(path_hash[:], 0)
 }
 
-func (eft *EFT) putTree(info ItemInfo, data_hash []byte) ([]byte, error) {
+func (eft *EFT) putTree(snap *Snapshot, info ItemInfo, data_hash [32]byte) ([32]byte, error) {
 	trie := eft.emptyPathTrie()
 
 	var err error
+	root_hash := [32]byte{}
 
-	if eft.Root != "" {
-		trie, err = eft.loadPathTrie(eft.getRootHash())
+	if !snap.isEmpty() {
+		trie, err = eft.loadPathTrie(snap.Root)
 		if err != nil {
-			return nil, trace(err)
+			return root_hash, trace(err)
 		}
 	}
 
 	err = trie.insert(info.Path, data_hash)
 	if err != nil {
-		return nil, trace(err)
+		return root_hash, trace(err)
 	}
 
-	root_hash, err := trie.save()
+	root_hash, err = trie.save()
 	if err != nil {
-		return nil, trace(err)
+		return root_hash, trace(err)
 	}
 
 	return root_hash, nil
 }
 
-func (eft *EFT) getTree(item_path string) (ItemInfo, []byte, error) {
+func (eft *EFT) getTree(snap *Snapshot, item_path string) (ItemInfo, [32]byte, error) {
 	info := ItemInfo{}
 
-	if eft.Root == "" {
-		return info, nil, ErrNotFound 
+	item_hash := [32]byte{}
+
+	if snap.isEmpty() {
+		return info, item_hash, ErrNotFound 
 	}
 
-	trie, err := eft.loadPathTrie(eft.getRootHash())
+	trie, err := eft.loadPathTrie(snap.Root)
 	if err != nil {
-		return info, nil, trace(err)
+		return info, item_hash, trace(err)
 	}
 
-	item_hash, err := trie.find(item_path)
+	item_hash, err = trie.find(item_path)
 	if err != nil {
-		return info, nil, err // Could be ErrNotFound
+		return info, item_hash, err // Could be ErrNotFound
 	}
 
 	info, err = eft.loadItemInfo(item_hash)
 	if err != nil {
-		return info, nil, err
+		return info, item_hash, err
 	}
 
 	return info, item_hash, nil
 }
 
-func (eft *EFT) delTree(item_path string) ([]byte, error) {
-	trie, err := eft.loadPathTrie(eft.getRootHash())
+func (eft *EFT) delTree(snap *Snapshot, item_path string) ([32]byte, error) {
+	empty := [32]byte{}
+
+	trie, err := eft.loadPathTrie(snap.Root)
 	if err != nil {
-		return nil, trace(err)
+		return empty, trace(err)
 	}
 	
 	err = trie.remove(item_path)
 	if err != nil {
-		return nil, trace(err)
+		return empty, trace(err)
 	}
 
 	root_hash, err := trie.save()
 	if err != nil {
-		return nil, trace(err)
+		return empty, trace(err)
 	}
 
 	return root_hash, nil
+}
+
+func (pt *PathTrie) visitEachBlock(fn func(hash [32]byte) error) error {
+	return pt.root.visitEachEntry(func (ent *TrieEntry) error {
+		switch ent.Type {
+		case TRIE_TYPE_MORE:
+			return fn(ent.Hash)
+
+		case TRIE_TYPE_ITEM:
+			eft := pt.root.eft
+		
+			err := eft.visitItemBlocks(ent.Hash, fn)
+			if err != nil {
+				return trace(err)
+			}
+
+			return nil
+
+		default:
+			panic(fmt.Sprintf("Can't handle entry of type %d\n", ent.Type))
+		}
+	})
 }

@@ -60,6 +60,11 @@ func (ss *Share) Name() string {
 	return ss.Config.Name
 }
 
+func (ss *Share) NameHmac() string {
+	data := fs.HmacSlice([]byte(ss.Name()), ss.HmacKey())
+	return hex.EncodeToString(data)
+}
+
 func (ss *Share) Key() []byte {
 	ss.Lock()
 	defer ss.Unlock()
@@ -68,6 +73,16 @@ func (ss *Share) Key() []byte {
 	fs.CheckError(err)
 
 	return key
+}
+
+func (ss *Share) CipherKey() (ckey [32]byte) {
+	kk := fs.DeriveKey(ss.Key(), "cipher")
+	copy(ckey[:], kk)
+	return ckey
+}
+
+func (ss *Share) HmacKey() []byte {
+	return fs.DeriveKey(ss.Key(), "hmac")
 }
 
 func (ss *Share) SetKey(key []byte) {
@@ -113,12 +128,9 @@ func (mm *Manager) NewShare(name string) *Share {
 	
 	ss.load()
 
-	var key [32]byte
-	copy(key[:], ss.Key())
-
 	ss.Trie = &eft.EFT{
 		Dir: ss.CacheDir(),
-		Key: key,
+		Key: ss.CipherKey(),
 	}
 
 	ss.save()
@@ -157,6 +169,7 @@ func (ss *Share) gotLocalUpdate(full_path string, sysi os.FileInfo) {
 
 	prev_info, err := ss.Trie.GetInfo(rel_path)
 	if err == eft.ErrNotFound {
+		fmt.Println("XX - Nothing found for", full_path)
 		prev_info.ModT = 0
 		err = nil
 	}
@@ -165,7 +178,9 @@ func (ss *Share) gotLocalUpdate(full_path string, sysi os.FileInfo) {
 	stamp := uint64(sysi.ModTime().UnixNano())
 
 	if prev_info.ModT > stamp {
-		ss.gotRemoteUpdate(rel_path, prev_info.ModT)
+		if !sysi.Mode().IsDir() {
+			ss.gotRemoteUpdate(rel_path, prev_info.ModT)
+		}
 		return
 	}
 
@@ -195,7 +210,6 @@ func (ss *Share) gotLocalUpdate(full_path string, sysi os.FileInfo) {
 	err = ss.Trie.Put(info, temp)
 	fs.CheckError(err)
 
-	ss.logEvent("update", stamp, rel_path)
 	ss.upload()
 }
 
@@ -218,7 +232,6 @@ func (ss *Share) gotLocalDelete(full_path string, stamp uint64) {
 	err = ss.Trie.Del(rel_path)
 	fs.CheckError(err)
 
-	ss.logEvent("delete", stamp, rel_path)
 	ss.upload()
 }
 

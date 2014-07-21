@@ -33,19 +33,15 @@ func TestSmallRoundtrip(tt *testing.T) {
 		panic(err)
 	}
 
-	eft.begin()
-
-	hash, err := eft.saveSmallItem(info0, hi0_txt)
+	err = eft.Put(info0, hi0_txt)
 	if err != nil {
 		panic(err)
 	}
 
-	info1, err := eft.loadSmallItem(hash, hi1_txt)
+	info1, err := eft.Get(info0.Path, hi1_txt)
 	if err != nil {
 		panic(err)
 	}
-
-	eft.commit()
 
 	if info0 != info1 {
 		fmt.Println("Item info mismatch")
