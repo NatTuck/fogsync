@@ -47,18 +47,21 @@ func (ss *Share) reallyUpload() {
 	}
 
 	sdata, err := cc.GetShare(ss.NameHmac())
+	if err == cloud.ErrNotFound {
+		fmt.Println("XX - Creating share")
+		sdata, err = cc.CreateShare(ss.NameHmac())
+		fmt.Println("XX - Created")
+	} 
 	if err != nil {
 		panic(err)
 	}
-
-	fmt.Println(sdata)
-
-	return
 
 	// Download
 	cp, err := ss.Trie.MakeCheckpoint()
 	fs.CheckError(err)
 	defer cp.Cleanup()
+
+
 
 	/*
 	fmt.Println("== Added Blocks ==")
