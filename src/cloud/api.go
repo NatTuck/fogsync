@@ -112,8 +112,8 @@ func (cc *Cloud) getJSON(cpath string) ([]byte, error) {
 	return data, nil
 }
 
-func (cc *Cloud) postJSON(cpath string, post_data []byte) ([]byte, error) {
-	resp, err := cc.httpRequest("POST", cpath, bytes.NewBuffer(post_data))
+func (cc *Cloud) sendJSON(mm string, cpath string, send_data []byte) ([]byte, error) {
+	resp, err := cc.httpRequest(mm, cpath, bytes.NewBuffer(send_data))
 	if err != nil {
 		return nil, fs.Trace(err)
 	}
@@ -133,6 +133,14 @@ func (cc *Cloud) postJSON(cpath string, post_data []byte) ([]byte, error) {
 	}
 
 	return data, nil
+}
+
+func (cc *Cloud) postJSON(cpath string, post_data []byte) ([]byte, error) {
+	return cc.sendJSON("POST", cpath, post_data)
+}
+
+func (cc *Cloud) patchJSON(cpath string, post_data []byte) ([]byte, error) {
+	return cc.sendJSON("PATCH", cpath, post_data)
 }
 
 func (cc *Cloud) postFile(cpath string, file_path string) error {

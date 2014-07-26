@@ -81,13 +81,13 @@ func (ss *Share) reallyUpload() {
 		panic(err)
 	}
 
-	/*
-	fmt.Println("== Added Blocks ==")
-	addsData := pio.ReadFile(cp.Adds)
-	fmt.Println(string(addsData))
+	err = cc.SetRoot(ss.NameHmac(), cp.Hash)
+	if err != nil {
+		panic(err)
+	}
 
-	fmt.Println("== Dead Blocks ==")
-	deadData := pio.ReadFile(cp.Dels)
-	fmt.Println(string(deadData))
-	*/
+	err = cc.RemoveList(ss.NameHmac(), cp.Dels)
+	if err != nil {
+		panic(err)
+	}
 }

@@ -2,7 +2,6 @@ package cloud
 
 import (
 	"encoding/json"
-	"encoding/hex"
 	"path"
 	"fmt"
 	"time"
@@ -82,13 +81,23 @@ func (cc *Cloud) SendBlocks(name_hmac string, src_path string) error {
 	return nil
 }
 
+func (cc *Cloud) RemoveList(name_hmac string, src_path string) error {
+	cpath := fmt.Sprintf("/shares/%s/remove", name_hmac)
+	err := cc.postFile(cpath, src_path)
+	if err != nil {
+		return fs.Trace(err)
+	}
+
+	return nil
+}
+
 type ShareRoot struct {
 	Root string `json:"root"`
 }
 
-func (cc *Cloud) SetRoot(name_hmac string, hash [32]byte) error {
+func (cc *Cloud) SetRoot(name_hmac string, hash string) error {
 	req_obj := &ShareRoot{
-		Root: hex.EncodeToString(hash[:]),
+		Root: hash,
 	}
 	req_data, err := json.Marshal(req_obj)
 	if err != nil {
@@ -96,12 +105,11 @@ func (cc *Cloud) SetRoot(name_hmac string, hash [32]byte) error {
 	}
 
 	cpath := fmt.Sprintf("/shares/%s", name_hmac)
-	resp, err := cc.postJSON(cpath, req_data)
+	_, err = cc.patchJSON(cpath, req_data)
 	if err != nil {
 		return fs.Trace(err)
 	}
 
-	fmt.Println("XX - ", resp)
-
 	return nil
 }
+
