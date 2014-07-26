@@ -2,6 +2,7 @@ package cloud
 
 import (
 	"encoding/json"
+	"encoding/hex"
 	"path"
 	"fmt"
 	"time"
@@ -71,3 +72,36 @@ func (cc *Cloud) CreateShare(name_hmac string) (*ShareInfo, error) {
 	return sinfo, nil
 }
 
+func (cc *Cloud) SendBlocks(name_hmac string, src_path string) error {
+	cpath := fmt.Sprintf("/shares/%s/put", name_hmac)
+	err := cc.postFile(cpath, src_path)
+	if err != nil {
+		return fs.Trace(err)
+	}
+
+	return nil
+}
+
+type ShareRoot struct {
+	Root string `json:"root"`
+}
+
+func (cc *Cloud) SetRoot(name_hmac string, hash [32]byte) error {
+	req_obj := &ShareRoot{
+		Root: hex.EncodeToString(hash[:]),
+	}
+	req_data, err := json.Marshal(req_obj)
+	if err != nil {
+		return fs.Trace(err)
+	}
+
+	cpath := fmt.Sprintf("/shares/%s", name_hmac)
+	resp, err := cc.postJSON(cpath, req_data)
+	if err != nil {
+		return fs.Trace(err)
+	}
+
+	fmt.Println("XX - ", resp)
+
+	return nil
+}

@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"io"
+	"os"
 	"../config"
 	"../fs"
 )
@@ -135,7 +136,35 @@ func (cc *Cloud) postJSON(cpath string, post_data []byte) ([]byte, error) {
 }
 
 func (cc *Cloud) postFile(cpath string, file_path string) error {
-	panic("TODO")
+	body, err := os.Open(file_path)
+	if err != nil {
+		return fs.Trace(err)
+	}
+	defer body.Close()
+
+	req, err := http.NewRequest("POST", cc.reqURL(cpath), body)
+	if err != nil {
+		return fs.Trace(err)
+	}
+	req.Header.Set("Content-Type", "application/octet-stream")
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("X-FogSync-Auth", cc.Auth)
+
+	cli := &http.Client{}
+	resp, err := cli.Do(req)
+	if err != nil {
+		return fs.Trace(err)
+	}
+
+	if resp.StatusCode == 404 {
+		return ErrNotFound
+	}
+
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		return fmt.Errorf("HTTP %s", resp.Status)
+	}
+	
+	return nil
 }
 
 func (cc *Cloud) getQuery(path string, query string) (*http.Response, error) {

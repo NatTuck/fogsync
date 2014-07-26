@@ -1,21 +1,25 @@
 package eft
 
 import (
-	"encoding/binary"
+	"encoding/hex"
+	"strings"
+	"bytes"
+	"bufio"
+	"fmt"
 	"os"
 	"io"
+	"io/ioutil"
 )
 
 type BlockArchive struct {
 	eft  *EFT
-	size int64
 	name string
 	file *os.File
 }
 
 func (eft *EFT) NewArchive() (*BlockArchive, error) {
 	ba := &BlockArchive{eft: eft}
-	ba.name = eft.TempFile()
+	ba.name = eft.TempName()
 
 	file, err := os.Create(ba.name)
 	if err != nil {
@@ -32,20 +36,17 @@ func (eft *EFT) LoadArchive(src_path string) (*BlockArchive, error) {
 		return nil, trace(err)
 	}
 	
-	size_data := make([]byte, 4)
-	_, err := file.Read(size_data)
-	if err != nil {
-		return nil, trace(err)
-	}
-
-	be := binary.BigEndian
 	ba := &BlockArchive{
 		eft: eft,
-		size: be.Uint32(size_data),
+		name: src_path,
 		file: file,
 	}
 
 	return ba, nil
+}
+
+func (ba *BlockArchive) FileName() string {
+	return ba.name
 }
 
 func (ba *BlockArchive) Close() error {
@@ -62,25 +63,17 @@ func (ba *BlockArchive) Close() error {
 	return nil
 }
 
-func (ba *BlockArchive) Size() int64 {
-	return ba.size
-}
-
 func (ba *BlockArchive) Extract() error {
 	FULL_SIZE := BLOCK_SIZE + BLOCK_OVERHEAD
 
-	for ii := 0; ii < ba.Size(); ii++ {
-		start := 4 + ii * FULL_SIZE
-		
-		_, err := ba.file.Seek(start, 0)
+	for {
+		hash := make([]byte, 32)
+		_, err := io.ReadFull(ba.file, hash)
+		if err == io.EOF {
+			break
+		}
 		if err != nil {
 			return trace(err)
-		}
-
-		hash := make([]byte, 32)
-		_, err = io.ReadFull(ba.file, hash)
-		if err != nil {
-			return trace err
 		}
 
 		data := make([]byte, FULL_SIZE)
@@ -94,30 +87,73 @@ func (ba *BlockArchive) Extract() error {
 			return trace(err)
 		}
 
-		if !HashesEqual(hash, hash1) {
+		if bytes.Compare(hash, hash1[:]) != 0 {
 			return trace(fmt.Errorf("Hash mismatch"))
 		}
 	}
+	
+	return nil
 }
 
 func (ba *BlockArchive) Add(hash [32]byte) error {
-	FULL_SIZE := BLOCK_SIZE + BLOCK_OVERHEAD
+	name := ba.eft.BlockPath(hash)
 
-	_, err := ba.file.Write(hash[:])
+	ctxt, err := ioutil.ReadFile(name)
 	if err != nil {
-		return trace(err)
-	}
-	
-	data, err := ba.eft.loadBlock(hash)
-	if err != nil {
-		return trace(err)
+		return err
 	}
 
-	_, err = ba.file.Write(data)
+	_, err = ba.file.Write(hash[:])
 	if err != nil {
 		return trace(err)
 	}
 
-	ba.size += 1
+	_, err = ba.file.Write(ctxt)
+	if err != nil {
+		return trace(err)
+	}
+
+	return nil
+}
+
+func (ba *BlockArchive) AddList(src_path string) error {
+	src, err := os.Open(src_path)
+	if err != nil {
+		return trace(err)
+	}
+	defer src.Close()
+
+	rdr := bufio.NewReader(src)
+
+	for {
+		line_bytes, err := rdr.ReadBytes('\n')
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return trace(err)
+		}
+
+		line := strings.TrimSpace(string(line_bytes))
+
+		fmt.Println("XX hash -", line)
+
+		hsli, err := hex.DecodeString(line)
+		if err != nil {
+			return trace(err)
+		}
+
+		hash := [32]byte{}
+		copy(hash[:], hsli)
+		err = ba.Add(hash)
+		if os.IsNotExist(err) {
+			continue
+		}
+		if err != nil {
+			return trace(err)
+		}
+	}
+
+	return nil
 }
 

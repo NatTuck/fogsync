@@ -2,6 +2,7 @@ package eft
 
 import (
 	"io/ioutil"
+	"fmt"
 	"path"
 	"os"
 )
@@ -37,6 +38,11 @@ func (eft *EFT) loadBlock(hash [32]byte) ([]byte, error) {
 		return nil, trace(err)
 	}
 
+	hash1 := HashSlice(ctxt)
+	if !HashesEqual(hash, hash1) {
+		return nil, fmt.Errorf("Hash mismatch for %s", HashToHex(hash))
+	}
+	
 	data, err := DecryptBlock(ctxt, eft.Key)
 	if err != nil {
 		return nil, trace(err)
@@ -44,5 +50,4 @@ func (eft *EFT) loadBlock(hash [32]byte) ([]byte, error) {
 
 	return data, nil
 }
-
 

@@ -55,13 +55,31 @@ func (ss *Share) reallyUpload() {
 	if err != nil {
 		panic(err)
 	}
+	fmt.Println(sdata)
 
-	// Download
+	// TODO: Verify that this is a fast-forward
+	
+
+	// Upload
 	cp, err := ss.Trie.MakeCheckpoint()
 	fs.CheckError(err)
 	defer cp.Cleanup()
 
+	ba, err := ss.Trie.NewArchive()
+	if err != nil {
+		panic(err)
+	}
+	defer ba.Close()
 
+	err = ba.AddList(cp.Adds)
+	if err != nil {
+		panic(err)
+	}
+
+	err = cc.SendBlocks(ss.NameHmac(), ba.FileName())
+	if err != nil {
+		panic(err)
+	}
 
 	/*
 	fmt.Println("== Added Blocks ==")
