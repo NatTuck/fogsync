@@ -3,6 +3,7 @@ package shares
 import (
 	"fmt"
 	"time"
+	"os"
 	"../fs"
 	"../config"
 	"../cloud"
@@ -18,6 +19,7 @@ func (ss *Share) uploadLoop() {
 	delay := time.NewTimer(upload_delay)
 
 	ss.reallyUpload()
+	panic("test done")
 
 	for {
 		select {
@@ -81,6 +83,12 @@ func (ss *Share) reallyUpload() {
 	if err != nil {
 		panic(err)
 	}
+
+	sysi, err := os.Lstat(ba.FileName())
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("XX - ba size", sysi.Size())
 
 	err = cc.SendBlocks(ss.NameHmac(), ba.FileName())
 	if err != nil {

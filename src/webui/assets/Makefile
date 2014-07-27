@@ -33,8 +33,8 @@ clean:
 	touch public/.keep
 
 prereqs:
-	sudo apt-get install npm
-	sudo ln -s /usr/bin/nodejs /usr/bin/node
+	node -v || sudo apt-get install nodejs-legacy
+	npm -v || sudo apt-get install npm
 	sudo npm install -g coffee-script
 	sudo npm install -g scss
 	sudo npm install -g ember-precompile

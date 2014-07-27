@@ -15,6 +15,12 @@ clean:
 	rm -f bin/fogsync
 	(cd webui/assets && make clean)
 
+prereqs:
+	go get github.com/howeyc/fsnotify
+	go get github.com/GeertJohan/go.rice
+	go get github.com/edsrzf/mmap-go
+	(cd webui/assets && make prereqs)
+
 live-test:
 	rm -rf ~/.cache/fogsync/Documents
 	make

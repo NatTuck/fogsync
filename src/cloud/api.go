@@ -44,6 +44,8 @@ func (cc *Cloud) httpRequest(mm string, cpath string, body io.Reader) (*http.Res
 		return nil, fs.Trace(err)
 	}
 
+	fmt.Println("XX - httpRequest", mm, cpath, resp.Status)
+
 	return resp, nil
 }
 
@@ -119,6 +121,8 @@ func (cc *Cloud) sendJSON(mm string, cpath string, send_data []byte) ([]byte, er
 	}
 	defer resp.Body.Close()
 
+	fmt.Println("XX - sendJSON", mm, cpath, resp.Status)
+
 	data, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fs.Trace(err)
@@ -144,6 +148,11 @@ func (cc *Cloud) patchJSON(cpath string, post_data []byte) ([]byte, error) {
 }
 
 func (cc *Cloud) postFile(cpath string, file_path string) error {
+	sysi, err := os.Stat(file_path)
+	if err != nil {
+		return fs.Trace(err)
+	}
+
 	body, err := os.Open(file_path)
 	if err != nil {
 		return fs.Trace(err)
@@ -157,12 +166,15 @@ func (cc *Cloud) postFile(cpath string, file_path string) error {
 	req.Header.Set("Content-Type", "application/octet-stream")
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("X-FogSync-Auth", cc.Auth)
+	req.ContentLength = sysi.Size()
 
 	cli := &http.Client{}
 	resp, err := cli.Do(req)
 	if err != nil {
 		return fs.Trace(err)
 	}
+	
+	fmt.Println("XX - postFile", cpath, resp.Status)
 
 	if resp.StatusCode == 404 {
 		return ErrNotFound
