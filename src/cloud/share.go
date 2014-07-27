@@ -91,21 +91,23 @@ func (cc *Cloud) RemoveList(name_hmac string, src_path string) error {
 	return nil
 }
 
-type ShareRoot struct {
+type ShareSwapRoot struct {
+	Prev string `json:"prev"`
 	Root string `json:"root"`
 }
 
-func (cc *Cloud) SetRoot(name_hmac string, hash string) error {
-	req_obj := &ShareRoot{
-		Root: hash,
+func (cc *Cloud) SwapRoot(name_hmac string, prev string, root string) error {
+	req_obj := &ShareSwapRoot{
+		Prev: prev,
+		Root: root,
 	}
 	req_data, err := json.Marshal(req_obj)
 	if err != nil {
 		return fs.Trace(err)
 	}
 
-	cpath := fmt.Sprintf("/shares/%s", name_hmac)
-	_, err = cc.patchJSON(cpath, req_data)
+	cpath := fmt.Sprintf("/shares/%s/casr", name_hmac)
+	_, err = cc.postJSON(cpath, req_data)
 	if err != nil {
 		return fs.Trace(err)
 	}

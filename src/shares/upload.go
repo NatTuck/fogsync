@@ -17,6 +17,8 @@ func (ss *Share) upload() {
 func (ss *Share) uploadLoop() {
 	delay := time.NewTimer(upload_delay)
 
+	ss.reallyUpload()
+
 	for {
 		select {
 		case again := <-ss.Uploads:
@@ -57,8 +59,12 @@ func (ss *Share) reallyUpload() {
 	}
 	fmt.Println(sdata)
 
-	// TODO: Verify that this is a fast-forward
-	
+	// Transaction plan:
+	// - Merge remote data
+	// - If merge_from hash is still accurate, upload
+
+	// Perform merge
+	prev_root := sdata.Root
 
 	// Upload
 	cp, err := ss.Trie.MakeCheckpoint()
@@ -81,7 +87,7 @@ func (ss *Share) reallyUpload() {
 		panic(err)
 	}
 
-	err = cc.SetRoot(ss.NameHmac(), cp.Hash)
+	err = cc.SwapRoot(ss.NameHmac(), prev_root, cp.Hash)
 	if err != nil {
 		panic(err)
 	}
@@ -91,3 +97,4 @@ func (ss *Share) reallyUpload() {
 		panic(err)
 	}
 }
+

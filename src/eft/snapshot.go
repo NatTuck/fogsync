@@ -146,3 +146,7 @@ func (eft *EFT) mainSnap() *Snapshot {
 
 	return &eft.Snaps[0]
 }
+
+func (eft *EFT) FetchSnaps(snaps_hash [32]byte) error {
+	return nil
+}
