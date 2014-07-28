@@ -24,7 +24,7 @@ type Share struct {
 	Watcher *Watcher
 	Mutex   sync.Mutex
 	Changes chan string
-	Uploads chan bool
+	Syncs   chan bool
 }
 
 func (ss *Share) Lock() {
