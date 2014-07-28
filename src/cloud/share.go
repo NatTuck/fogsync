@@ -71,9 +71,19 @@ func (cc *Cloud) CreateShare(name_hmac string) (*ShareInfo, error) {
 	return sinfo, nil
 }
 
+func (cc *Cloud) FetchBlocks(name_hmac string, src_path string, dst_path string) error {
+	cpath := fmt.Sprintf("/shares/%s/get", name_hmac)
+	err := cc.postFile(cpath, src_path, dst_path)
+	if err != nil {
+		return fs.Trace(err)
+	}
+
+	return nil
+}
+
 func (cc *Cloud) SendBlocks(name_hmac string, src_path string) error {
 	cpath := fmt.Sprintf("/shares/%s/put", name_hmac)
-	err := cc.postFile(cpath, src_path)
+	err := cc.postFile(cpath, src_path, "")
 	if err != nil {
 		return fs.Trace(err)
 	}
@@ -83,7 +93,7 @@ func (cc *Cloud) SendBlocks(name_hmac string, src_path string) error {
 
 func (cc *Cloud) RemoveList(name_hmac string, src_path string) error {
 	cpath := fmt.Sprintf("/shares/%s/remove", name_hmac)
-	err := cc.postFile(cpath, src_path)
+	err := cc.postFile(cpath, src_path, "")
 	if err != nil {
 		return fs.Trace(err)
 	}

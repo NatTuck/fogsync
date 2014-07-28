@@ -3,40 +3,36 @@ package shares
 import (
 	"fmt"
 	"time"
-	"os"
 	"../fs"
 	"../config"
 	"../cloud"
 )
 
-var upload_delay = 5 * time.Second
+var sync_delay = 5 * time.Second
 
-func (ss *Share) upload() {
-	ss.Uploads <-true
+func (ss *Share) sync() {
+	ss.Syncs <-true
 }
 
-func (ss *Share) uploadLoop() {
-	delay := time.NewTimer(upload_delay)
-
-	ss.reallyUpload()
-	panic("test done")
+func (ss *Share) syncLoop() {
+	delay := time.NewTimer(sync_delay)
 
 	for {
 		select {
-		case again := <-ss.Uploads:
+		case again := <-ss.Syncs:
 			if again {
-				delay.Reset(upload_delay)
+				delay.Reset(sync_delay)
 			} else {
 				fmt.Println("Shutting down uploadLoop")
 				break
 			}
 		case _ = <-delay.C:
-			ss.reallyUpload()
+			ss.reallySync()
 		}
 	}
 }
 
-func (ss *Share) reallyUpload() {
+func (ss *Share) reallySync() {
 	settings := config.GetSettings()
 	if !settings.Ready() {
 		fmt.Println("Skipping upload, no cloud configured.")
@@ -59,11 +55,34 @@ func (ss *Share) reallyUpload() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(sdata)
 
-	// Transaction plan:
-	// - Merge remote data
-	// - If merge_from hash is still accurate, upload
+	// Fetch
+	fetch_fn := func(bs string) error {
+		ba_path := ss.Trie.TempName()
+
+		err := cc.FetchBlocks(ss.NameHmac(), bs, ba_path)
+		if err != nil {
+			return fs.Trace(err)
+		}
+
+		ba, err := ss.Trie.LoadArchive(ba_path)
+		if err != nil {
+			return fs.Trace(err)
+		}
+		defer ba.Close()
+
+		err = ba.Extract()
+		if err != nil {
+			return fs.Trace(err)
+		}
+
+		return nil
+	}
+
+	err = ss.Trie.MergeRemote(eft.HashToHex(sdata.Root), fetch_fn)
+	if err != nil {
+		panic(err)
+	}
 
 	// Perform merge
 	prev_root := sdata.Root
@@ -83,12 +102,6 @@ func (ss *Share) reallyUpload() {
 	if err != nil {
 		panic(err)
 	}
-
-	sysi, err := os.Lstat(ba.FileName())
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println("XX - ba size", sysi.Size())
 
 	err = cc.SendBlocks(ss.NameHmac(), ba.FileName())
 	if err != nil {
