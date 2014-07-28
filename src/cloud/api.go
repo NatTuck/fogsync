@@ -147,7 +147,7 @@ func (cc *Cloud) patchJSON(cpath string, post_data []byte) ([]byte, error) {
 	return cc.sendJSON("PATCH", cpath, post_data)
 }
 
-func (cc *Cloud) postFile(cpath string, file_path string) error {
+func (cc *Cloud) postFile(cpath string, file_path string, dst_file string) error {
 	sysi, err := os.Stat(file_path)
 	if err != nil {
 		return fs.Trace(err)
@@ -173,6 +173,7 @@ func (cc *Cloud) postFile(cpath string, file_path string) error {
 	if err != nil {
 		return fs.Trace(err)
 	}
+	defer resp.Body.Close()
 	
 	fmt.Println("XX - postFile", cpath, resp.Status)
 
@@ -183,7 +184,20 @@ func (cc *Cloud) postFile(cpath string, file_path string) error {
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
 		return fmt.Errorf("HTTP %s", resp.Status)
 	}
-	
+
+	if dst_file != "" {
+		dst, err := os.Create(dst_file)
+		if err != nil {
+			return fs.Trace(err)
+		}
+		defer dst.Close()
+
+		_, err = io.Copy(dst, resp.Body)
+		if err != nil {
+			return fs.Trace(err)
+		}
+	}
+
 	return nil
 }
 

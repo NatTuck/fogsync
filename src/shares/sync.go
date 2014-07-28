@@ -3,7 +3,6 @@ package shares
 import (
 	"fmt"
 	"time"
-	"os"
 	"../fs"
 	"../config"
 	"../cloud"
@@ -15,7 +14,7 @@ func (ss *Share) sync() {
 	ss.Syncs <-true
 }
 
-func (ss *Share) uploadLoop() {
+func (ss *Share) syncLoop() {
 	delay := time.NewTimer(sync_delay)
 
 	for {
@@ -40,6 +39,7 @@ func (ss *Share) reallySync() {
 		return
 	}
 
+	// Check Cloud Share Setup
 	cc, err := cloud.New()
 	if err != nil {
 		fmt.Println(fs.Trace(err))
@@ -56,14 +56,36 @@ func (ss *Share) reallySync() {
 		panic(err)
 	}
 
+	// Fetch
+	fetch_fn := func(bs string) error {
+		ba_path := ss.Trie.TempName()
+
+		err := cc.FetchBlocks(ss.NameHmac(), bs, ba_path)
+		if err != nil {
+			return fs.Trace(err)
+		}
+
+		ba, err := ss.Trie.LoadArchive(ba_path)
+		if err != nil {
+			return fs.Trace(err)
+		}
+		defer ba.Close()
+
+		err = ba.Extract()
+		if err != nil {
+			return fs.Trace(err)
+		}
+
+		return nil
+	}
+
+	err = ss.Trie.MergeRemote(eft.HashToHex(sdata.Root), fetch_fn)
+	if err != nil {
+		panic(err)
+	}
+
 	// Perform merge
 	prev_root := sdata.Root
-
-	if prev_root != "" {
-		ss.Trie.MergeRemote(func(blocks [][32]byte) error {
-			return cc.Fetch(ss.NameHmac(), blocks)
-		})
-	}
 
 	// Upload
 	cp, err := ss.Trie.MakeCheckpoint()
@@ -97,6 +119,3 @@ func (ss *Share) reallySync() {
 	}
 }
 
-func (ss *Share) fetch() error {
-	
-}

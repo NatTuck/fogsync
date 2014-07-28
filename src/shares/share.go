@@ -103,12 +103,12 @@ func (ss *Share) Start() {
 	ss.Watcher = ss.startWatcher()
 	fmt.Println("XX - Watcher started")
 
-	go ss.uploadLoop()
+	go ss.syncLoop()
 }
 
 func (ss *Share) Stop() {
 	ss.Watcher.Shutdown()
-	ss.Uploads<- false
+	ss.Syncs<- false
 }
 
 func (ss *Share) FullScan() {
@@ -123,7 +123,7 @@ func (mm *Manager) NewShare(name string) *Share {
 			Name: name,
 		},
 		Changes: make(chan string, 256),
-		Uploads: make(chan bool, 4),
+		Syncs:   make(chan bool, 4),
 	}
 	
 	ss.load()
@@ -210,7 +210,7 @@ func (ss *Share) gotLocalUpdate(full_path string, sysi os.FileInfo) {
 	err = ss.Trie.Put(info, temp)
 	fs.CheckError(err)
 
-	ss.upload()
+	ss.sync()
 }
 
 func (ss *Share) gotLocalDelete(full_path string, stamp uint64) {
@@ -232,7 +232,7 @@ func (ss *Share) gotLocalDelete(full_path string, stamp uint64) {
 	err = ss.Trie.Del(rel_path)
 	fs.CheckError(err)
 
-	ss.upload()
+	ss.sync()
 }
 
 func (ss *Share) gotRemoteUpdate(full_path string, stamp uint64) {

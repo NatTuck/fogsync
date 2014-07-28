@@ -30,7 +30,6 @@ func (eft *EFT) BlockPath(hash [32]byte) string {
 	return path.Join(eft.Dir, "blocks", d0, d1, text)
 }
 
-
 func (eft *EFT) Put(info ItemInfo, src_path string) error {
 	eft.Lock()
 	defer eft.Unlock()
