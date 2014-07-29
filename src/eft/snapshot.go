@@ -63,18 +63,27 @@ func (snap *Snapshot) isEmpty() bool {
 	return bytes.Compare(zero, snap.Root[:]) == 0
 }
 
-func (eft *EFT) loadSnaps() error {
+func (eft *EFT) loadSnaps() ([]Snapshot, error) {
 	hash, err := eft.loadSnapsHash()
 	if err != nil {
-		return err // could be ErrNotFound
+		return nil, err // could be ErrNotFound
 	}
 
+	snaps, err := eft.loadSnapsFrom(hash)
+	if err != nil {
+		return nil, trace(err)
+	}
+	
+	return snaps, nil
+}
+
+func (eft *EFT) loadSnapsFrom(hash [32]byte) ([]Snapshot, error) {
 	data, err := eft.loadBlock(hash)
 	if err != nil {
-		return trace(err)
+		return nil, trace(err)
 	}
 
-	eft.Snaps = make([]Snapshot, 0)
+	snaps := make([]Snapshot, 0)
 	zero_hash := make([]byte, 32)
 
 	for ii := 0; ii < 128; ii++ {
@@ -91,17 +100,17 @@ func (eft *EFT) loadSnaps() error {
 		snap.Time = be.Uint64(data[base + 96:base + 104])
 
 		if !bytes.Equal(snap.Root[:], zero_hash) {
-			eft.Snaps = append(eft.Snaps, snap)
+			snaps = append(snaps, snap)
 		}
 	}
 
-	return nil
+	return snaps, nil
 }
 
-func (eft *EFT) saveSnaps() error {
+func (eft *EFT) saveSnaps(snaps []Snapshot) error {
 	data := make([]byte, BLOCK_SIZE)
 	
-	for ii, snap := range(eft.Snaps) {
+	for ii, snap := range(snaps) {
 		if snap.Temp {
 			continue
 		}

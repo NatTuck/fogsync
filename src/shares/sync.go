@@ -1,11 +1,13 @@
 package shares
 
 import (
+	"os"
 	"fmt"
 	"time"
 	"../fs"
 	"../config"
 	"../cloud"
+	"../eft"
 )
 
 var sync_delay = 5 * time.Second
@@ -79,9 +81,12 @@ func (ss *Share) reallySync() {
 		return nil
 	}
 
-	err = ss.Trie.MergeRemote(eft.HashToHex(sdata.Root), fetch_fn)
-	if err != nil {
-		panic(err)
+	if sdata.Root != "" {
+		hash := eft.HexToHash(sdata.Root)
+		err = ss.Trie.MergeRemote(hash, fetch_fn)
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	// Perform merge

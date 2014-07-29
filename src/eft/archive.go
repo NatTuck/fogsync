@@ -3,7 +3,6 @@ package eft
 import (
 	"encoding/hex"
 	"strings"
-	"bytes"
 	"bufio"
 	"fmt"
 	"os"
@@ -67,8 +66,8 @@ func (ba *BlockArchive) Extract() error {
 	FULL_SIZE := BLOCK_SIZE + BLOCK_OVERHEAD
 
 	for {
-		hash := make([]byte, 32)
-		_, err := io.ReadFull(ba.file, hash)
+		hash := [32]byte{}
+		_, err := io.ReadFull(ba.file, hash[:])
 		if err == io.EOF {
 			break
 		}
@@ -76,19 +75,15 @@ func (ba *BlockArchive) Extract() error {
 			return trace(err)
 		}
 
-		data := make([]byte, FULL_SIZE)
-		_, err = io.ReadFull(ba.file, data)
+		ctxt := make([]byte, FULL_SIZE)
+		_, err = io.ReadFull(ba.file, ctxt)
 		if err != nil {
 			return trace(err)
 		}
 
-		hash1, err := ba.eft.saveBlock(data)
+		err = ba.eft.saveEncBlock(hash, ctxt)
 		if err != nil {
 			return trace(err)
-		}
-
-		if bytes.Compare(hash, hash1[:]) != 0 {
-			return trace(fmt.Errorf("Hash mismatch"))
 		}
 	}
 	

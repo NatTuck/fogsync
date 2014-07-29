@@ -23,4 +23,8 @@ func (eft *EFT) MergeRemote(hash [32]byte, fn func(bs string) error) error {
 
 	// Merge snapshots
 	// TODO: Load alternate snap block
+
+	panic("TODO")
+
+	return nil
 }

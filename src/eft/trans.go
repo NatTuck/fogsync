@@ -1,7 +1,6 @@
 package eft
 
 import (
-	"encoding/hex"
 	"strings"
 	"bufio"
 	"syscall"
@@ -45,7 +44,8 @@ func (eft *EFT) Lock() (eret error) {
 		return trace(err)
 	}
 
-	_, err = eft.lockf.Write([]byte(fmt.Sprintf("%d\n", os.Getpid())))
+	pid := []byte(fmt.Sprintf("%d\n", os.Getpid()))
+	_, err = eft.lockf.Write(pid)
 	if err != nil {
 		return trace(err)
 	}
@@ -84,8 +84,8 @@ func (eft *EFT) Unlock() (eret error) {
 }
 
 func (eft *EFT) blockAdded(hash [32]byte) error {
-	text := hex.EncodeToString(hash[:])
-	_, err := eft.added.WriteString(text + "\n")
+	text := fmt.Sprintf("%s\n", HashToHex(hash))
+	_, err := eft.added.WriteString(text)
 	if err != nil {
 		return trace(err)
 	}
@@ -97,10 +97,11 @@ func (eft *EFT) begin() {
 		panic("EFT: Can't begin() without Lock()")
 	}
 
-	err := eft.loadSnaps()
+	snaps, err := eft.loadSnaps()
 	if err != nil && err != ErrNotFound {
 		panic("Couldn't load snaps:" + err.Error())
 	}
+	eft.Snaps = snaps
 
 	eft.addedName = eft.TempName()
 	eft.added, err = os.Create(eft.addedName)
@@ -114,7 +115,7 @@ func (eft *EFT) commit() {
 		panic("EFT: Can't commit() without Lock()")
 	}
 
-	err := eft.saveSnaps()
+	err := eft.saveSnaps(eft.Snaps)
 	if err != nil {
 		panic(err)
 	}
@@ -169,7 +170,13 @@ func (eft *EFT) abort() {
 		panic("EFT: Can't abort() without Lock()")
 	}
 
-	err := eft.removeBlocks(eft.added)
+	snaps, err := eft.loadSnaps()
+	if err != nil && err != ErrNotFound {
+		panic("Couldn't load snaps:" + err.Error())
+	}
+	eft.Snaps = snaps
+
+	err = eft.removeBlocks(eft.added)
 	if err != nil && err != ErrNotFound {
 		panic(err)
 	}

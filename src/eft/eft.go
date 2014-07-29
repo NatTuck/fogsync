@@ -13,14 +13,16 @@ type EFT struct {
 	Key  [32]byte // Key for cipher and MAC
 	Dir  string   // Path to block store
 
+	// Current transaction
 	Snaps []Snapshot
-
-	mutex  sync.Mutex
-	lockf  *os.File
-	locked bool
 
 	added *os.File
 	addedName string
+	
+	// Synchronize access
+	mutex  sync.Mutex
+	lockf  *os.File
+	locked bool
 }
 
 func (eft *EFT) BlockPath(hash [32]byte) string {
