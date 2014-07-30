@@ -104,12 +104,20 @@ func (eft *EFT) loadSnapsFrom(hash [32]byte) ([]Snapshot, error) {
 		}
 	}
 
+	if len(snaps) == 0 {
+		return nil, fmt.Errorf("No snapshots loaded")
+	}
+
 	return snaps, nil
 }
 
 func (eft *EFT) saveSnaps(snaps []Snapshot) error {
-	data := make([]byte, BLOCK_SIZE)
+	if len(snaps) == 0 {
+		return fmt.Errorf("No snapshots to save")
+	}
 	
+	data := make([]byte, BLOCK_SIZE)
+
 	for ii, snap := range(snaps) {
 		if snap.Temp {
 			continue
