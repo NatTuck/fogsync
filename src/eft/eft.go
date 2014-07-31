@@ -8,6 +8,7 @@ import (
 )
 
 const BLOCK_SIZE = 16 * 1024
+var   ZERO_HASH  = [32]byte{}
 
 type EFT struct {
 	Key  [32]byte // Key for cipher and MAC

@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"bytes"
 	"path"
+	"fmt"
 	"strings"
 	"io/ioutil"
 )
