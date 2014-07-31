@@ -7,17 +7,31 @@ import (
 	"bytes"
 )
 
-func (eft *EFT) MergeRemote(hash [32]byte, fn func(bs string) error) error {
-	// Fetch snaps root
-	bs := eft.TempName()
-	
-	err := ioutil.WriteFile(bs, []byte(fmt.Sprintf("%s\n", HashToHex(hash))), 0600)
+type FetchFn func (bs *BlockSet) error
+
+func fetchOneBlock(hash [32]byte, fetch_fn FetchFn) error {
+	bs, err := NewBlockSet()
 	if err != nil {
 		return trace(err)
 	}
-	defer os.Remove(bs)
+	defer bs.Close()
+
+	err = bs.Add(hash)
+	if err != nil {
+		return trace(err)
+	}
 	
-	err = fn(bs)
+	err = fetch_fn(bs)
+	if err != nil {
+		return trace(err)
+	}
+
+	return nil
+}
+
+func (eft *EFT) MergeRemote(hash [32]byte, fetch_fn FetchFn) error {
+	// Fetch snaps root
+	err := fetchOneBlock(hash, fetch_fn)
 	if err != nil {
 		return trace(err)
 	}
@@ -33,11 +47,11 @@ func (eft *EFT) MergeRemote(hash [32]byte, fn func(bs string) error) error {
 		return trace(err)
 	}
 
-	if len(rem_snaps) != 1 {
+	if len(snaps != 1) || len(rem_snaps) != 1 {
 		panic("TODO: Handle multiple snapshots")
 	}
 
-	merged, err := eft.mergeSnaps(snaps[0], rem_snaps[0])
+	merged, err := eft.mergeSnaps(snaps[0], rem_snaps[0], fetch_fn)
 	if err != nil {
 		return trace(err)
 	}
@@ -51,7 +65,7 @@ func (eft *EFT) MergeRemote(hash [32]byte, fn func(bs string) error) error {
 	return nil
 }
 
-func (eft *EFT) mergeSnaps(snap0, snap1 Snapshot) (Snapshot, error) {
+func (eft *EFT) mergeSnaps(snap0, snap1 Snapshot, fetch_fn FetchFn) (Snapshot, error) {
 	if HashesEqual(snap0.Root, snap1.Root) {
 		return snap0, nil
 	}

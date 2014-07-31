@@ -58,9 +58,9 @@ func TestSomeRoundtrips(tt *testing.T) {
 		panic(err)
 	}
 
-	test_data := filepath.Join(cwd, "test-data")
+	eft_src_dir := cwd
 
-	filepath.Walk(test_data, func(pp string, sysi os.FileInfo, err error) error {
+	filepath.Walk(eft_src_dir, func(pp string, sysi os.FileInfo, err error) error {
 		if err != nil {
 			panic(err)
 		}
@@ -77,14 +77,6 @@ func TestSomeRoundtrips(tt *testing.T) {
 		return nil
 	})
 
-	/*
-	text, err := eft.ListDir("/home")
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println("== /home ==\n", text)
-	*/
-
 	cp, err := eft.MakeCheckpoint()
 	if err != nil {
 		panic(err)
@@ -92,3 +84,4 @@ func TestSomeRoundtrips(tt *testing.T) {
 
 	cp.Cleanup()
 }
+
