@@ -97,17 +97,19 @@ func (eft *EFT) begin() {
 		panic("EFT: Can't begin() without Lock()")
 	}
 
-	snaps, err := eft.loadSnaps()
-	if err != nil && err != ErrNotFound {
-		panic("Couldn't load snaps:" + err.Error())
-	}
-	eft.Snaps = snaps
+	var err error
 
 	eft.addedName = eft.TempName()
 	eft.added, err = os.Create(eft.addedName)
 	if err != nil {
 		panic("Could not create added list: " + err.Error())
 	}
+
+	snaps, err := eft.loadSnaps()
+	if err != nil && err != ErrNotFound {
+		panic("Couldn't load snaps:" + err.Error())
+	}
+	eft.Snaps = snaps
 }
 
 func (eft *EFT) commit() {

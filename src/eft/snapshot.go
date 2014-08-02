@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"path"
 	"fmt"
+	"os"
 	"strings"
 	"io/ioutil"
 )
@@ -27,6 +28,41 @@ type Snapshot struct {
 	Time uint64
 	Temp bool
 	Desc string
+}
+
+func (eft *EFT) emptySnap() (Snapshot, error) {
+	snap := Snapshot{}
+
+	info := ItemInfo{}
+	info.Path = "/"
+	info.Type = INFO_DIR
+
+	empty_name := eft.TempName()
+	empty, err := os.Create(empty_name)
+	if err != nil {
+		return snap, trace(err)
+	}
+	defer os.Remove(empty_name)
+	defer empty.Close()
+
+	err = eft.putItem(&snap, info, empty_name)
+	if err != nil {
+		return snap, trace(err)
+	}
+	
+	return snap, nil
+}
+
+func (eft *EFT) defaultSnapsList() ([]Snapshot, error) {
+	snaps := []Snapshot{}
+
+	snap, err := eft.emptySnap()
+	if err != nil {
+		return snaps, trace(err) 
+	}
+
+	snaps = append(snaps, snap)
+	return snaps, nil
 }
 
 func (eft *EFT) loadSnapsHash() ([32]byte, error) {
@@ -66,8 +102,16 @@ func (snap *Snapshot) isEmpty() bool {
 
 func (eft *EFT) loadSnaps() ([]Snapshot, error) {
 	hash, err := eft.loadSnapsHash()
-	if err != nil {
-		return nil, err // could be ErrNotFound
+	if err == ErrNotFound {
+		snaps, err := eft.defaultSnapsList()
+		if err != nil {
+			return snaps, trace(err)
+		}
+
+		return snaps, nil 
+
+	} else if err != nil {
+		return nil, trace(err)
 	}
 
 	snaps, err := eft.loadSnapsFrom(hash)
@@ -106,7 +150,10 @@ func (eft *EFT) loadSnapsFrom(hash [32]byte) ([]Snapshot, error) {
 	}
 
 	if len(snaps) == 0 {
-		return nil, fmt.Errorf("No snapshots loaded")
+		snaps, err = eft.defaultSnapsList()
+		if err != nil {
+			return snaps, trace(err)
+		}
 	}
 
 	return snaps, nil

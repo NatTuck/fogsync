@@ -6,6 +6,10 @@ import (
 	"fmt"
 )
 
+type ByteTrie interface {
+	KeyBytes(ee *TrieEntry) ([]byte, error)
+}
+
 const (
 	TRIE_TYPE_NONE = 0
 	TRIE_TYPE_MORE = 1
@@ -14,6 +18,8 @@ const (
 )
 
 type TrieEntry struct {
+	Trie ByteTrie
+
 	Hash [32]byte
 	Pkey [8]byte
 	Data [6]byte
@@ -21,11 +27,10 @@ type TrieEntry struct {
 	Resv uint8
 }
 
-type getKeyFn func(ee TrieEntry) ([]byte, error)
-
 type TrieNode struct {
 	eft *EFT
-	key getKeyFn
+	tri ByteTrie
+	dep int
 
 	hdr [2048]byte
 	ovr [16][32]byte
@@ -34,10 +39,27 @@ type TrieNode struct {
 
 var ErrNotFound = errors.New("EFT: record not found")
 
+func (ee *TrieEntry) KeyBytes() ([]byte, error) {
+	if ee.Trie == nil {
+		printStack()
+		return nil, fmt.Errorf("Bad Trie Entry")
+	}
+	return ee.Trie.KeyBytes(ee)
+}
+
+func (tn *TrieNode) emptyEntry() TrieEntry {
+	if tn.tri == nil {
+		panic("Bad TrieNode")
+	}
+
+	return TrieEntry{ Trie: tn.tri }
+}
+
 func (tn *TrieNode) emptyChild() *TrieNode {
 	return &TrieNode{
 		eft: tn.eft,
-		key: tn.key,
+		tri: tn.tri,
+		dep: tn.dep + 1,
 	}
 }
 
@@ -69,7 +91,7 @@ func (tn *TrieNode) load(hash [32]byte) error {
 		offset := 4096 + 48 * ii
 		rec := data[offset:offset + 48]
 
-		entry := TrieEntry{}
+		entry := tn.emptyEntry()
 		copy(entry.Hash[:], rec[0:32])
 		entry.Type = rec[32]
 		copy(entry.Pkey[:], rec[34:42])
@@ -109,8 +131,8 @@ func (tn *TrieNode) save() ([32]byte, error) {
 	return hash, nil
 }
 
-func (tn *TrieNode) find(key []byte, dd int) ([32]byte, error) {
-	slot := key[dd]
+func (tn *TrieNode) find(key []byte) ([32]byte, error) {
+	slot := key[tn.dep]
 	entry := tn.tab[slot]
 
 	switch entry.Type {
@@ -123,10 +145,10 @@ func (tn *TrieNode) find(key []byte, dd int) ([32]byte, error) {
 			return [32]byte{}, err // Could be ErrNotFound, no trace
 		}
 
-		return next.find(key, dd + 1)
+		return next.find(key)
 
 	case TRIE_TYPE_ITEM:
-		key1, err := tn.key(entry)
+		key1, err := entry.KeyBytes()
 		if err != nil {
 			return [32]byte{}, trace(err)
 		}
@@ -142,8 +164,12 @@ func (tn *TrieNode) find(key []byte, dd int) ([32]byte, error) {
 	}
 }
 
-func (tn *TrieNode) insert(key []byte, new_ent TrieEntry, dd int) error {
-	slot := key[dd]
+func (tn *TrieNode) insert(key []byte, new_ent TrieEntry) error {
+	if new_ent.Trie == nil {
+		return trace(fmt.Errorf("Can't insert bad TrieEntry"))
+	}
+
+	slot := key[tn.dep]
 	entry := tn.tab[slot]
 
 	new_ent.Type = TRIE_TYPE_ITEM
@@ -154,7 +180,7 @@ func (tn *TrieNode) insert(key []byte, new_ent TrieEntry, dd int) error {
 		tn.tab[slot] = new_ent
 
 	case TRIE_TYPE_ITEM:
-		curr_key, err := tn.key(entry)
+		curr_key, err := entry.KeyBytes()
 		if err != nil {
 			return trace(err)
 		}
@@ -168,12 +194,12 @@ func (tn *TrieNode) insert(key []byte, new_ent TrieEntry, dd int) error {
 
 			next := tn.emptyChild()
 
-			err = next.insert(curr_key, entry, dd + 1)
+			err = next.insert(curr_key, entry)
 			if err != nil {
 				return trace(err)
 			}
 	
-			err = next.insert(key, new_ent, dd + 1)
+			err = next.insert(key, new_ent)
 			if err != nil {
 				return trace(err)
 			}
@@ -195,7 +221,7 @@ func (tn *TrieNode) insert(key []byte, new_ent TrieEntry, dd int) error {
 			return trace(err)
 		}
 
-		err = next.insert(key, new_ent, dd + 1)
+		err = next.insert(key, new_ent)
 		if err != nil {
 			return trace(err)
 		}
@@ -215,8 +241,8 @@ func (tn *TrieNode) insert(key []byte, new_ent TrieEntry, dd int) error {
 	return nil
 }
 
-func (tn *TrieNode) remove(key []byte, dd int) error {
-	slot := key[dd]
+func (tn *TrieNode) remove(key []byte) error {
+	slot := key[tn.dep]
 	entry := tn.tab[slot]
 
 	switch entry.Type {
@@ -234,7 +260,7 @@ func (tn *TrieNode) remove(key []byte, dd int) error {
 			return trace(err)
 		}
 
-		err = next.remove(key, dd + 1)
+		err = next.remove(key)
 		if err != nil {
 			return err
 		}

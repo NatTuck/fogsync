@@ -12,8 +12,12 @@ type LargeTrie struct {
 	root *TrieNode
 }
 
-func getLargeKey(ee TrieEntry) ([]byte, error) {
+func (trie *LargeTrie) KeyBytes(ee *TrieEntry) ([]byte, error) {
 	return ee.Pkey[:], nil
+}
+
+func (trie *LargeTrie) NewEntry() TrieEntry {
+	return TrieEntry{Trie: trie}
 }
 
 func (eft *EFT) newLargeTrie(info ItemInfo) LargeTrie {
@@ -23,7 +27,8 @@ func (eft *EFT) newLargeTrie(info ItemInfo) LargeTrie {
 
 	trie.root = &TrieNode{
 		eft: eft,
-		key: getLargeKey,
+		tri: &trie,
+		dep: 0,
 	}
 
 	return trie
@@ -34,7 +39,8 @@ func (eft *EFT) loadLargeTrie(hash [32]byte) (LargeTrie, error) {
 
 	trie.root = &TrieNode{
 		eft: eft,
-		key: getLargeKey,
+		tri: &trie,
+		dep: 0,
 	}
 	
 	err := trie.root.load(hash)
@@ -58,17 +64,17 @@ func (trie *LargeTrie) find(ii uint64) ([32]byte, error) {
 	var iile [8]byte
 	le.PutUint64(iile[:], ii)
 
-	return trie.root.find(iile[:], 0)
+	return trie.root.find(iile[:])
 }
 
 func (trie *LargeTrie) insert(ii uint64, hash [32]byte) error {
 	le := binary.LittleEndian
 
-	entry := TrieEntry{}
+	entry := trie.NewEntry()
 	entry.Hash = hash
 	le.PutUint64(entry.Pkey[:], ii)
 
-	return trie.root.insert(entry.Pkey[:], entry, 0)
+	return trie.root.insert(entry.Pkey[:], entry)
 }
 
 func (eft *EFT) saveLargeItem(info ItemInfo, src_path string) ([32]byte, error) {

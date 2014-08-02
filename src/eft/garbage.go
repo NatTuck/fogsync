@@ -195,11 +195,6 @@ func (mm *MarkList) mark() error {
 		if err != nil {
 			return trace(err)
 		}
-
-		err = mm.markItem(snap.Log)
-		if err != nil {
-			return trace(err)
-		}
 	}
 
 	return nil

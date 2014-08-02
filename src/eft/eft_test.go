@@ -3,43 +3,9 @@ package eft
 import (
 	"testing"
 	"path/filepath"
-	"fmt"
 	"os"
 )
 
-func tryRoundtripFile(eft *EFT, file_name string) error {
-	info0, err := FastItemInfo(file_name)
-	if err != nil {
-		return trace(err)
-	}
-
-	err = eft.Put(info0, file_name)
-	if err != nil {
-		return trace(err)
-	}
-
-	temp := eft.TempName()
-	defer os.Remove(temp)
-
-	info1, err := eft.Get(info0.Path, temp)
-	if err != nil {
-		return trace(err)
-	}
-	
-	if info0 != info1 {
-		return fmt.Errorf("Item info mismatch")
-	}
-
-	eq, err := filesEqual(file_name, temp)
-	if err != nil {
-		panic(err)
-	}
-	if !eq { 
-		return fmt.Errorf("Item data mismatch")
-	}
-
-	return nil
-}
 
 func TestSomeRoundtrips(tt *testing.T) {
 	eft_dir := TmpRandomName()

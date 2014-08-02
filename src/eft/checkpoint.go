@@ -2,7 +2,6 @@ package eft
 
 import (
 	"os"
-	"time"
 	"path"
 )
 
@@ -17,16 +16,6 @@ func (eft *EFT) MakeCheckpoint() (*Checkpoint, error) {
 	defer eft.Unlock()
 
 	eft.begin()
-
-	snap := eft.mainSnap()
-	when := uint64(time.Now().UnixNano())
-	root := HashToHex(snap.Root)
-
-	err := eft.logUpdate(snap, when, "CPT", root)
-	if err != nil {
-		eft.abort()
-		return nil, trace(err)
-	}
 
 	dels, err := eft.collect()
 	if err != nil {

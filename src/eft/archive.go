@@ -11,14 +11,13 @@ import (
 )
 
 type BlockArchive struct {
-	eft  *EFT
 	name string
 	file *os.File
 }
 
-func (eft *EFT) NewArchive() (*BlockArchive, error) {
-	ba := &BlockArchive{eft: eft}
-	ba.name = eft.TempName()
+func NewArchive() (*BlockArchive, error) {
+	ba := &BlockArchive{}
+	ba.name = TmpRandomName()
 
 	file, err := os.Create(ba.name)
 	if err != nil {
@@ -30,15 +29,20 @@ func (eft *EFT) NewArchive() (*BlockArchive, error) {
 }
 
 func (eft *EFT) LoadArchive(src_path string) (*BlockArchive, error) {
-	file, err := os.Open(src_path)
+	ba, err := NewArchive()
 	if err != nil {
 		return nil, trace(err)
 	}
-	
-	ba := &BlockArchive{
-		eft: eft,
-		name: src_path,
-		file: file,
+
+	src, err := os.Open(src_path)
+	if err != nil {
+		return nil, trace(err)
+	}
+	defer src.Close()
+
+	_, err = io.Copy(ba.file, src)
+	if err != nil {
+		return nil, trace(err)
 	}
 
 	return ba, nil
@@ -62,8 +66,13 @@ func (ba *BlockArchive) Close() error {
 	return nil
 }
 
-func (ba *BlockArchive) Extract() error {
+func (ba *BlockArchive) Extract(eft *EFT) error {
 	FULL_SIZE := BLOCK_SIZE + BLOCK_OVERHEAD
+
+	_, err := ba.file.Seek(0, 0)
+	if err != nil {
+		return trace(err)
+	}
 
 	for {
 		hash := [32]byte{}
@@ -81,7 +90,7 @@ func (ba *BlockArchive) Extract() error {
 			return trace(err)
 		}
 
-		err = ba.eft.saveEncBlock(hash, ctxt)
+		err = eft.saveEncBlock(hash, ctxt)
 		if err != nil {
 			return trace(err)
 		}
@@ -90,8 +99,8 @@ func (ba *BlockArchive) Extract() error {
 	return nil
 }
 
-func (ba *BlockArchive) Add(hash [32]byte) error {
-	name := ba.eft.BlockPath(hash)
+func (ba *BlockArchive) Add(eft *EFT, hash [32]byte) error {
+	name := eft.BlockPath(hash)
 
 	ctxt, err := ioutil.ReadFile(name)
 	if err != nil {
@@ -111,7 +120,7 @@ func (ba *BlockArchive) Add(hash [32]byte) error {
 	return nil
 }
 
-func (ba *BlockArchive) AddList(src_path string) error {
+func (ba *BlockArchive) AddList(eft *EFT, src_path string) error {
 	src, err := os.Open(src_path)
 	if err != nil {
 		return trace(err)
@@ -140,7 +149,7 @@ func (ba *BlockArchive) AddList(src_path string) error {
 
 		hash := [32]byte{}
 		copy(hash[:], hsli)
-		err = ba.Add(hash)
+		err = ba.Add(eft, hash)
 		if os.IsNotExist(err) {
 			continue
 		}
