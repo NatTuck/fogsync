@@ -2,7 +2,6 @@ package eft
 
 import (
 	"fmt"
-	"time"
 )
 
 func (eft *EFT) putItem(snap *Snapshot, info ItemInfo, src_path string) error {
@@ -17,16 +16,6 @@ func (eft *EFT) putItem(snap *Snapshot, info ItemInfo, src_path string) error {
 	}
 	snap.Root = root
 
-	err = eft.putParent(snap, info)
-	if err != nil {
-		return trace(err)
-	}
-
-	err = eft.logUpdate(snap, info.ModT, "PUT", info.Path)
-	if err != nil {
-		return trace(err)
-	}
-
 	return nil
 }
 
@@ -38,7 +27,7 @@ func (eft *EFT) getItem(snap *Snapshot, name string, dst_path string) (ItemInfo,
 
 	info1, err := eft.loadItem(data_hash, dst_path)
 	if err != nil {
-		return info0, err
+		return info0, trace(err)
 	}
 
 	if info0 != info1 {
@@ -54,12 +43,6 @@ func (eft *EFT) delItem(snap *Snapshot, name string) error {
 		return err
 	}
 	snap.Root = root
-
-	del_time := uint64(time.Now().UnixNano())
-	err = eft.logUpdate(snap, del_time, "DEL", name)
-	if err != nil {
-		return trace(err)
-	}
 
 	return nil
 }

@@ -2,8 +2,8 @@ package eft
 
 import (
 	"testing"
-	"path/filepath"
 	"fmt"
+	"path"
 	"os"
 )
 
@@ -22,9 +22,68 @@ func TestMerge(tt *testing.T) {
 		}
 	}()
 
-	fetch_fn := func(bs string) error {
-		eft1_dir
-	}
-	
+	fetch_eft1 := func (bs *BlockSet) (*BlockArchive, error) {
+		ba, err := NewArchive()
+		if err != nil {
+			return nil, trace(err)
+		}
 
+		err = bs.EachHash(func (hh [32]byte) error {
+			return ba.Add(eft1, hh)
+		})
+		if err != nil {
+			return nil, trace(err)
+		}
+
+		return ba, nil
+	}
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		panic(err)
+	}
+
+	test_path :=  path.Join(cwd, "merge_test.go")
+
+	err = tryRoundtripFile(eft1, test_path)
+	if err != nil {
+		panic(err)
+	}
+
+	cp, err := eft1.MakeCheckpoint()
+	if err != nil {
+		panic(err)
+	}
+	defer cp.Cleanup()
+
+	/*
+	fmt.Println("EFT0, pre")
+	printInfos(eft0)
+
+	fmt.Println("EFT1, pre")
+	printInfos(eft1)
+	*/
+
+	err = eft0.FetchRemote(HexToHash(cp.Hash), fetch_eft1)
+	if err != nil {
+		panic(err)
+	}
+
+	err = eft0.MergeRemote(HexToHash(cp.Hash))
+	if err != nil {
+		panic(err)
+	}
+
+	/*
+	fmt.Println("EFT0, post")
+	printInfos(eft0)
+	*/
+
+	_, err = eft0.GetInfo(test_path)
+	if err == ErrNotFound {
+		fmt.Println("Merge failed")
+		tt.Fail()
+	} else if err != nil {
+		panic(err)
+	}
 }

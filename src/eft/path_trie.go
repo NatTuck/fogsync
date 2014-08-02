@@ -8,22 +8,23 @@ type PathTrie struct {
 	root *TrieNode
 }
 
-func (eft *EFT) emptyPathTrie() PathTrie {
-	getPathKey := func(ee TrieEntry) ([]byte, error) {
-		info, err := eft.loadItemInfo(ee.Hash)
-		if err != nil {
-			return nil, err
-		}
-
-		hash := HashString(info.Path)
-		return hash[:], nil
+func (pt *PathTrie) KeyBytes(ee TrieEntry) ([]byte, error) {
+	info, err := pt.root.eft.loadItemInfo(ee.Hash)
+	if err != nil {
+		return nil, err
 	}
 
+	hash := HashString(info.Path)
+	return hash[:], nil
+}
+
+func (eft *EFT) emptyPathTrie() PathTrie {
 	trie := PathTrie{}
 
 	trie.root = &TrieNode{
 		eft: eft,
-		key: getPathKey,
+		tri: &trie,
+		dep: 0,
 	}
 
 	return trie
@@ -32,9 +33,11 @@ func (eft *EFT) emptyPathTrie() PathTrie {
 func (eft *EFT) loadPathTrie(hash [32]byte) (PathTrie, error) {
 	trie := eft.emptyPathTrie()
 
-	err := trie.root.load(hash)
-	if err != nil {
-		return trie, trace(err)
+	if hash != ZERO_HASH {
+		err := trie.root.load(hash)
+		if err != nil {
+			return trie, trace(err)
+		}
 	}
 
 	return trie, nil
@@ -46,7 +49,7 @@ func (pt *PathTrie) save() ([32]byte, error) {
 
 func (pt *PathTrie) find(item_path string) ([32]byte, error) {
 	path_hash := HashString(item_path)
-	return pt.root.find(path_hash[:], 0)
+	return pt.root.find(path_hash[:])
 }
 
 func (pt *PathTrie) insert(item_path string, data_hash [32]byte) error {
@@ -55,12 +58,12 @@ func (pt *PathTrie) insert(item_path string, data_hash [32]byte) error {
 	entry := TrieEntry{}
 	entry.Hash = data_hash
 
-	return pt.root.insert(path_hash[:], entry, 0)
+	return pt.root.insert(path_hash[:], entry)
 }
 
 func (pt *PathTrie) remove(name string) error {
 	path_hash := HashString(name)
-	return pt.root.remove(path_hash[:], 0)
+	return pt.root.remove(path_hash[:])
 }
 
 func (eft *EFT) putTree(snap *Snapshot, info ItemInfo, data_hash [32]byte) ([32]byte, error) {
@@ -110,7 +113,7 @@ func (eft *EFT) getTree(snap *Snapshot, item_path string) (ItemInfo, [32]byte, e
 
 	info, err = eft.loadItemInfo(item_hash)
 	if err != nil {
-		return info, item_hash, err
+		return info, item_hash, trace(err)
 	}
 
 	return info, item_hash, nil
@@ -157,4 +160,36 @@ func (pt *PathTrie) visitEachBlock(fn func(hash [32]byte) error) error {
 			panic(fmt.Sprintf("Can't handle entry of type %d\n", ent.Type))
 		}
 	})
+}
+
+func (eft *EFT) ListInfos() ([]ItemInfo, error) {
+	eft.Lock()
+	defer eft.Unlock()
+
+	snap := eft.mainSnap()
+
+	pt, err := eft.loadPathTrie(snap.Root)
+	if err != nil {
+		return nil, trace(err)
+	}
+
+	infos := make([]ItemInfo, 0)
+
+	err = pt.root.visitEachEntry(func (ent *TrieEntry) error {
+		if ent.Type == TRIE_TYPE_ITEM {
+			info, err := eft.loadItemInfo(ent.Hash)
+			if err != nil {
+				return trace(err)
+			}
+
+			infos = append(infos, info)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, trace(err)
+	}
+
+	return infos, nil
 }

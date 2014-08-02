@@ -29,6 +29,12 @@ type Snapshot struct {
 	Desc string
 }
 
+func (eft *EFT) defaultSnapsList() ([]Snapshot, error) {
+	snaps := []Snapshot{}
+	snaps = append(snaps, Snapshot{})
+	return snaps, nil
+}
+
 func (eft *EFT) loadSnapsHash() ([32]byte, error) {
 	hash := [32]byte{}
 
@@ -66,8 +72,16 @@ func (snap *Snapshot) isEmpty() bool {
 
 func (eft *EFT) loadSnaps() ([]Snapshot, error) {
 	hash, err := eft.loadSnapsHash()
-	if err != nil {
-		return nil, err // could be ErrNotFound
+	if err == ErrNotFound {
+		snaps, err := eft.defaultSnapsList()
+		if err != nil {
+			return snaps, trace(err)
+		}
+
+		return snaps, nil 
+
+	} else if err != nil {
+		return nil, trace(err)
 	}
 
 	snaps, err := eft.loadSnapsFrom(hash)
@@ -106,7 +120,10 @@ func (eft *EFT) loadSnapsFrom(hash [32]byte) ([]Snapshot, error) {
 	}
 
 	if len(snaps) == 0 {
-		return nil, fmt.Errorf("No snapshots loaded")
+		snaps, err = eft.defaultSnapsList()
+		if err != nil {
+			return snaps, trace(err)
+		}
 	}
 
 	return snaps, nil
