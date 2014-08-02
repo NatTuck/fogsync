@@ -1,9 +1,9 @@
 package shares
 
 import (
-	"os"
 	"fmt"
 	"time"
+	"os"
 	"../fs"
 	"../config"
 	"../cloud"
@@ -59,31 +59,52 @@ func (ss *Share) reallySync() {
 	}
 
 	// Fetch
-	fetch_fn := func(bs string) error {
+	fetch_fn := func(bs *eft.BlockSet) (*eft.BlockArchive, error) {
+		temp_name := ss.Trie.TempName()
+
+		temp, err := os.Create(temp_name)
+		if err != nil {
+			return nil, fs.Trace(err)
+		}
+		defer os.Remove(temp_name)
+
+		err = bs.EachHex(func (hh string) error {
+			_, err := temp.WriteString(hh + "\n")
+			if err != nil {
+				return fs.Trace(err)
+			}
+			return nil
+		})
+		if err != nil {
+			return nil, fs.Trace(err)
+		}
+		temp.Close()
+
 		ba_path := ss.Trie.TempName()
 
-		err := cc.FetchBlocks(ss.NameHmac(), bs, ba_path)
+		err = cc.FetchBlocks(ss.NameHmac(), temp_name, ba_path)
 		if err != nil {
-			return fs.Trace(err)
+			return nil, fs.Trace(err)
 		}
+		defer os.Remove(ba_path)
 
 		ba, err := ss.Trie.LoadArchive(ba_path)
 		if err != nil {
-			return fs.Trace(err)
-		}
-		defer ba.Close()
-
-		err = ba.Extract()
-		if err != nil {
-			return fs.Trace(err)
+			return nil, fs.Trace(err)
 		}
 
-		return nil
+		return ba, nil
 	}
 
 	if sdata.Root != "" {
 		hash := eft.HexToHash(sdata.Root)
-		err = ss.Trie.MergeRemote(hash, fetch_fn)
+
+		err = ss.Trie.FetchRemote(hash, fetch_fn)
+		if err != nil {
+			panic(err)
+		}
+
+		err = ss.Trie.MergeRemote(hash)
 		if err != nil {
 			panic(err)
 		}
@@ -95,15 +116,14 @@ func (ss *Share) reallySync() {
 	// Upload
 	cp, err := ss.Trie.MakeCheckpoint()
 	fs.CheckError(err)
-	defer cp.Cleanup()
 
-	ba, err := ss.Trie.NewArchive()
+	ba, err := eft.NewArchive()
 	if err != nil {
 		panic(err)
 	}
 	defer ba.Close()
 
-	err = ba.AddList(cp.Adds)
+	err = ba.AddList(ss.Trie, cp.Adds)
 	if err != nil {
 		panic(err)
 	}
@@ -122,5 +142,19 @@ func (ss *Share) reallySync() {
 	if err != nil {
 		panic(err)
 	}
+
+	cp.Commit()
+
+	infos, err := ss.Trie.ListInfos()
+	if err != nil {
+		panic(err)
+	}
+
+	for _, info := range(infos) {
+		fmt.Println("XX - In Trie", info.Path)
+		ss.Watcher.ChangedRemote(info.Path)
+	}
 }
+
+
 

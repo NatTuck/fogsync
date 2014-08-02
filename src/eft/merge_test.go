@@ -75,4 +75,3 @@ func TestTrivialMerge(tt *testing.T) {
 	}
 }
 
-

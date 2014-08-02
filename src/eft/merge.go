@@ -88,6 +88,7 @@ func (eft *EFT) mergePathTries(pt0, pt1 PathTrie) (PathTrie, error) {
 func (eft *EFT) mergeTrieNodes(tn0, tn1 TrieNode) (TrieNode, error) {
 	mtn := TrieNode{
 		eft: eft,
+		tri: tn0.tri,
 		dep: tn0.dep,
 	}
 
@@ -186,6 +187,7 @@ func (ptn *TrieNode) mergeInsert(ent0, ent1 TrieEntry) (TrieEntry, error) {
 
 	mtn := &TrieNode{
 		eft: ptn.eft,
+		tri: ptn.tri,
 		dep: ptn.dep,
 	}
 		

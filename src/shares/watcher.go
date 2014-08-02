@@ -16,6 +16,7 @@ type Watcher struct {
 	share    *Share
 	fswatch  *fsnotify.Watcher
 	updates  chan string
+	remotes  chan string
 	shutdown chan bool
 }
 
@@ -58,8 +59,16 @@ func (ww *Watcher) scanTree(scan_path string) {
 	}
 }
 
+func (ww *Watcher) checkEft(update_path string) {
+	ww.share.gotRemoteUpdate(update_path)
+}
+
 func (ww *Watcher) Changed(change string) {
 	ww.updates<- change
+}
+
+func (ww *Watcher) ChangedRemote(change string) {
+	ww.remotes<- change
 }
 
 func (ww *Watcher) Shutdown() {
@@ -81,6 +90,8 @@ func (ww *Watcher) watcherLoop() {
 			fs.PanicHere("Giving up")
 		case upd := <-ww.updates:
 			ww.scanTree(upd)
+		case upd := <-ww.remotes:
+			ww.checkEft(upd)
 		case _    = <-ww.shutdown:
 			fmt.Println("XX - Shutting down watcher")
 			ww.fswatch.Close()

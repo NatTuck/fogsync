@@ -6,6 +6,7 @@ import (
 )
 
 type Checkpoint struct {
+	Trie *EFT
 	Hash string
 	Adds string
 	Dels string
@@ -13,7 +14,6 @@ type Checkpoint struct {
 
 func (eft *EFT) MakeCheckpoint() (*Checkpoint, error) {
 	eft.Lock()
-	defer eft.Unlock()
 
 	eft.begin()
 
@@ -38,6 +38,7 @@ func (eft *EFT) MakeCheckpoint() (*Checkpoint, error) {
 	}
 
 	cp := &Checkpoint{
+		Trie: eft,
 		Hash: HashToHex(hash),
 		Adds: adds,
 		Dels: dels,
@@ -46,7 +47,14 @@ func (eft *EFT) MakeCheckpoint() (*Checkpoint, error) {
 	return cp, nil
 }
 
-func (cp *Checkpoint) Cleanup() {
+func (cp *Checkpoint) Abort() {
+	defer cp.Trie.Unlock()
+	os.Remove(cp.Dels)
+	os.Rename(cp.Adds, path.Join(cp.Trie.Dir, "added"))
+}
+
+func (cp *Checkpoint) Commit() {
+	defer cp.Trie.Unlock()
 	os.Remove(cp.Adds)
 	os.Remove(cp.Dels)
 }

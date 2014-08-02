@@ -107,6 +107,8 @@ type ShareSwapRoot struct {
 }
 
 func (cc *Cloud) SwapRoot(name_hmac string, prev string, root string) error {
+	fmt.Println("XX - Swapping root", prev, " -> ", root)
+
 	req_obj := &ShareSwapRoot{
 		Prev: prev,
 		Root: root,

@@ -69,7 +69,7 @@ func serveShare(name string, ww http.ResponseWriter, req *http.Request) {
 
 	ss := shares.GetMgr().Get(name)
 
-	infos, err := ss.Trie.ListAllInfos()
+	infos, err := ss.Trie.ListInfos()
 	if err != nil {
 		ww.WriteHeader(500)
 		ww.Write([]byte("Error: " + err.Error()))
@@ -79,7 +79,7 @@ func serveShare(name string, ww http.ResponseWriter, req *http.Request) {
 	fis := make([]*FileInfo, 0)
 
 	for _, info := range(infos) {
-		fi := toFileInfo(info)
+		fi := toFileInfo(&info)
 		fis = append(fis, fi)
 	}
 

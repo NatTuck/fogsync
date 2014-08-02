@@ -164,6 +164,10 @@ func (ss *Share) RelPath(full_path string) string {
 	return clean_path[len(share_path):]
 }
 
+func (ss *Share) FullPath(rel_path string) string {
+	return path.Join(ss.ShareDir(), rel_path)
+}
+
 func (ss *Share) gotLocalUpdate(full_path string, sysi os.FileInfo) {
 	rel_path := ss.RelPath(full_path)
 
@@ -179,7 +183,7 @@ func (ss *Share) gotLocalUpdate(full_path string, sysi os.FileInfo) {
 
 	if prev_info.ModT > stamp {
 		if !sysi.Mode().IsDir() {
-			ss.gotRemoteUpdate(rel_path, prev_info.ModT)
+			ss.gotRemoteUpdate(rel_path)
 		}
 		return
 	}
@@ -225,7 +229,7 @@ func (ss *Share) gotLocalDelete(full_path string, stamp uint64) {
 	}
 
 	if prev_info.ModT > stamp {
-		ss.gotRemoteUpdate(rel_path, prev_info.ModT)
+		ss.gotRemoteUpdate(rel_path)
 		return
 	}
 
@@ -235,8 +239,28 @@ func (ss *Share) gotLocalDelete(full_path string, stamp uint64) {
 	ss.sync()
 }
 
-func (ss *Share) gotRemoteUpdate(full_path string, stamp uint64) {
-	panic("TODO: Handle remote updates")
+func (ss *Share) gotRemoteUpdate(rel_path string) {
+	full_path := ss.FullPath(rel_path)
+
+	var stamp uint64
+
+	sysi, err := os.Lstat(full_path)
+	if err != nil {
+		stamp = 0
+	} else {
+		stamp = uint64(sysi.ModTime().UnixNano())
+	}
+
+	info, err := ss.Trie.GetInfo(rel_path)
+	fs.CheckError(err)
+
+	if stamp > info.ModT {
+		ss.gotLocalUpdate(full_path, sysi)
+		return
+	}
+
+	_, err = ss.Trie.Get(rel_path, full_path)
+	fs.CheckError(err)
 }
 
 func (ss *Share) gotRemoteDelete(full_path string, stamp uint64) {

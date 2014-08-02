@@ -38,6 +38,9 @@ type TrieNode struct {
 var ErrNotFound = errors.New("EFT: record not found")
 
 func (tn *TrieNode) KeyBytes(ee TrieEntry) ([]byte, error) {
+	if tn.tri == nil {
+		return nil, fmt.Errorf("Invalid TrieNode (no tri)")
+	}
 	return tn.tri.KeyBytes(ee)
 }
 
