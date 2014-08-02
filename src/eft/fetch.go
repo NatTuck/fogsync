@@ -189,8 +189,6 @@ func (eft *EFT) fetchBlocks(bs *BlockSet, fetch_fn FetchFn) error {
 		return trace(err)
 	}
 
-	fmt.Println("XX - Fetched", bs.Size(), "blocks")
-
 	return nil
 }
 

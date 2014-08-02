@@ -8,7 +8,7 @@ type PathTrie struct {
 	root *TrieNode
 }
 
-func (pt *PathTrie) KeyBytes(ee *TrieEntry) ([]byte, error) {
+func (pt *PathTrie) KeyBytes(ee TrieEntry) ([]byte, error) {
 	info, err := pt.root.eft.loadItemInfo(ee.Hash)
 	if err != nil {
 		return nil, err
@@ -16,10 +16,6 @@ func (pt *PathTrie) KeyBytes(ee *TrieEntry) ([]byte, error) {
 
 	hash := HashString(info.Path)
 	return hash[:], nil
-}
-
-func (pt *PathTrie) NewEntry() TrieEntry {
-	return TrieEntry{Trie: pt}
 }
 
 func (eft *EFT) emptyPathTrie() PathTrie {
@@ -37,9 +33,11 @@ func (eft *EFT) emptyPathTrie() PathTrie {
 func (eft *EFT) loadPathTrie(hash [32]byte) (PathTrie, error) {
 	trie := eft.emptyPathTrie()
 
-	err := trie.root.load(hash)
-	if err != nil {
-		return trie, trace(err)
+	if hash != ZERO_HASH {
+		err := trie.root.load(hash)
+		if err != nil {
+			return trie, trace(err)
+		}
 	}
 
 	return trie, nil
@@ -57,7 +55,7 @@ func (pt *PathTrie) find(item_path string) ([32]byte, error) {
 func (pt *PathTrie) insert(item_path string, data_hash [32]byte) error {
 	path_hash := HashString(item_path)
 
-	entry := pt.NewEntry()
+	entry := TrieEntry{}
 	entry.Hash = data_hash
 
 	return pt.root.insert(path_hash[:], entry)

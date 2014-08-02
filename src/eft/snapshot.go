@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"path"
 	"fmt"
-	"os"
 	"strings"
 	"io/ioutil"
 )
@@ -30,38 +29,9 @@ type Snapshot struct {
 	Desc string
 }
 
-func (eft *EFT) emptySnap() (Snapshot, error) {
-	snap := Snapshot{}
-
-	info := ItemInfo{}
-	info.Path = "/"
-	info.Type = INFO_DIR
-
-	empty_name := eft.TempName()
-	empty, err := os.Create(empty_name)
-	if err != nil {
-		return snap, trace(err)
-	}
-	defer os.Remove(empty_name)
-	defer empty.Close()
-
-	err = eft.putItem(&snap, info, empty_name)
-	if err != nil {
-		return snap, trace(err)
-	}
-	
-	return snap, nil
-}
-
 func (eft *EFT) defaultSnapsList() ([]Snapshot, error) {
 	snaps := []Snapshot{}
-
-	snap, err := eft.emptySnap()
-	if err != nil {
-		return snaps, trace(err) 
-	}
-
-	snaps = append(snaps, snap)
+	snaps = append(snaps, Snapshot{})
 	return snaps, nil
 }
 

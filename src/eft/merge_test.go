@@ -56,7 +56,13 @@ func TestMerge(tt *testing.T) {
 	}
 	defer cp.Cleanup()
 
+	/*
+	fmt.Println("EFT0, pre")
+	printInfos(eft0)
+
+	fmt.Println("EFT1, pre")
 	printInfos(eft1)
+	*/
 
 	err = eft0.FetchRemote(HexToHash(cp.Hash), fetch_eft1)
 	if err != nil {
@@ -68,14 +74,9 @@ func TestMerge(tt *testing.T) {
 		panic(err)
 	}
 
-	printInfos(eft0)
-
 	/*
-	post_list, _ := eft0.ListDir("/")
-	fmt.Println("XX - Post List", post_list)
-
-	eft1_list, _ := eft1.ListDir("/")
-	fmt.Println("XX - EFT1 List", eft1_list)
+	fmt.Println("EFT0, post")
+	printInfos(eft0)
 	*/
 
 	_, err = eft0.GetInfo(test_path)

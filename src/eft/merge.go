@@ -40,18 +40,13 @@ func (eft *EFT) MergeRemote(hash [32]byte) error {
 	}
 	snaps[0] = merged
 
-	err = eft.saveSnaps(snaps)
-	if err != nil {
-		return trace(err)
-	}
+	eft.Snaps = snaps
 
 	abort = false
 	return nil
 }
 
 func (eft *EFT) mergeSnaps(snap0, snap1 Snapshot) (Snapshot, error) {
-	fmt.Println("XX - Merge Snaps", HashToHex(snap0.Root), HashToHex(snap1.Root))
-
 	if HashesEqual(snap0.Root, snap1.Root) {
 		return snap0, nil
 	}
@@ -78,13 +73,10 @@ func (eft *EFT) mergeSnaps(snap0, snap1 Snapshot) (Snapshot, error) {
 
 	snap0.Root = hash
 	
-	fmt.Println("XX - Merged To", HashToHex(hash))
-
 	return snap0, nil
 }
 
 func (eft *EFT) mergePathTries(pt0, pt1 PathTrie) (PathTrie, error) {
-
 	mtn, err := eft.mergeTrieNodes(*pt0.root, *pt1.root)
 	if err != nil {
 		return PathTrie{}, trace(err)
@@ -103,7 +95,7 @@ func (eft *EFT) mergeTrieNodes(tn0, tn1 TrieNode) (TrieNode, error) {
 		ent0 := tn0.tab[ii]
 		ent1 := tn1.tab[ii]
 
-		if ent0 == ent1 {
+		if ent0.Hash == ent1.Hash {
 			// Same block hash means same entry
 			mtn.tab[ii] = ent0
 			continue
@@ -206,7 +198,7 @@ func (ptn *TrieNode) mergeInsert(ent0, ent1 TrieEntry) (TrieEntry, error) {
 		}
 	}
 
-	key, err := ent1.KeyBytes()
+	key, err := ptn.KeyBytes(ent1)
 	if err != nil {
 		return TrieEntry{}, trace(err)
 	}
@@ -234,12 +226,12 @@ func (mtn *TrieNode) mergeItems(ent0, ent1 TrieEntry) (TrieEntry, error) {
 		return TrieEntry{}, fmt.Errorf("Both arguments must be TRIE_TYPE_ITEM")
 	}
 
-	key0, err := ent0.KeyBytes()
+	key0, err := mtn.KeyBytes(ent0)
 	if err != nil {
 		return TrieEntry{}, trace(err)
 	}
 			
-	key1, err := ent1.KeyBytes()
+	key1, err := mtn.KeyBytes(ent1)
 	if err != nil {
 		return TrieEntry{}, trace(err)
 	}

@@ -12,12 +12,8 @@ type LargeTrie struct {
 	root *TrieNode
 }
 
-func (trie *LargeTrie) KeyBytes(ee *TrieEntry) ([]byte, error) {
+func (trie *LargeTrie) KeyBytes(ee TrieEntry) ([]byte, error) {
 	return ee.Pkey[:], nil
-}
-
-func (trie *LargeTrie) NewEntry() TrieEntry {
-	return TrieEntry{Trie: trie}
 }
 
 func (eft *EFT) newLargeTrie(info ItemInfo) LargeTrie {
@@ -70,7 +66,7 @@ func (trie *LargeTrie) find(ii uint64) ([32]byte, error) {
 func (trie *LargeTrie) insert(ii uint64, hash [32]byte) error {
 	le := binary.LittleEndian
 
-	entry := trie.NewEntry()
+	entry := TrieEntry{}
 	entry.Hash = hash
 	le.PutUint64(entry.Pkey[:], ii)
 
