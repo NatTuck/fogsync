@@ -13,6 +13,7 @@ const (
 	INFO_FILE = 4
 	INFO_DIR  = 5
 	INFO_LINK = 6
+	INFO_TOMB = 7
 )
 
 type ItemInfo struct {
@@ -33,6 +34,8 @@ func (info *ItemInfo) TypeName() string {
 		return "dir"
 	case INFO_LINK:
 		return "link"
+	case INFO_TOMB:
+		panic("Item type of Tombstone")
 	default:
 		panic("Bad type in ItemInfo")
 	}
@@ -92,6 +95,24 @@ func NewItemInfo(name string, src_path string, sysi os.FileInfo) (ItemInfo, erro
 
 	info.MoBy = fmt.Sprintf("%s (%s@%s)", uu.Name, uu.Username, host)
 
+	return info, nil
+}
+
+func MakeTombstone(info ItemInfo) (ItemInfo, error) {
+	uu, err := user.Current()
+	if err != nil {
+		return info, trace(err)
+	}
+
+	host, err := os.Hostname()
+	if err != nil {
+		return info, trace(err)
+	}
+
+	info.MoBy = fmt.Sprintf("%s (%s@%s)", uu.Name, uu.Username, host)
+	info.ModT = uint64(time.Now().UnixNano())
+
+	info.Type = INFO_TOMB
 	return info, nil
 }
 

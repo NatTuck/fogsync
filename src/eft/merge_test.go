@@ -7,7 +7,7 @@ import (
 	"os"
 )
 
-func TestMerge(tt *testing.T) {
+func TestTrivialMerge(tt *testing.T) {
 	eft0_dir := TmpRandomName()
 	eft1_dir := TmpRandomName()
 
@@ -56,14 +56,6 @@ func TestMerge(tt *testing.T) {
 	}
 	defer cp.Cleanup()
 
-	/*
-	fmt.Println("EFT0, pre")
-	printInfos(eft0)
-
-	fmt.Println("EFT1, pre")
-	printInfos(eft1)
-	*/
-
 	err = eft0.FetchRemote(HexToHash(cp.Hash), fetch_eft1)
 	if err != nil {
 		panic(err)
@@ -74,16 +66,13 @@ func TestMerge(tt *testing.T) {
 		panic(err)
 	}
 
-	/*
-	fmt.Println("EFT0, post")
-	printInfos(eft0)
-	*/
-
 	_, err = eft0.GetInfo(test_path)
 	if err == ErrNotFound {
-		fmt.Println("Merge failed")
+		fmt.Println("Trivial merge failed")
 		tt.Fail()
 	} else if err != nil {
 		panic(err)
 	}
 }
+
+

@@ -2,6 +2,7 @@ package eft
 
 import (
 	"fmt"
+	"os"
 )
 
 type PathTrie struct {
@@ -61,11 +62,6 @@ func (pt *PathTrie) insert(item_path string, data_hash [32]byte) error {
 	return pt.root.insert(path_hash[:], entry)
 }
 
-func (pt *PathTrie) remove(name string) error {
-	path_hash := HashString(name)
-	return pt.root.remove(path_hash[:])
-}
-
 func (eft *EFT) putTree(snap *Snapshot, info ItemInfo, data_hash [32]byte) ([32]byte, error) {
 	trie := eft.emptyPathTrie()
 
@@ -116,28 +112,40 @@ func (eft *EFT) getTree(snap *Snapshot, item_path string) (ItemInfo, [32]byte, e
 		return info, item_hash, trace(err)
 	}
 
+	if info.Type == INFO_TOMB {
+		return info, item_hash, ErrNotFound
+	}
+
 	return info, item_hash, nil
 }
 
 func (eft *EFT) delTree(snap *Snapshot, item_path string) ([32]byte, error) {
 	empty := [32]byte{}
 
-	trie, err := eft.loadPathTrie(snap.Root)
-	if err != nil {
-		return empty, trace(err)
-	}
-	
-	err = trie.remove(item_path)
+	info0, _, err := eft.getTree(snap, item_path)
 	if err != nil {
 		return empty, trace(err)
 	}
 
-	root_hash, err := trie.save()
+	info1, err := MakeTombstone(info0)
 	if err != nil {
 		return empty, trace(err)
 	}
 
-	return root_hash, nil
+	temp_name := eft.TempName()
+	temp, err := os.Create(temp_name)
+	if err != nil {
+		return empty, trace(err)
+	}
+	temp.Close()
+	defer os.Remove(temp_name)
+
+	err = eft.putItem(snap, info1, temp_name)
+	if err != nil {
+		return empty, trace(err)
+	}
+
+	return snap.Root, nil
 }
 
 func (pt *PathTrie) visitEachBlock(fn func(hash [32]byte) error) error {
