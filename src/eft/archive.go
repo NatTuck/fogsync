@@ -4,7 +4,6 @@ import (
 	"encoding/hex"
 	"strings"
 	"bufio"
-	"fmt"
 	"os"
 	"io"
 	"io/ioutil"
@@ -139,8 +138,6 @@ func (ba *BlockArchive) AddList(eft *EFT, src_path string) error {
 		}
 
 		line := strings.TrimSpace(string(line_bytes))
-
-		fmt.Println("XX hash -", line)
 
 		hsli, err := hex.DecodeString(line)
 		if err != nil {

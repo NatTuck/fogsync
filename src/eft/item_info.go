@@ -41,10 +41,14 @@ func (info *ItemInfo) TypeName() string {
 	}
 }
 
-func (info *ItemInfo) DateText() string {
+func (info *ItemInfo) ModTime() time.Time {
 	modt := int64(info.ModT)
 	nano := int64(1000000000)
-	date := time.Unix(modt / nano, modt % nano)
+	return time.Unix(modt / nano, modt % nano)
+}
+
+func (info *ItemInfo) DateText() string {
+	date := info.ModTime()
 	return date.Format(time.RubyDate)
 }
 
@@ -59,19 +63,19 @@ func (info *ItemInfo) IsExec() bool {
 func NewItemInfo(name string, src_path string, sysi os.FileInfo) (ItemInfo, error) {
 	info := ItemInfo{}
 	info.Path = name
+	info.Size = uint64(sysi.Size())
+	info.ModT = uint64(sysi.ModTime().UnixNano())
 
 	switch {
 	case sysi.Mode().IsRegular():
 		info.Type = INFO_FILE
 	case sysi.Mode().IsDir():
 		info.Type = INFO_DIR
+		info.Size = 0
 	default:
 		// Assume symlink
 		info.Type = INFO_LINK
 	}
-
-	info.Size = uint64(sysi.Size())
-	info.ModT = uint64(sysi.ModTime().UnixNano())
 
 	if info.Type == INFO_FILE {
 		info.Mode = uint32(sysi.Mode().Perm() & 1)

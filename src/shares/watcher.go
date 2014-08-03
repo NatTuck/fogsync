@@ -20,6 +20,18 @@ type Watcher struct {
 	shutdown chan bool
 }
 
+func (ww *Watcher) Changed(change string) {
+	ww.updates<- change
+}
+
+func (ww *Watcher) ChangedRemote(change string) {
+	ww.remotes<- change
+}
+
+func (ww *Watcher) Shutdown() {
+	ww.shutdown<- true
+}
+
 func (ss *Share) startWatcher() *Watcher {
 	fswatch, err := fsnotify.NewWatcher()
 	fs.CheckError(err)
@@ -28,6 +40,7 @@ func (ss *Share) startWatcher() *Watcher {
 		share:   ss,
 		fswatch: fswatch,
 		updates:  make(chan string, 64),
+		remotes:  make(chan string, 64),
 		shutdown: make(chan bool),
 	}
 
@@ -37,10 +50,9 @@ func (ss *Share) startWatcher() *Watcher {
 }
 
 func (ww *Watcher) scanTree(scan_path string) {
+	ww.share.gotChange(scan_path)
+
 	sysi, err := os.Lstat(scan_path)
-	if err == nil {
-		ww.share.gotLocalUpdate(scan_path, sysi)
-	}
 	if err != nil || !sysi.Mode().IsDir() {
 		return
 	}
@@ -59,29 +71,17 @@ func (ww *Watcher) scanTree(scan_path string) {
 	}
 }
 
-func (ww *Watcher) checkEft(update_path string) {
-	ww.share.gotRemoteUpdate(update_path)
-}
-
-func (ww *Watcher) Changed(change string) {
-	ww.updates<- change
-}
-
-func (ww *Watcher) ChangedRemote(change string) {
-	ww.remotes<- change
-}
-
-func (ww *Watcher) Shutdown() {
-	ww.shutdown<- true
-}
-
 func (ww *Watcher) watcherLoop() {
 	for {
+		fmt.Println("XX - Watcher in select")
+
 		select {
 		case evt := <-ww.fswatch.Event:
+			fmt.Println("XX - Watcher fswatch event")
+
 			if evt.IsDelete() || evt.IsRename() {
 				stamp := uint64(time.Now().UnixNano())
-				ww.share.gotLocalDelete(evt.Name, stamp)
+				ww.share.gotDelete(evt.Name, stamp)
 			} else {
 				ww.scanTree(evt.Name)
 			}
@@ -89,9 +89,12 @@ func (ww *Watcher) watcherLoop() {
 			fmt.Println("XX - error:", err)
 			fs.PanicHere("Giving up")
 		case upd := <-ww.updates:
+			fmt.Println("XX - Watcher Local Update", upd)
 			ww.scanTree(upd)
 		case upd := <-ww.remotes:
-			ww.checkEft(upd)
+			fmt.Println("XX - Watcher Remote Update", upd)
+			full_path := ww.share.FullPath(upd)
+			ww.share.gotChange(full_path)
 		case _    = <-ww.shutdown:
 			fmt.Println("XX - Shutting down watcher")
 			ww.fswatch.Close()

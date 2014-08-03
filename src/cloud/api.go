@@ -44,8 +44,6 @@ func (cc *Cloud) httpRequest(mm string, cpath string, body io.Reader) (*http.Res
 		return nil, fs.Trace(err)
 	}
 
-	fmt.Println("XX - httpRequest", mm, cpath, resp.Status)
-
 	return resp, nil
 }
 
@@ -121,8 +119,6 @@ func (cc *Cloud) sendJSON(mm string, cpath string, send_data []byte) ([]byte, er
 	}
 	defer resp.Body.Close()
 
-	fmt.Println("XX - sendJSON", mm, cpath, resp.Status)
-
 	data, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fs.Trace(err)
@@ -175,8 +171,6 @@ func (cc *Cloud) postFile(cpath string, file_path string, dst_file string) error
 	}
 	defer resp.Body.Close()
 	
-	fmt.Println("XX - postFile", cpath, resp.Status)
-
 	if resp.StatusCode == 404 {
 		return ErrNotFound
 	}

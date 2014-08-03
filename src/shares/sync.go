@@ -12,7 +12,7 @@ import (
 
 var sync_delay = 5 * time.Second
 
-func (ss *Share) sync() {
+func (ss *Share) RequestSync() {
 	ss.Syncs <-true
 }
 

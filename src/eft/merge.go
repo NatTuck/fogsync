@@ -274,3 +274,4 @@ func (mtn *TrieNode) mergeItems(ent0, ent1 TrieEntry) (TrieEntry, error) {
 
 	return ment, nil
 }
+

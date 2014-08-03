@@ -201,3 +201,4 @@ func (eft *EFT) ListInfos() ([]ItemInfo, error) {
 
 	return infos, nil
 }
+
