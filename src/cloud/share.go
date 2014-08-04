@@ -11,15 +11,31 @@ import (
 
 var FULL_BLOCK_SIZE = int64(eft.BLOCK_SIZE + eft.BLOCK_OVERHEAD)
 
-
 type ShareInfo struct {
-	Name       string `json:"name"`
+	NameHmac   string `json:"name"`
 	Root       string `json:"root"`
+	Secrets    string `json:"secrets"`
 	BlockSize  int64  `json:"block_size"`
 	BlockCount int64  `json:"block_count"`
 	TransBytes int64  `json:"trans_bytes"`
 	CreatedAt  time.Time `json:"created_at"`
 	UpdatedAt  time.Time `json:"updated_at"`
+}
+
+func (cc *Cloud) GetShares() ([]ShareInfo, error) {
+	data, err := cc.getJSON("/shares")
+	if err != nil {
+		return nil, fs.Trace(err)
+	}
+
+	sinfos := make([]ShareInfo, 0)
+
+	err = json.Unmarshal(data, &sinfos)
+	if err != nil {
+		return nil, fs.Trace(err)
+	}
+
+	return sinfos, nil
 }
 
 func (cc *Cloud) GetShare(name_hmac string) (*ShareInfo, error) {
@@ -43,14 +59,16 @@ func (cc *Cloud) GetShare(name_hmac string) (*ShareInfo, error) {
 }
 
 type ShareCreate struct {
-	Name string `json:"name"`
-	Bsiz int64  `json:"block_size"`
+	NameHmac  string `json:"name"`
+	Secrets   string `json:"secrets"`
+	BlockSize int64  `json:"block_size"`
 }
 
-func (cc *Cloud) CreateShare(name_hmac string) (*ShareInfo, error) {
+func (cc *Cloud) CreateShare(name_hmac string, secrets string) (*ShareInfo, error) {
 	req_obj := &ShareCreate{
-		Name: name_hmac,
-		Bsiz: int64(eft.BLOCK_SIZE + eft.BLOCK_OVERHEAD),
+		NameHmac:  name_hmac,
+		Secrets:   secrets,
+		BlockSize: int64(eft.BLOCK_SIZE + eft.BLOCK_OVERHEAD),
 	}
 	req_data, err := json.Marshal(req_obj)
 	if err != nil {

@@ -2,10 +2,12 @@
 package fs
 
 import (
+	"code.google.com/p/go.crypto/nacl/secretbox"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/hmac"
 	"encoding/hex"
+	"fmt"
 	"../pio"
 )
 
@@ -65,8 +67,37 @@ func HmacSlice(data []byte, key []byte) []byte {
 	return mac.Sum(nil)
 }
 
-func DeriveKey(master []byte, name string) []byte {
+func DeriveKey(master []byte, name string) (dkey [32]byte) {
 	prekey := append(master, []byte(name)...)
-	return HashSlice(prekey)
+	hash   := HashSlice(prekey)
+	copy(dkey[:], hash)
+	return dkey
+}
+
+func EncryptBytes(data []byte, key [32]byte) []byte {
+	ctxt := RandomBytes(24)
+
+	var nonce [24]byte
+	copy(nonce[:], ctxt[0:24])
+
+	return secretbox.Seal(ctxt, data, &nonce, &key) 
+}
+
+func DecryptBytes(ctxt []byte, key [32]byte) ([]byte, error) {
+	if len(ctxt) < 40 {
+		return nil, fmt.Errorf("Too short to decrypt")
+	}
+
+	data := make([]byte, 0)
+
+	var nonce [24]byte
+	copy(nonce[:], ctxt[0:24])
+
+	data, ok := secretbox.Open(data, ctxt[24:], &nonce, &key)
+	if !ok {
+		return nil, fmt.Errorf("fs.DecryptString: MAC authentication failed")
+	}
+
+	return data, nil
 }
 

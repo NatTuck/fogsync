@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"sync"
 	"encoding/hex"
+	"encoding/base64"
+	"encoding/json"
 	"../config"
 	"../eft"
 	"../fs"
@@ -75,14 +77,13 @@ func (ss *Share) Key() []byte {
 	return key
 }
 
-func (ss *Share) CipherKey() (ckey [32]byte) {
-	kk := fs.DeriveKey(ss.Key(), "cipher")
-	copy(ckey[:], kk)
-	return ckey
+func (ss *Share) CipherKey() [32]byte {
+	return fs.DeriveKey(ss.Key(), "cipher")
 }
 
 func (ss *Share) HmacKey() []byte {
-	return fs.DeriveKey(ss.Key(), "hmac")
+	key := fs.DeriveKey(ss.Key(), "hmac")
+	return key[:]
 }
 
 func (ss *Share) SetKey(key []byte) {
@@ -116,17 +117,20 @@ func (ss *Share) FullScan() {
 	ss.Watcher.Changed(ss.ShareDir())
 }
 
-func (mm *Manager) NewShare(name string) *Share {
+func (mm *Manager) NewShare(name string, key string) *Share {
 	ss := &Share{
 		Manager: mm,
 		Config: &ShareConfig{
 			Name: name,
+			Key:  key,
 		},
 		Changes: make(chan string, 256),
 		Syncs:   make(chan bool, 4),
 	}
-	
-	ss.load()
+
+	if key == "" {
+		ss.load()
+	}
 
 	ss.Trie = &eft.EFT{
 		Dir: ss.CacheDir(),
@@ -168,3 +172,31 @@ func (ss *Share) FullPath(rel_path string) string {
 	return path.Join(ss.ShareDir(), rel_path)
 }
 
+func (ss *Share) Secrets() string {
+	settings := config.GetSettings()
+	key := fs.DeriveKey(settings.MasterKey(), "share")
+
+	ptxt, err := json.Marshal(ss.Config)
+	fs.CheckError(err)
+
+	ctxt := fs.EncryptBytes(ptxt, key)
+
+	return base64.StdEncoding.EncodeToString(ctxt)
+}
+
+func decodeSecrets(secrets string) *ShareConfig {
+	settings := config.GetSettings()
+	key := fs.DeriveKey(settings.MasterKey(), "share")
+
+	ctxt, err := base64.StdEncoding.DecodeString(secrets)
+	fs.CheckError(err)
+
+	ptxt, err := fs.DecryptBytes(ctxt, key)
+	fs.CheckError(err)
+
+	config := &ShareConfig{}
+	err = json.Unmarshal(ptxt, config)
+	fs.CheckError(err)
+
+	return config
+}

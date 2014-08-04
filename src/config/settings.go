@@ -37,3 +37,9 @@ func (ss *Settings) Save() {
 	fs.CheckError(err)
 }
 
+func (ss *Settings) MasterKey() []byte {
+	key, err := hex.DecodeString(ss.Master)
+	fs.CheckError(err)
+
+	return key
+}

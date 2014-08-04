@@ -51,7 +51,7 @@ func (ss *Share) reallySync() {
 	sdata, err := cc.GetShare(ss.NameHmac())
 	if err == cloud.ErrNotFound {
 		fmt.Println("XX - Creating share")
-		sdata, err = cc.CreateShare(ss.NameHmac())
+		sdata, err = cc.CreateShare(ss.NameHmac(), ss.Secrets())
 		fmt.Println("XX - Created")
 	} 
 	if err != nil {

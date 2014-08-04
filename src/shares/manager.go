@@ -5,6 +5,7 @@ import (
 	"sort"
 	"fmt"
 	"../fs"
+	"../cloud"
 	"../config"
 )
 
@@ -19,6 +20,7 @@ func GetMgr() *Manager {
 	if shareMgr == nil {
 		shareMgr = &Manager{}
 		shareMgr.shares = make(map[string]*Share)
+		shareMgr.syncList()
 		shareMgr.loadList()
 		shareMgr.startAll()
 	}
@@ -57,7 +59,7 @@ func (mm *Manager) Get(name string) *Share {
 
 	ss, ok := mm.shares[name]
 	if !ok {
-		ss = mm.NewShare(name)
+		ss = mm.NewShare(name, "")
 		mm.saveList()
 	}
 
@@ -129,17 +131,35 @@ func (mm *Manager) saveList() {
 func (mm *Manager) loadList() {
 	names := make([]string, 0)
 	err := config.GetObj("shares.json", &names)
-
 	if err != nil {
-		fmt.Println("Could not read shares list. Using default list.")
-		names = append(names, "Documents")
+		return
 	}
 
 	for _, name := range(names) {
 		_, ok := mm.shares[name]
 		if !ok {
-			mm.shares[name] = mm.NewShare(name)
+			mm.shares[name] = mm.NewShare(name, "")
 		}
 	}
 }
 
+func (mm *Manager) syncList() {
+	cc, err := cloud.New()
+	fs.CheckError(err)
+
+	shares, err := cc.GetShares()
+	fs.CheckError(err)
+
+	for _, si := range(shares) {
+		cfg := decodeSecrets(si.Secrets)
+		ss, ok := mm.shares[cfg.Name]
+
+		if ok {
+			if cfg.Key != ss.Config.Key {
+				fs.PanicHere("Key mismatch for share")
+			}
+		} else {
+			mm.shares[cfg.Name] = mm.NewShare(cfg.Name, cfg.Key)
+		}	
+	}
+}
