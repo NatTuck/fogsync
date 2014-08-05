@@ -36,6 +36,7 @@ func (ss *Share) syncLoop() {
 		case _ = <-sync_tmr.C:
 			ss.sync()
 		case _ = <-poll_tmr.C:
+			fmt.Println("XX - Starting poll")
 			ss.sync()
 			poll_tmr.Reset(poll_delay)
 		}
@@ -140,6 +141,14 @@ func (ss *Share) sync() {
 	cp, err := ss.Trie.MakeCheckpoint()
 	fs.CheckError(err)
 
+	defer func() {
+		if sync_success {
+			cp.Commit()
+		} else {
+			cp.Abort()
+		}
+	}()
+
 	ba, err := eft.NewArchive()
 	if err != nil {
 		fmt.Println(fs.Trace(err))
@@ -153,16 +162,20 @@ func (ss *Share) sync() {
 		return
 	}
 
-	err = cc.SendBlocks(ss.NameHmac(), ba.FileName())
-	if err != nil {
-		fmt.Println(fs.Trace(err))
-		return
+	if ba.Size() > 0 {
+		err = cc.SendBlocks(ss.NameHmac(), ba.FileName())
+		if err != nil {
+			fmt.Println(fs.Trace(err))
+			return
+		}
 	}
 
-	err = cc.SwapRoot(ss.NameHmac(), prev_root, cp.Hash)
-	if err != nil {
-		fmt.Println(fs.Trace(err))
-		return
+	if cp.Hash != prev_root {
+		err = cc.SwapRoot(ss.NameHmac(), prev_root, cp.Hash)
+		if err != nil {
+			fmt.Println(fs.Trace(err))
+			return
+		}
 	}
 
 	err = cc.RemoveList(ss.NameHmac(), cp.Dels)
@@ -170,8 +183,6 @@ func (ss *Share) sync() {
 		fmt.Println(fs.Trace(err))
 		return
 	}
-
-	cp.Commit()
 
 	sync_success = true
 }

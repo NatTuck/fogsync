@@ -12,11 +12,13 @@ import (
 type BlockArchive struct {
 	name string
 	file *os.File
+	size int
 }
 
 func NewArchive() (*BlockArchive, error) {
 	ba := &BlockArchive{}
 	ba.name = TmpRandomName()
+	ba.size = 0
 
 	file, err := os.Create(ba.name)
 	if err != nil {
@@ -116,6 +118,8 @@ func (ba *BlockArchive) Add(eft *EFT, hash [32]byte) error {
 		return trace(err)
 	}
 
+	ba.size++
+
 	return nil
 }
 
@@ -153,8 +157,13 @@ func (ba *BlockArchive) AddList(eft *EFT, src_path string) error {
 		if err != nil {
 			return trace(err)
 		}
+
+		ba.size++
 	}
 
 	return nil
 }
 
+func (ba *BlockArchive) Size() int {
+	return ba.size
+}

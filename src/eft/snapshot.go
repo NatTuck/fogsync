@@ -133,7 +133,26 @@ func (eft *EFT) saveSnaps(snaps []Snapshot) error {
 	if len(snaps) == 0 {
 		return fmt.Errorf("No snapshots to save")
 	}
-	
+
+	prev_snaps, err := eft.loadSnaps()
+	if err != nil {
+		return trace(err)
+	}
+
+	if len(snaps) == len(prev_snaps) {
+		snaps_changed := false
+
+		for ii := 0; ii < len(snaps); ii++ {
+			if snaps[ii] != prev_snaps[ii] {
+				snaps_changed = true
+			}
+		}
+
+		if !snaps_changed {
+			return nil
+		}
+	}
+
 	data := make([]byte, BLOCK_SIZE)
 
 	for ii, snap := range(snaps) {
@@ -159,6 +178,7 @@ func (eft *EFT) saveSnaps(snaps []Snapshot) error {
 		be := binary.BigEndian
 		be.PutUint64(data[base + 96:base + 104], snap.Time)
 	}
+
 
 	hash, err := eft.saveBlock(data)
 	if err != nil {
