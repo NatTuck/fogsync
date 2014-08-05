@@ -11,30 +11,83 @@ import (
 )
 
 var sync_delay = 5 * time.Second
+var poll_delay = 30 * time.Second
 
 func (ss *Share) RequestSync() {
-	ss.Syncs <-true
+	go func() {
+		ss.Syncs <-true
+	}()
 }
 
 func (ss *Share) syncLoop() {
-	delay := time.NewTimer(sync_delay)
+	sync_tmr := time.NewTimer(sync_delay)
+	poll_tmr := time.NewTimer(poll_delay)
 
 	for {
 		select {
 		case again := <-ss.Syncs:
 			if again {
-				delay.Reset(sync_delay)
+				sync_tmr.Reset(sync_delay)
+				poll_tmr.Reset(poll_delay)
 			} else {
 				fmt.Println("Shutting down uploadLoop")
 				break
 			}
-		case _ = <-delay.C:
-			ss.reallySync()
+		case _ = <-sync_tmr.C:
+			ss.sync()
+		case _ = <-poll_tmr.C:
+			ss.sync()
+			poll_tmr.Reset(poll_delay)
 		}
 	}
 }
 
-func (ss *Share) reallySync() {
+func (ss *Share) fetchBlocks(cc *cloud.Cloud, bs *eft.BlockSet) (*eft.BlockArchive, error) {
+	temp_name := ss.Trie.TempName()
+
+	temp, err := os.Create(temp_name)
+	if err != nil {
+		return nil, fs.Trace(err)
+	}
+	defer os.Remove(temp_name)
+	
+	err = bs.EachHex(func (hh string) error {
+		_, err := temp.WriteString(hh + "\n")
+		if err != nil {
+			return fs.Trace(err)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, fs.Trace(err)
+	}
+	temp.Close()
+	
+	ba_path := ss.Trie.TempName()
+	
+	err = cc.FetchBlocks(ss.NameHmac(), temp_name, ba_path)
+	if err != nil {
+		return nil, fs.Trace(err)
+	}
+	defer os.Remove(ba_path)
+	
+	ba, err := ss.Trie.LoadArchive(ba_path)
+	if err != nil {
+		return nil, fs.Trace(err)
+	}
+	
+	return ba, nil
+}
+
+func (ss *Share) sync() {
+	
+	sync_success := false
+	defer func() {
+		if !sync_success {
+			ss.RequestSync()
+		}
+	}()
+
 	settings := config.GetSettings()
 	if !settings.Ready() {
 		fmt.Println("Skipping upload, no cloud configured.")
@@ -55,45 +108,13 @@ func (ss *Share) reallySync() {
 		fmt.Println("XX - Created")
 	} 
 	if err != nil {
-		panic(err)
+		fmt.Println(fs.Trace(err))
+		return
 	}
 
 	// Fetch
 	fetch_fn := func(bs *eft.BlockSet) (*eft.BlockArchive, error) {
-		temp_name := ss.Trie.TempName()
-
-		temp, err := os.Create(temp_name)
-		if err != nil {
-			return nil, fs.Trace(err)
-		}
-		defer os.Remove(temp_name)
-
-		err = bs.EachHex(func (hh string) error {
-			_, err := temp.WriteString(hh + "\n")
-			if err != nil {
-				return fs.Trace(err)
-			}
-			return nil
-		})
-		if err != nil {
-			return nil, fs.Trace(err)
-		}
-		temp.Close()
-
-		ba_path := ss.Trie.TempName()
-
-		err = cc.FetchBlocks(ss.NameHmac(), temp_name, ba_path)
-		if err != nil {
-			return nil, fs.Trace(err)
-		}
-		defer os.Remove(ba_path)
-
-		ba, err := ss.Trie.LoadArchive(ba_path)
-		if err != nil {
-			return nil, fs.Trace(err)
-		}
-
-		return ba, nil
+		return ss.fetchBlocks(cc, bs)
 	}
 
 	if sdata.Root != "" {
@@ -101,12 +122,14 @@ func (ss *Share) reallySync() {
 
 		err = ss.Trie.FetchRemote(hash, fetch_fn)
 		if err != nil {
-			panic(err)
+			fmt.Println(fs.Trace(err))
+			return
 		}
 
 		err = ss.Trie.MergeRemote(hash)
 		if err != nil {
-			panic(err)
+			fmt.Println(fs.Trace(err))
+			return
 		}
 	}
 
@@ -119,42 +142,37 @@ func (ss *Share) reallySync() {
 
 	ba, err := eft.NewArchive()
 	if err != nil {
-		panic(err)
+		fmt.Println(fs.Trace(err))
+		return
 	}
 	defer ba.Close()
 
 	err = ba.AddList(ss.Trie, cp.Adds)
 	if err != nil {
-		panic(err)
+		fmt.Println(fs.Trace(err))
+		return
 	}
 
 	err = cc.SendBlocks(ss.NameHmac(), ba.FileName())
 	if err != nil {
-		panic(err)
+		fmt.Println(fs.Trace(err))
+		return
 	}
 
 	err = cc.SwapRoot(ss.NameHmac(), prev_root, cp.Hash)
 	if err != nil {
-		panic(err)
+		fmt.Println(fs.Trace(err))
+		return
 	}
 
 	err = cc.RemoveList(ss.NameHmac(), cp.Dels)
 	if err != nil {
-		panic(err)
+		fmt.Println(fs.Trace(err))
+		return
 	}
 
 	cp.Commit()
 
-	infos, err := ss.Trie.ListInfos()
-	if err != nil {
-		panic(err)
-	}
-
-	for _, info := range(infos) {
-		fmt.Println("XX - In Trie", info.Path)
-		ss.Watcher.ChangedRemote(info.Path)
-	}
+	sync_success = true
 }
-
-
 
