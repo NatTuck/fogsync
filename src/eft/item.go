@@ -2,6 +2,7 @@ package eft
 
 import (
 	"fmt"
+	"os"
 )
 
 func (eft *EFT) putItem(snap *Snapshot, info ItemInfo, src_path string) error {
@@ -66,11 +67,23 @@ func (eft *EFT) loadItem(hash [32]byte, dst_path string) (ItemInfo, error) {
 		return info, err
 	}
 
-	if info.Size <= 12 * 1024 {
-		return eft.loadSmallItem(hash, dst_path)
-	} else {
-		return eft.loadLargeItem(hash, dst_path)
+	if info.Type == INFO_DIR {
+		err := os.MkdirAll(dst_path, 0700)
+		if err != nil {
+			return info, trace(err)
+		}
+		return info, nil
 	}
+
+	if info.Size <= 12 * 1024 {
+		info, err = eft.loadSmallItem(hash, dst_path)
+	} else {
+		info, err = eft.loadLargeItem(hash, dst_path)
+	}
+	if err != nil {
+		return info, trace(err)
+	}
+	return info, nil
 }
 
 func (eft *EFT) saveItem(info ItemInfo, src_path string) ([32]byte, error) {
