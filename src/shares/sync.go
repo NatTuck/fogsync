@@ -36,10 +36,36 @@ func (ss *Share) syncLoop() {
 		case _ = <-sync_tmr.C:
 			ss.sync()
 		case _ = <-poll_tmr.C:
-			fmt.Println("XX - Starting poll")
-			ss.sync()
+			ss.poll()
 			poll_tmr.Reset(poll_delay)
 		}
+	}
+}
+
+func (ss *Share) poll() {
+	curr_root, err := ss.Trie.RootHash()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	cc, err := cloud.New()
+	if err != nil {
+		fmt.Println(fs.Trace(err))
+		return
+	}
+
+	sdata, err := cc.GetShare(ss.NameHmac())
+	if err != nil {
+		fmt.Println(fs.Trace(err))
+		return
+	}
+
+	if sdata.Root != curr_root {
+		fmt.Println("XX polling: remote update")
+		ss.RequestSync()
+	} else {
+		fmt.Println("XX polling: no change")
 	}
 }
 

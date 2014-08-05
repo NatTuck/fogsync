@@ -26,6 +26,18 @@ type EFT struct {
 	locked bool
 }
 
+func (eft *EFT) RootHash() (string, error) {
+	eft.Lock()
+	defer eft.Unlock()
+
+	hash, err := eft.loadSnapsHash()
+	if err != nil {
+		return "", trace(err)
+	}
+
+	return hex.EncodeToString(hash[:]), nil
+}
+
 func (eft *EFT) BlockPath(hash [32]byte) string {
 	text := hex.EncodeToString(hash[:])
 	d0 := text[0:3]
