@@ -1,0 +1,13 @@
+# A sample Guardfile
+# More info at https://github.com/guard/guard#readme
+
+guard :shell do
+  watch /.*/ do |mm|
+    system("make")
+    "#{mm} changed"
+  end
+
+  ignore /public\/.*/
+end
+
+# vi:syntax=ruby

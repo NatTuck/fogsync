@@ -32,6 +32,9 @@ clean:
 	rm -f public/*
 	touch public/.keep
 
+guard:
+	bundle exec guard start -i
+
 prereqs:
 	node -v || sudo apt-get install nodejs-legacy
 	npm -v || sudo apt-get install npm
