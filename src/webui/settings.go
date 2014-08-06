@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"fmt"
+	"../shares"
 	"../config"
 	"../fs"
 )
@@ -40,5 +41,5 @@ func saveSettings(ww http.ResponseWriter, req *http.Request) {
 
 	fmt.Println("Saved settings")
 
-	return
+	shares.Reload()
 }

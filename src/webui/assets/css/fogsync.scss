@@ -10,3 +10,13 @@
 .form-desc {
   margin-top: 1ex;
 }
+
+#qrcode {
+  margin: 2em;
+}
+
+.form-buttons {
+  @media print {
+    display: none;
+  }
+}

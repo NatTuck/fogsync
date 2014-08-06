@@ -19,7 +19,7 @@ func GetSettings() Settings {
 
 	if err != nil {
 		ss.Email = ""
-		ss.Cloud = "fogsync.com"
+		ss.Cloud = "app.fogsync.com"
 		ss.Passwd = ""
 		ss.Master = hex.EncodeToString(fs.RandomBytes(16))
 	}

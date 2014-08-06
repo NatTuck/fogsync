@@ -14,7 +14,6 @@ import (
 )
 
 type ShareConfig struct {
-	Id   int        `json:"id"`
 	Name string
 	Key  string
 }
@@ -27,6 +26,35 @@ type Share struct {
 	Mutex   sync.Mutex
 	Changes chan string
 	Syncs   chan bool
+}
+
+func newShare(name string, key string) *Share {
+	if len(name) > 30 {
+		fs.PanicHere("Name too long")
+	}
+
+	ss := &Share{
+		Manager: mm,
+		Config: &ShareConfig{
+			Name: name,
+			Key:  key,
+		},
+		Changes: make(chan string, 256),
+		Syncs:   make(chan bool, 4),
+	}
+
+	if key == "" {
+		ss.load()
+	}
+
+	ss.Trie = &eft.EFT{
+		Dir: ss.CacheDir(),
+		Key: ss.CipherKey(),
+	}
+
+	ss.save()
+
+	return ss
 }
 
 func (ss *Share) Lock() {
@@ -105,41 +133,14 @@ func (ss *Share) Start() {
 	fmt.Println("XX - Watcher started")
 
 	go ss.syncLoop()
+
+	// Start with a full scan
+	ss.Watcher.Changed(ss.ShareDir())
 }
 
 func (ss *Share) Stop() {
 	ss.Watcher.Shutdown()
 	ss.Syncs<- false
-}
-
-func (ss *Share) FullScan() {
-	fmt.Println("XX - Full Scan", ss.Name())
-	ss.Watcher.Changed(ss.ShareDir())
-}
-
-func (mm *Manager) NewShare(name string, key string) *Share {
-	ss := &Share{
-		Manager: mm,
-		Config: &ShareConfig{
-			Name: name,
-			Key:  key,
-		},
-		Changes: make(chan string, 256),
-		Syncs:   make(chan bool, 4),
-	}
-
-	if key == "" {
-		ss.load()
-	}
-
-	ss.Trie = &eft.EFT{
-		Dir: ss.CacheDir(),
-		Key: ss.CipherKey(),
-	}
-
-	ss.save()
-
-	return ss
 }
 
 func (ss *Share) load() {
@@ -184,19 +185,26 @@ func (ss *Share) Secrets() string {
 	return base64.StdEncoding.EncodeToString(ctxt)
 }
 
-func decodeSecrets(secrets string) *ShareConfig {
+func decodeSecrets(secrets string) (*ShareConfig, error) {
 	settings := config.GetSettings()
 	key := fs.DeriveKey(settings.MasterKey(), "share")
 
 	ctxt, err := base64.StdEncoding.DecodeString(secrets)
-	fs.CheckError(err)
+	if err != nil {
+		return nil, fs.Trace(err)
+	}
 
 	ptxt, err := fs.DecryptBytes(ctxt, key)
-	fs.CheckError(err)
+	if err != nil {
+		return nil, fs.Trace(err)
+	}
 
 	config := &ShareConfig{}
 	err = json.Unmarshal(ptxt, config)
-	fs.CheckError(err)
+	if err != nil {
+		return nil, fs.Trace(err)
+	}
 
-	return config
+	return config, nil
 }
+

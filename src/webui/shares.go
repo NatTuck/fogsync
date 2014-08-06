@@ -20,16 +20,22 @@ func serveShares(ww http.ResponseWriter, req *http.Request) {
 
 }
 
+type SharesList struct {
+	Shares []*shares.ShareConfig
+	Broken []string
+}
+
 func serveSharesIndex(ww http.ResponseWriter, req *http.Request) {
 	hdrs := ww.Header()
 	hdrs["Content-Type"] = []string{"application/json"}
 
-	cfgs := make([]*shares.ShareConfig, 0)
-	for _, ss := range(shares.GetMgr().List()) {
-		cfgs = append(cfgs, ss.Config)
+	mgr  := shares.GetMgr()
+	list := &SharesList{
+		Shares: mgr.ListConfigs(),
+		Broken: mgr.ListBroken(),
 	}
 
-	data, err := json.MarshalIndent(&cfgs, "", "  ")
+	data, err := json.MarshalIndent(&list, "", "  ")
 	fs.CheckError(err)
 
 	ww.Write(data)

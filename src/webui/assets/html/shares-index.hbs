@@ -1,1 +1,29 @@
 <p>Select a share from the list.</p>
+
+
+{{#if broken}}
+
+<h3>Broken Shares</h3>
+
+<p>These shares do not correctly decrypt. Either their metadata has become corrupted
+or they were created with a different master key.</p>
+
+<table class="table table-striped">
+  <thead>
+    <tr>
+      <th>Share HMAC</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+  {{#each broken}}
+  <tr>
+    <td>{{this}}</td>
+    <td><button class="btn btn-danger delete-broken" {{bind-attr data-name="this"}}>
+        <span class="glyphicon glyphicon-remove"></span> Delete </button></td>
+  </tr>
+  {{/each}}
+  </tbody>
+</table>
+
+{{/if}}

@@ -3,25 +3,29 @@ package main
 import (
 	"fmt"
 	"time"
-	"../shares"
+	"../fs"
 	"../webui"
+	"../shares"
+	"../config"
 )
 
 func main() {
-	fmt.Println("Starting Shares...")
-	mgr := shares.GetMgr()
-	fmt.Println("XX - Starting scanner")
-	mgr.ScanAll()
-
 	fmt.Println("Starting Web UI...")
 	webui.Start()
-
+	
 	time.Sleep(1 * time.Second)
 
-	URL := "http://localhost:5000"
-	fmt.Println("Visit", URL)
+	settings := config.GetSettings()
+	if !settings.Ready() {
+		url := "http://localhost:5000/#/settings"
+		err := fs.Launch(url)
+		fs.CheckError(err)
+	}
 
-	fmt.Println("Startup complete")
+	shares.Reload()
+
+	url := "http://localhost:5000/"
+	fmt.Println("FogSync Started, visit", url)
 
 	select {}
 }
