@@ -3,7 +3,6 @@ package shares
 import (
 	"sync"
 	"sort"
-	"bytes"
 	"fmt"
 	"../fs"
 	"../cloud"
@@ -14,7 +13,7 @@ var	mutex  sync.Mutex
 var	shares map[string]*Share
 var	broken map[string]bool
 
-func init() {
+func initShares() {
 	shares = make(map[string]*Share)
 	broken = make(map[string]bool)
 }
@@ -42,14 +41,14 @@ func Reload() {
 		stopAll()
 	}
 
-	init()
+	initShares()
+	loadList()
 
 	err := syncList()
 	if err != nil {
 		fmt.Println("Could not sync share list:", err)
 	}
 
-	loadList()
 	startAll()
 }
 
@@ -57,7 +56,7 @@ func Create(name string) {
 	Lock()
 	defer Unlock()
 
-	share := newShare(name, fs.RandomBytes(32))
+	share := newShare(name, fs.RandomHex(32))
 	shares[name] = share
 
 	share.Start()
@@ -76,8 +75,8 @@ func Get(name string) *Share {
 }
 
 func Del(name string) {
-	mm.Lock()
-	defer mm.Unlock()
+	Lock()
+	defer Unlock()
 
 	ss, ok := shares[name]
 	if !ok {
@@ -85,21 +84,21 @@ func Del(name string) {
 	}
 
 	ss.Stop()
-	ss.CleanCache()
+	ss.ClearCache()
 
-	delete(mm.shares, name)
+	delete(shares, name)
 	saveList()
 
 	fmt.Println("XX - Removed share:", name)
 }
 
-func (mm *Manager) startAll() {
+func startAll() {
 	for _, ss := range(shares) {
 		ss.Start()
 	}
 }
 
-func (mm *Manager) stopAll() {
+func stopAll() {
 	for _, ss := range(shares) {
 		ss.Stop()
 	}
@@ -141,13 +140,13 @@ func List() []*Share {
 
 	sort.Strings(names)
 
-	shares := make([]*Share, 0)
+	list := make([]*Share, 0)
 
 	for _, nn := range(names) {
-		shares = append(shares, shares[nn])
+		list = append(list, shares[nn])
 	}
 
-	return shares
+	return list
 }
 
 func saveList() {
@@ -168,20 +167,13 @@ func loadList() {
 		return
 	}
 
-	!!!FIXME!!!
-	Figure out correct behavior for syncing shares vs. loading
-	shares.
-
 	for _, name := range(names) {
-		shares[name] = newShare(name, "")
-		ss0, ok := shares[name]
+		_, ok := shares[name]
 		if ok {
-			if !bytes.Equal(ss0.Key(), ss1.Key()) {
-				fs.PanicHere("Key mismatch for share: " + name)
-			}
-		} else {
-			mm.shares[name] = ss1
+			continue
 		}
+
+		shares[name] = newShare(name, "")
 	}
 }
 
@@ -191,26 +183,29 @@ func syncList() error {
 		return err
 	}
 
-	shares, err := cc.GetShares()
+	sss, err := cc.GetShares()
 	if err != nil {
 		return err
 	}
 
-	for _, si := range(shares) {
+	for _, si := range(sss) {
 		cfg, err := decodeSecrets(si.Secrets)
 		if err != nil {
-			mm.broken[si.NameHmac] = true
+			broken[si.NameHmac] = true
 			continue
 		}
 
-		ss1 := 
-
-		ss0, ok := shares[name]
+		ss0, ok := shares[cfg.Name]
 		if ok {
-			if !bytes.Equal(
-		} else {
-			mm.shares[cfg.Name] = newShare(cfg.Name, cfg.Key)
+			if ss0.Config.Key == cfg.Key {
+				continue
+			}
+		
+			fmt.Println("Local cache is old for", cfg.Name, "clearing.")
+			ss0.ClearCache()
 		}
+	
+		shares[cfg.Name] = newShare(cfg.Name, cfg.Key)
 	}
 
 	return nil

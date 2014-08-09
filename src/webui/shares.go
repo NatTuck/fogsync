@@ -4,20 +4,37 @@ package webui
 import (
 	"net/http"
 	"encoding/json"
+	"fmt"
 	"../eft"
 	"../shares"
+	"../cloud"
 	"../fs"
 )
 
 func serveShares(ww http.ResponseWriter, req *http.Request) {
 	elems := splitPath(req)
 
-	if len(elems) == 1 {
-		serveSharesIndex(ww, req)
-	} else {
-		serveShare(elems[1], ww, req)
-	}
+	fmt.Println("XX - serveShares", req.Method, elems)
 
+	if len(elems) == 1 {
+		switch req.Method {
+		case "GET":
+			getSharesIndex(ww, req)
+		case "POST":
+			createShare(ww, req)
+		default:
+			fs.PanicHere("Bad method: " + req.Method)
+		}
+	} else {
+		switch req.Method {
+		case "GET":
+			getShare(elems[1], ww, req)
+		case "DELETE":
+			delShare(elems[1], ww, req)
+		default:
+			fs.PanicHere("Bad method: " + req.Method)
+		}
+	}
 }
 
 type SharesList struct {
@@ -25,14 +42,13 @@ type SharesList struct {
 	Broken []string
 }
 
-func serveSharesIndex(ww http.ResponseWriter, req *http.Request) {
+func getSharesIndex(ww http.ResponseWriter, req *http.Request) {
 	hdrs := ww.Header()
 	hdrs["Content-Type"] = []string{"application/json"}
 
-	mgr  := shares.GetMgr()
 	list := &SharesList{
-		Shares: mgr.ListConfigs(),
-		Broken: mgr.ListBroken(),
+		Shares: shares.ListConfigs(),
+		Broken: shares.ListBroken(),
 	}
 
 	data, err := json.MarshalIndent(&list, "", "  ")
@@ -69,11 +85,11 @@ func toFileInfo(info *eft.ItemInfo) *FileInfo {
 	}
 }
 
-func serveShare(name string, ww http.ResponseWriter, req *http.Request) {
+func getShare(name string, ww http.ResponseWriter, req *http.Request) {
 	hdrs := ww.Header()
 	hdrs["Content-Type"] = []string{"application/json"}
 
-	ss := shares.GetMgr().Get(name)
+	ss := shares.Get(name)
 
 	infos, err := ss.Trie.ListInfos()
 	if err != nil {
@@ -99,4 +115,33 @@ func serveShare(name string, ww http.ResponseWriter, req *http.Request) {
 	fs.CheckError(err)
 
 	ww.Write(data)
+}
+
+func delShare(name string, ww http.ResponseWriter, req *http.Request) {
+	hdrs := ww.Header()
+	hdrs["Content-Type"] = []string{"application/json"}
+
+	cc, err := cloud.New()
+	checkError(ww, err)
+
+	err = cc.DeleteShare(name)
+	checkError(ww, err)
+	
+	ww.WriteHeader(204)
+}
+
+func createShare(ww http.ResponseWriter, req *http.Request) {
+	hdrs := ww.Header()
+	hdrs["Content-Type"] = []string{"application/json"}
+
+	err := req.ParseForm()
+	checkError(ww, err)
+
+	share_name := req.Form.Get("name")
+
+	fmt.Println("XX - Create Share", share_name)
+
+	shares.Create(share_name)
+
+	http.Redirect(ww, req, "/#/shares", 303)
 }

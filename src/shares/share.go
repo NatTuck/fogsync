@@ -20,7 +20,6 @@ type ShareConfig struct {
 
 type Share struct {
 	Config  *ShareConfig
-	Manager *Manager
 	Trie    *eft.EFT
 	Watcher *Watcher
 	Mutex   sync.Mutex
@@ -34,7 +33,6 @@ func newShare(name string, key string) *Share {
 	}
 
 	ss := &Share{
-		Manager: mm,
 		Config: &ShareConfig{
 			Name: name,
 			Key:  key,
@@ -171,6 +169,10 @@ func (ss *Share) RelPath(full_path string) string {
 
 func (ss *Share) FullPath(rel_path string) string {
 	return path.Join(ss.ShareDir(), rel_path)
+}
+
+func (ss *Share) ClearCache() {
+	os.RemoveAll(ss.CacheDir())
 }
 
 func (ss *Share) Secrets() string {

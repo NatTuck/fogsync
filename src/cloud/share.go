@@ -89,6 +89,20 @@ func (cc *Cloud) CreateShare(name_hmac string, secrets string) (*ShareInfo, erro
 	return sinfo, nil
 }
 
+func (cc *Cloud) DeleteShare(name_hmac string) error {
+	cpath := fmt.Sprintf("/shares/%s", name_hmac)
+	resp, err := cc.httpRequest("DELETE", cpath, nil)
+	if err != nil {
+		return fs.Trace(err)
+	}
+
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		return fmt.Errorf("HTTP %s", resp.Status)
+	}
+
+	return nil
+}
+
 func (cc *Cloud) FetchBlocks(name_hmac string, src_path string, dst_path string) error {
 	cpath := fmt.Sprintf("/shares/%s/get", name_hmac)
 	err := cc.postFile(cpath, src_path, dst_path)
