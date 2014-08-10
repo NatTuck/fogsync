@@ -1,9 +1,6 @@
 
 showQRCode = (mkey) ->
-  if document.qrcode?
-    document.qrcode.makeCode(mkey)
-  else
-    document.qrcode = new QRCode($('#qrcode')[0], mkey)
+  document.qrcode = new QRCode($('#qrcode')[0], mkey)
 
 App.Settings = Ember.Object.extend({
   dirty: false
@@ -43,3 +40,4 @@ App.SettingsView = Ember.View.extend({
     mkey = this.get('controller.model').get('Master')
     showQRCode(mkey)
 })
+
