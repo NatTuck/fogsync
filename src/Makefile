@@ -19,6 +19,7 @@ prereqs:
 	go get github.com/howeyc/fsnotify
 	go get github.com/GeertJohan/go.rice
 	go get github.com/edsrzf/mmap-go
+	go get code.google.com/p/go.crypto/nacl/secretbox
 	(cd webui/assets && make prereqs)
 
 live-test:
