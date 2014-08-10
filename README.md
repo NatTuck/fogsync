@@ -42,4 +42,8 @@ Instructions tested on Ubuntu 12.04
   - If you already have machines set up with FogSync, enter your existing
     master key.
 
+## License
 
+FogSync Client is copyright &copy;2014 Nat Tuck. You may copy, modify, and
+redistribute it under the terms of the GNU GPL, either version 3 or any later
+version as published by the FSF.
