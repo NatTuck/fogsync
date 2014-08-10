@@ -173,6 +173,10 @@ func (ss *Share) RelPath(full_path string) string {
 		fs.PanicHere("Not a path in this share")
 	}
 
+	if clean_path == share_path {
+		return "/"
+	}
+
 	return clean_path[len(share_path):]
 }
 
