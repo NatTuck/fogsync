@@ -22,6 +22,19 @@ App.ShareRoute = Ember.Route.extend({
     App.Share.find(params['name'])
 })
 
+deleteShare = (name) ->
+  $.ajax "/shares/#{name}",
+    type: 'DELETE',
+    success: (data, status, xhr) ->
+      console.log(status)
+      console.log(data)
+      window.location = "/#/shares"
+
+    error: (xhr, status, msg) ->
+      console.log(status)
+      console.log(msg)
+      alert("Delete Failed: #{msg}")
+
 App.SharesIndexView = Ember.View.extend({
   templateName: 'shares-index'
   didInsertElement: () ->
@@ -29,15 +42,17 @@ App.SharesIndexView = Ember.View.extend({
       name = $(ee.target).attr('data-name')
       if !confirm("Really delete broken share #{name}?")
         return
-
-      $.ajax "/shares/#{name}",
-        type: 'DELETE',
-        success: (data, status, xhr) ->
-          alert("Deleted #{name}")
-          console.log(status)
-          console.log(data)
-        error: (xhr, status, msg) ->
-          alert("Delete Failed: #{msg}")
+  
+      deleteShare(name)
 })
 
+App.ShareView = Ember.View.extend({
+  templateName: 'share',
+  didInsertElement: () ->
+    $('.delete-share').click (ee) ->
+      name = $(ee.target).attr('data-name')
+      if !confirm("Really delete share #{name}?")
+        return
 
+      deleteShare(name)
+})

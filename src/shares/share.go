@@ -25,6 +25,7 @@ type Share struct {
 	Mutex   sync.Mutex
 	Changes chan string
 	Syncs   chan bool
+	WaitGr  sync.WaitGroup
 }
 
 func newShare(name string, key string) *Share {
@@ -137,8 +138,16 @@ func (ss *Share) Start() {
 }
 
 func (ss *Share) Stop() {
+	ss.WaitGr.Add(2)
+
 	ss.Watcher.Shutdown()
-	ss.Syncs<- false
+	ss.ShutdownSync()
+	
+	fmt.Println("XX - Stopping " + ss.Name())
+
+	ss.WaitGr.Wait()
+	
+	fmt.Println("XX - Stopped " + ss.Name())
 }
 
 func (ss *Share) load() {

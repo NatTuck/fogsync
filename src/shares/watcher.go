@@ -77,6 +77,11 @@ func (ww *Watcher) watcherLoop() {
 
 		select {
 		case evt := <-ww.fswatch.Event:
+			if evt == nil {
+				fmt.Println("XX - Watcher nil event")
+				goto DONE
+			}
+
 			fmt.Println("XX - Watcher fswatch event")
 
 			if evt.IsDelete() || evt.IsRename() {
@@ -86,8 +91,10 @@ func (ww *Watcher) watcherLoop() {
 				ww.scanTree(evt.Name)
 			}
 		case err := <-ww.fswatch.Error:
-			fmt.Println("XX - error:", err)
-			fs.PanicHere("Giving up")
+			if err != nil {
+				fmt.Println("XX - error:", err)
+			}
+			goto DONE
 		case upd := <-ww.updates:
 			fmt.Println("XX - Watcher Local Update", upd)
 			ww.scanTree(upd)
@@ -97,9 +104,12 @@ func (ww *Watcher) watcherLoop() {
 			ww.share.gotChange(full_path)
 		case _    = <-ww.shutdown:
 			fmt.Println("XX - Shutting down watcher")
-			ww.fswatch.Close()
-			break
+			goto DONE
 		}
 	}
+
+  DONE:
+	ww.fswatch.Close()
+	ww.share.WaitGr.Done()
 }
 

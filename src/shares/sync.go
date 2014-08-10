@@ -19,6 +19,10 @@ func (ss *Share) RequestSync() {
 	}()
 }
 
+func (ss *Share) ShutdownSync() {
+	ss.Syncs <- false
+}
+
 func (ss *Share) syncLoop() {
 	sync_tmr := time.NewTimer(sync_delay)
 	poll_tmr := time.NewTimer(poll_delay)
@@ -31,7 +35,7 @@ func (ss *Share) syncLoop() {
 				poll_tmr.Reset(poll_delay)
 			} else {
 				fmt.Println("Shutting down uploadLoop")
-				break
+				goto DONE
 			}
 		case _ = <-sync_tmr.C:
 			ss.sync()
@@ -40,6 +44,9 @@ func (ss *Share) syncLoop() {
 			poll_tmr.Reset(poll_delay)
 		}
 	}
+
+  DONE:
+	ss.WaitGr.Done()
 }
 
 func (ss *Share) poll() {

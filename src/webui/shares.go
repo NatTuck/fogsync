@@ -121,6 +121,15 @@ func delShare(name string, ww http.ResponseWriter, req *http.Request) {
 	hdrs := ww.Header()
 	hdrs["Content-Type"] = []string{"application/json"}
 
+	fmt.Println("XX - Delete", name)
+
+	if len(name) < 30 {
+		share := shares.Get(name)
+		name_hmac := share.NameHmac()
+		shares.Del(name)
+		name = name_hmac
+	}
+
 	cc, err := cloud.New()
 	checkError(ww, err)
 

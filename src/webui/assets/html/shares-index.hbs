@@ -8,17 +8,24 @@
   <button type="submit" class="btn btn-default">Create Share</button>
 </form>
 
+<div style="margin-top: 1ex">&nbsp;</div>
+
+<p>The recommended name for the default user share is "Documents".</p>
 <p>In future releases FogSync will define semantics for some specific share names.
-If you use them for something else, future versions of FogSync may get confused.</p>
-<p>These names are as follows:</p>
+If you use them for something else, future versions of FogSync may get confused.
+These will be separate shares to allow you to select what you want to sync to
+(e.g.) your phone.</p>
+
+<p>My current guess as to what the names for special shares will be is:</p>
 <dl>
-  <dt>Documents</dt>
-  <dd>This is a place to store arbitrary work documents. This is a good default
-      share to create.</dd>
-  <dt>Email</dt>
-  <dd>This wll store your electronic mail in Maildir or some similar format.</dd>
   <dt>Contacts</dt>
   <dd>This will store your contacts, in vCard or some similar format.</dd>
+  <dt>Calendar</dt>
+  <dd>Your calendar events, in iCalendar or similar format.</dd>
+  <dt>Email</dt>
+  <dd>This wll store your electronic mail in Maildir or some similar format.</dd>
+  <dt>Chats</dt>
+  <dd>An archive of instant messages, SMS, etc.</dd>
 </dl>
 
 {{#if broken}}
