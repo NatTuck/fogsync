@@ -41,5 +41,6 @@ prereqs:
 	sudo npm install -g coffee-script
 	sudo npm install -g scss
 	sudo npm install -g ember-precompile
+	bundle install
 
 .PHONY: all clean sassy prereqs
