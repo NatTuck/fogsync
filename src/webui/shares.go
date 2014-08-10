@@ -70,6 +70,7 @@ type FileInfo struct {
 type LongShare struct {
 	Name  string
 	Key   string
+	Hmac  string
 	Files []*FileInfo
 }
 
@@ -108,6 +109,7 @@ func getShare(name string, ww http.ResponseWriter, req *http.Request) {
 	share := LongShare{
 		Key : ss.Config.Key,
 		Name: ss.Config.Name,
+		Hmac: ss.NameHmac(),
 		Files: fis,
 	} 
 
