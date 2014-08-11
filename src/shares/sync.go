@@ -114,7 +114,6 @@ func (ss *Share) fetchBlocks(cc *cloud.Cloud, bs *eft.BlockSet) (*eft.BlockArchi
 }
 
 func (ss *Share) sync() {
-	
 	sync_success := false
 	defer func() {
 		if !sync_success {
@@ -137,7 +136,7 @@ func (ss *Share) sync() {
 
 	sdata, err := cc.GetShare(ss.NameHmac())
 	if err == cloud.ErrNotFound {
-		fmt.Println("XX - Creating share")
+		fmt.Println("XX - Creating share", ss.Name())
 		sdata, err = cc.CreateShare(ss.NameHmac(), ss.Secrets())
 		fmt.Println("XX - Created")
 	} 
@@ -145,6 +144,7 @@ func (ss *Share) sync() {
 		fmt.Println(fs.Trace(err))
 		return
 	}
+	fmt.Println("XX - GetShare didn't fail")
 
 	// Fetch
 	fetch_fn := func(bs *eft.BlockSet) (*eft.BlockArchive, error) {

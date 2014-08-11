@@ -46,7 +46,7 @@ func Reload() {
 
 	err := syncList()
 	if err != nil {
-		fmt.Println("Could not sync share list:", err)
+		fmt.Println("Could not sync share list:", fs.Trace(err))
 	}
 
 	startAll()
