@@ -25,6 +25,7 @@ func (ww *Watcher) Changed(change string) {
 }
 
 func (ww *Watcher) ChangedRemote(change string) {
+	fmt.Println("XX - ChangedRemote(", change, ")")
 	ww.remotes<- change
 }
 

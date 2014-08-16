@@ -3,6 +3,7 @@ package shares
 import (
 	"os"
 	"fmt"
+	"path"
 	"../eft"
 	"../fs"
 )
@@ -33,6 +34,11 @@ func (ss *Share) gotChange(full_path string) {
 	if curr_info.ModT > stamp {
 		// Copy out
 		fmt.Println("XX - Copy out to", full_path)
+
+		dir := path.Dir(full_path)
+		err := os.MkdirAll(dir, 0700)
+		fs.CheckError(err)
+
 		info, err := ss.Trie.Get(rel_path, full_path)
 		fs.CheckError(err)
 

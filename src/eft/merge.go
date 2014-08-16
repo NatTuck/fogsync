@@ -184,14 +184,14 @@ func (ptn *TrieNode) mergeInsert(ent0, ent1 TrieEntry) (TrieEntry, error) {
 	if ent1.Type != TRIE_TYPE_ITEM {
 		return TrieEntry{}, fmt.Errorf("Second argument must be TRIE_TYPE_ITEM")
 	}
+	
+	var err error
 
 	mtn := &TrieNode{
 		eft: ptn.eft,
 		tri: ptn.tri,
 		dep: ptn.dep,
 	}
-		
-	var err error
 
 	if !HashesEqual(ent0.Hash, ZERO_HASH) {
 		mtn, err = ptn.loadChild(ent0.Hash)

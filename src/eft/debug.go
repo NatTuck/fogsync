@@ -36,3 +36,17 @@ func printStackFatal() {
 func printHex(data []byte) {
 	fmt.Println(hex.EncodeToString(data))
 }
+
+func (eft *EFT) printHashPath(msg string, hash [32]byte) {
+	if HashesEqual(hash, ZERO_HASH) {
+		fmt.Println("XX - ", msg, "EMPTY")
+		return
+	}
+
+	info, err := eft.loadItemInfo(hash)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println("XX - ", msg, info.Path)
+}

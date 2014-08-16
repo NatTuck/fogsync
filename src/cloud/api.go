@@ -36,6 +36,7 @@ func (cc *Cloud) httpRequest(mm string, cpath string, body io.Reader) (*http.Res
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Connection", "close")
 	req.Header.Set("X-FogSync-Auth", cc.Auth)
 
 	cli := &http.Client{}

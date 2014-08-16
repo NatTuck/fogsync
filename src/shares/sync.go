@@ -148,6 +148,7 @@ func (ss *Share) sync() {
 
 	// Fetch
 	fetch_fn := func(bs *eft.BlockSet) (*eft.BlockArchive, error) {
+		fmt.Println("XX - Fetch blocks:", bs.Size())
 		return ss.fetchBlocks(cc, bs)
 	}
 
@@ -160,6 +161,7 @@ func (ss *Share) sync() {
 			return
 		}
 
+		fmt.Println("XX - Merging remote hash", eft.HashToHex(hash))
 		err = ss.Trie.MergeRemote(hash)
 		if err != nil {
 			fmt.Println(fs.Trace(err))
@@ -218,5 +220,23 @@ func (ss *Share) sync() {
 	}
 
 	sync_success = true
-}
 
+	go func() {
+		// Outer func is still holding EFT lock, so this
+		// happens asynchronously.
+
+		fmt.Println("XX - Cached synced, copying out files")
+
+		// Actually copy out all the files
+		infos, err := ss.Trie.ListInfos()
+		if err != nil {
+			fmt.Println(fs.Trace(err))
+			return
+		}
+		
+		for _, info := range(infos) {
+			fmt.Println("XX - In cache", info.Path)
+			ss.Watcher.ChangedRemote(info.Path)
+		}
+	}()
+}
