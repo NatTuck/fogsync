@@ -35,12 +35,12 @@ func (eft *EFT) MergeRemote(hash [32]byte) error {
 		return trace(err)
 	}
 
-
 	snaps[0] = merged
 
 	eft.Snaps = snaps
 	
 	if merged == rem_snaps[0] {
+		fmt.Println("XX - Merge: Took remote hash")
 		eft.commit_hash(hash)
 		return nil
 	} else {
@@ -136,9 +136,13 @@ func (eft *EFT) mergeTrieNodes(tn0, tn1 TrieNode) (TrieNode, error) {
 				return mtn, trace(err)
 			}
 
-			next_hash, err := smtn.save()
-			if err != nil {
-				return mtn, trace(err)
+			next_hash := ent1.Hash
+
+			if !smtn.Equals(stn1) {
+				next_hash, err = smtn.save()
+				if err != nil {
+					return mtn, trace(err)
+				}
 			}
 	
 			mtn.tab[ii] = TrieEntry{

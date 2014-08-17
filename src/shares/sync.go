@@ -150,6 +150,7 @@ func (ss *Share) sync() {
 		return ss.fetchBlocks(cc, bs)
 	}
 
+	// Perform merge
 	if sdata.Root != "" {
 		hash := eft.HexToHash(sdata.Root)
 
@@ -159,15 +160,13 @@ func (ss *Share) sync() {
 			return
 		}
 
-		fmt.Println("XX - Merging remote hash", eft.HashToHex(hash))
 		err = ss.Trie.MergeRemote(hash)
 		if err != nil {
 			fmt.Println(fs.Trace(err))
 			return
 		}
 	}
-
-	// Perform merge
+	
 	prev_root := sdata.Root
 
 	// Upload

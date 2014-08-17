@@ -38,6 +38,14 @@ func (eft *EFT) RootHash() (string, error) {
 	return hex.EncodeToString(hash[:]), nil
 }
 
+func (eft *EFT) RootHash1() string {
+	hash, err := eft.RootHash()
+	if err != nil {
+		panic(err)
+	}
+	return hash
+}
+
 func (eft *EFT) BlockPath(hash [32]byte) string {
 	text := hex.EncodeToString(hash[:])
 	d0 := text[0:3]
