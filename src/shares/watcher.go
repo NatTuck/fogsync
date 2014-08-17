@@ -25,7 +25,6 @@ func (ww *Watcher) Changed(change string) {
 }
 
 func (ww *Watcher) ChangedRemote(change string) {
-	fmt.Println("XX - ChangedRemote(", change, ")")
 	ww.remotes<- change
 }
 
@@ -74,16 +73,11 @@ func (ww *Watcher) scanTree(scan_path string) {
 
 func (ww *Watcher) watcherLoop() {
 	for {
-		fmt.Println("XX - Watcher in select")
-
 		select {
 		case evt := <-ww.fswatch.Event:
 			if evt == nil {
-				fmt.Println("XX - Watcher nil event")
 				goto DONE
 			}
-
-			fmt.Println("XX - Watcher fswatch event")
 
 			if evt.IsDelete() || evt.IsRename() {
 				stamp := uint64(time.Now().UnixNano())
@@ -97,10 +91,8 @@ func (ww *Watcher) watcherLoop() {
 			}
 			goto DONE
 		case upd := <-ww.updates:
-			fmt.Println("XX - Watcher Local Update", upd)
 			ww.scanTree(upd)
 		case upd := <-ww.remotes:
-			fmt.Println("XX - Watcher Remote Update", upd)
 			full_path := ww.share.FullPath(upd)
 			ww.share.gotChange(full_path)
 		case _    = <-ww.shutdown:

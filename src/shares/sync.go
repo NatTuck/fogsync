@@ -144,11 +144,9 @@ func (ss *Share) sync() {
 		fmt.Println(fs.Trace(err))
 		return
 	}
-	fmt.Println("XX - GetShare didn't fail")
 
 	// Fetch
 	fetch_fn := func(bs *eft.BlockSet) (*eft.BlockArchive, error) {
-		fmt.Println("XX - Fetch blocks:", bs.Size())
 		return ss.fetchBlocks(cc, bs)
 	}
 
@@ -225,8 +223,6 @@ func (ss *Share) sync() {
 		// Outer func is still holding EFT lock, so this
 		// happens asynchronously.
 
-		fmt.Println("XX - Cached synced, copying out files")
-
 		// Actually copy out all the files
 		infos, err := ss.Trie.ListInfos()
 		if err != nil {
@@ -235,7 +231,6 @@ func (ss *Share) sync() {
 		}
 		
 		for _, info := range(infos) {
-			fmt.Println("XX - In cache", info.Path)
 			ss.Watcher.ChangedRemote(info.Path)
 		}
 	}()

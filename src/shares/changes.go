@@ -27,7 +27,6 @@ func (ss *Share) gotChange(full_path string) {
 	fs.CheckError(err)
 
 	if curr_info.ModT == stamp {
-		fmt.Println("XX - Times match; nothing to do for", full_path)
 		return
 	}
 

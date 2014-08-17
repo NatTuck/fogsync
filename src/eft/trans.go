@@ -137,6 +137,33 @@ func (eft *EFT) commit() {
 	eft.addedName = ""
 }
 
+func (eft *EFT) commit_hash(hash [32]byte) {
+	// This just hard-sets the snap hash to this value.
+	if !eft.locked {
+		panic("EFT: Can't commit() without Lock()")
+	}
+
+	err := eft.saveSnapsHash(hash)
+	if err != nil {
+		panic(err)
+	}
+	
+	err = eft.added.Close()
+	if err != nil {
+		panic(err)
+	}
+
+	added_file := path.Join(eft.Dir, "added")
+	err = appendFile(added_file, eft.addedName)
+	if err != nil {
+		panic(err)
+	}
+
+	os.Remove(eft.addedName)
+	eft.addedName = ""
+
+}
+
 func (eft *EFT) removeBlocks(list *os.File) error {
 	_, err := list.Seek(0, 0)
 	if err != nil {

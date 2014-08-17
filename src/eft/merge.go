@@ -10,40 +10,43 @@ func (eft *EFT) MergeRemote(hash [32]byte) error {
 	defer eft.Unlock()
 
 	eft.begin()
-	abort := true
-	defer func() {
-		if abort {
-			eft.abort()
-		} else {
-			eft.commit()
-		}
-	}()
 
 	// Merge snapshots
 	snaps, err := eft.loadSnaps()
 	if err != nil {
+		eft.abort()
 		return trace(err)
 	}
 
 	rem_snaps, err := eft.loadSnapsFrom(hash)
 	if err != nil {
+		eft.abort()
 		return trace(err)
 	}
 
 	if len(snaps) != 1 || len(rem_snaps) != 1 {
+		eft.abort()
 		panic("TODO: Handle multiple snapshots")
 	}
 
 	merged, err := eft.mergeSnaps(snaps[0], rem_snaps[0])
 	if err != nil {
+		eft.abort()
 		return trace(err)
 	}
+
+
 	snaps[0] = merged
 
 	eft.Snaps = snaps
-
-	abort = false
-	return nil
+	
+	if merged == rem_snaps[0] {
+		eft.commit_hash(hash)
+		return nil
+	} else {
+		eft.commit()
+		return nil
+	}
 }
 
 func (eft *EFT) mergeSnaps(snap0, snap1 Snapshot) (Snapshot, error) {
@@ -66,12 +69,17 @@ func (eft *EFT) mergeSnaps(snap0, snap1 Snapshot) (Snapshot, error) {
 		return Snapshot{}, trace(err)
 	}
 
-	hash, err := trie.save()
-	if err != nil {
-		return Snapshot{}, trace(err)
-	}
+	if trie.Equals(&pt1) {
+		fmt.Println("XX - Remote snap has no changes.")
+		snap0.Root = snap1.Root
+	} else {
+		hash, err := trie.save()
+		if err != nil {
+			return Snapshot{}, trace(err)
+		}
 
-	snap0.Root = hash
+		snap0.Root = hash
+	}
 	
 	return snap0, nil
 }

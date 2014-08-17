@@ -44,6 +44,10 @@ func (eft *EFT) loadPathTrie(hash [32]byte) (PathTrie, error) {
 	return trie, nil
 }
 
+func (pt *PathTrie) Equals(pt1 *PathTrie) bool {
+	return pt.root.Equals(pt1.root)
+}
+
 func (pt *PathTrie) save() ([32]byte, error) {
 	return pt.root.save()
 }

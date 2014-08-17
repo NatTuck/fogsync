@@ -44,6 +44,22 @@ func (tn *TrieNode) KeyBytes(ee TrieEntry) ([]byte, error) {
 	return tn.tri.KeyBytes(ee)
 }
 
+func (tn *TrieNode) Equals(tn1 *TrieNode) bool {
+	for ii := 0; ii < 16; ii++ {
+		if tn.ovr[ii] != tn1.ovr[ii] {
+			return false
+		}
+	}
+
+	for ii := 0; ii < 256; ii++ {
+		if tn.tab[ii] != tn1.tab[ii] {
+			return false
+		}
+	}
+
+	return true
+}
+
 func (tn *TrieNode) emptyChild() *TrieNode {
 	return &TrieNode{
 		eft: tn.eft,
