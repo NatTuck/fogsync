@@ -20,7 +20,7 @@ func (ss *Share) gotChange(full_path string) {
 
 	curr_info, err := ss.Trie.GetInfo(rel_path)
 	if err == eft.ErrNotFound {
-		fmt.Println("XX - Nothing found for", full_path)
+		fmt.Println("XX - (gotChange) Nothing found for", full_path, "(" + rel_path + ")")
 		curr_info.ModT = 0
 		err = nil
 	}
@@ -79,7 +79,7 @@ func (ss *Share) gotDelete(full_path string, stamp uint64) {
 
 	curr_info, err := ss.Trie.GetInfo(rel_path)
 	if err == eft.ErrNotFound {
-		fmt.Println("XX - Nothing found for", full_path)
+		fmt.Println("XX - (gotDelete) Nothing found for", full_path)
 		curr_info.ModT = 0
 		err = nil
 	}
@@ -91,6 +91,8 @@ func (ss *Share) gotDelete(full_path string, stamp uint64) {
 		ss.gotChange(full_path)
 		return
 	}
+
+	fmt.Println("XX - Delete for", rel_path)
 
 	err = ss.Trie.Del(rel_path)
 	fs.CheckError(err)

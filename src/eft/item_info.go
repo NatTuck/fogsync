@@ -35,7 +35,7 @@ func (info *ItemInfo) TypeName() string {
 	case INFO_LINK:
 		return "link"
 	case INFO_TOMB:
-		panic("Item type of Tombstone")
+		return "deleted"
 	default:
 		panic("Bad type in ItemInfo")
 	}
@@ -117,6 +117,7 @@ func MakeTombstone(info ItemInfo) (ItemInfo, error) {
 	info.ModT = uint64(time.Now().UnixNano())
 
 	info.Type = INFO_TOMB
+	info.Size = 0
 	return info, nil
 }
 
