@@ -5,6 +5,7 @@ import (
 	"os"
 	"fmt"
 	"sync"
+	"time"
 	"encoding/hex"
 	"encoding/base64"
 	"encoding/json"
@@ -23,9 +24,12 @@ type Share struct {
 	Trie    *eft.EFT
 	Watcher *Watcher
 	Mutex   sync.Mutex
-	Changes chan string
 	Syncs   chan bool
 	WaitGr  sync.WaitGroup
+
+	// changes tracks changes to files in
+	// the share. It's mutex protected.
+	changes map[string]time.Time
 }
 
 func newShare(name string, key string) *Share {
@@ -38,8 +42,8 @@ func newShare(name string, key string) *Share {
 			Name: name,
 			Key:  key,
 		},
-		Changes: make(chan string, 256),
 		Syncs:   make(chan bool, 4),
+		changes: make(map[string]time.Time),
 	}
 
 	if key == "" {

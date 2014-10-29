@@ -4,11 +4,24 @@ import (
 	"os"
 	"fmt"
 	"path"
+	"time"
 	"../eft"
 	"../fs"
 )
 
-func (ss *Share) gotChange(full_path string) {
+func (ss *Share) gotChange(full_path string, when time.Time) {
+	ss.Lock()
+	defer ss.Unlock()
+
+	tt, ok := ss.changes[full_path]
+	ss.changes[full_path] = when
+
+	if !ok {
+		go ss.gotChangeWorker(full_path)
+	}
+}
+
+func (ss *Share) gotChangeWorker(full_path string) {
 	rel_path := ss.RelPath(full_path)
 
 	stamp := uint64(0)
