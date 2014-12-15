@@ -41,6 +41,11 @@ func (info *ItemInfo) TypeName() string {
 	}
 }
 
+func (info *ItemInfo) String() string {
+	return fmt.Sprintf("Type: %s\nPath: %s\nSize: %d\n",
+	    info.TypeName(), info.Path, info.Size)
+}
+
 func (info *ItemInfo) ModTime() time.Time {
 	modt := int64(info.ModT)
 	nano := int64(1000000000)
@@ -58,6 +63,10 @@ func (info *ItemInfo) HashText() string {
 
 func (info *ItemInfo) IsExec() bool {
 	return info.Mode & 1 > 0
+}
+
+func (info *ItemInfo) IsTomb() bool {
+	return info.Type == INFO_TOMB
 }
 
 func NewItemInfo(name string, src_path string, sysi os.FileInfo) (ItemInfo, error) {

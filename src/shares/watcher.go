@@ -18,6 +18,8 @@ type Watcher struct {
 	updates  chan string
 	remotes  chan string
 	shutdown chan bool
+
+	changes  map[string]*time.Time
 }
 
 func (ww *Watcher) Changed(change string) {

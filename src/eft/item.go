@@ -75,6 +75,14 @@ func (eft *EFT) loadItem(hash [32]byte, dst_path string) (ItemInfo, error) {
 		return info, nil
 	}
 
+	if info.Type == INFO_TOMB {
+		err := os.Remove(dst_path)
+		if err != nil {
+			// ignore remove error
+		}
+		return info, nil
+	}
+
 	if info.Size <= 12 * 1024 {
 		info, err = eft.loadSmallItem(hash, dst_path)
 	} else {

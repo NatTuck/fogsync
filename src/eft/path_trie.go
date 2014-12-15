@@ -116,9 +116,11 @@ func (eft *EFT) getTree(snap *Snapshot, item_path string) (ItemInfo, [32]byte, e
 		return info, item_hash, trace(err)
 	}
 
+	/*
 	if info.Type == INFO_TOMB {
 		return info, item_hash, ErrNotFound
 	}
+	*/
 
 	return info, item_hash, nil
 }
