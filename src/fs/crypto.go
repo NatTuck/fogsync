@@ -2,7 +2,7 @@
 package fs
 
 import (
-	"code.google.com/p/go.crypto/nacl/secretbox"
+	"golang.org/x/crypto/nacl/secretbox"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/hmac"

@@ -15,7 +15,7 @@ Instructions tested on Ubuntu 12.04
 
 2. Install Go
   - Get Godeb, unpack it (http://blog.labix.org/2013/06/15/in-flight-deb-packages-of-go)
-  - ./godeb install 1.3
+  - ./godeb install 1.4
 
 3. Set up gopath
   - mkdir ~/.local/go

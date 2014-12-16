@@ -4,7 +4,7 @@ import (
 	"encoding/hex"
 	"crypto/rand"
 	"crypto/sha256"
-	"code.google.com/p/go.crypto/nacl/secretbox"
+	"golang.org/x/crypto/nacl/secretbox"
 	"os"
 	"io"
 	"fmt"
