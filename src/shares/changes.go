@@ -74,8 +74,6 @@ func (ss *Share) gotDelete(full_path string, stamp uint64) {
 }
 
 func (ss *Share) copyOutPath(full_path string, rel_path string) {
-	fmt.Println("XX - Copy out to", full_path)
-
 	dir := path.Dir(full_path)
 	err := os.MkdirAll(dir, 0700)
 	fs.CheckError(err)
@@ -87,8 +85,8 @@ func (ss *Share) copyOutPath(full_path string, rel_path string) {
 		fmt.Println("XX - Skipping tombstone")
 		return
 	}
-
-	fmt.Println(info.String())
+	
+	fmt.Println("XX - Copy out to", full_path)
 	
 	err = os.Chtimes(full_path, info.ModTime(), info.ModTime())
 	if err != nil {

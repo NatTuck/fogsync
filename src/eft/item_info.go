@@ -9,6 +9,8 @@ import (
 	"os"
 )
 
+const INFO_SIZE = 2048
+
 const (
 	INFO_FILE = 4
 	INFO_DIR  = 5
@@ -142,7 +144,7 @@ func FastItemInfo(src_path string) (ItemInfo, error) {
 }
 
 func ItemInfoFromBytes(data []byte) ItemInfo {
-	if len(data) != 2048 {
+	if len(data) != INFO_SIZE {
 		panic("ItemInfo block wrong length.")
 	}
 
@@ -156,9 +158,15 @@ func ItemInfoFromBytes(data []byte) ItemInfo {
 	copy(info.Hash[:], data[32:64])
 
 	moby_len := be.Uint32(data[512:520])
+	if (moby_len > 508) {
+		panic("Modified By string too long")
+	}
 	info.MoBy = string(data[520:520 + moby_len])
 
 	path_len := be.Uint32(data[1024:1028])
+	if (path_len > 980) {
+		panic("Path length too long")
+	}
 	info.Path = string(data[1028:1028 + path_len])
 	
 	return info
@@ -167,7 +175,7 @@ func ItemInfoFromBytes(data []byte) ItemInfo {
 func (info *ItemInfo) Bytes() []byte {
 	be := binary.BigEndian
 
-	data := make([]byte, 2048)
+	data := make([]byte, INFO_SIZE)
 	be.PutUint32(data[0 : 4], info.Type)
 	be.PutUint64(data[4 :12], info.Size)
 	be.PutUint64(data[12:20], info.ModT)
@@ -182,11 +190,11 @@ func (info *ItemInfo) Bytes() []byte {
 	copy(data[520:1024], []byte(info.MoBy))
 
 	path_len := len(info.Path)
-	if (path_len > 1020) {
+	if (path_len > 980) {
 		panic("Path length too long")
 	}
 	be.PutUint32(data[1024:1028], uint32(path_len))
-	copy(data[1028:2048], []byte(info.Path))
+	copy(data[1028:2008], []byte(info.Path))
 
 	return data
 }

@@ -7,6 +7,8 @@ import (
 	"os"
 )
 
+var DATA_SIZE = BLOCK_SIZE - BLOCK_OVERHEAD
+
 func (eft *EFT) saveEncBlock(hash [32]byte, ctxt []byte) error {
 	// First, validate block hash
 	hash1 := HashSlice(ctxt)

@@ -84,7 +84,7 @@ func (eft *EFT) saveLargeItem(info ItemInfo, src_path string) ([32]byte, error) 
 
 	trie := eft.newLargeTrie(info)
 
-	data := make([]byte, BLOCK_SIZE)
+	data := make([]byte, DATA_SIZE)
 
 	for ii := uint64(0); true; ii++ {
 		_, err := src.Read(data)

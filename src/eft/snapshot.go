@@ -101,7 +101,7 @@ func (eft *EFT) loadSnapsFrom(hash [32]byte) ([]Snapshot, error) {
 	snaps := make([]Snapshot, 0)
 	zero_hash := make([]byte, 32)
 
-	for ii := 0; ii < 128; ii++ {
+	for ii := 0; ii < 64; ii++ {
 		snap := Snapshot{}
 		base := ii * SNAP_SIZE
 
@@ -153,7 +153,7 @@ func (eft *EFT) saveSnaps(snaps []Snapshot) error {
 		}
 	}
 
-	data := make([]byte, BLOCK_SIZE)
+	data := make([]byte, DATA_SIZE)
 
 	for ii, snap := range(snaps) {
 		if snap.Temp {

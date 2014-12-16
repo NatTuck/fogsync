@@ -13,7 +13,7 @@ func (eft *EFT) saveSmallItem(info ItemInfo, src_path string) ([32]byte, error) 
 		return empty, err
 	}
 
-	if len(data) > 12 * 1024 {
+	if uint64(len(data)) > SMALL_MAX {
 		return empty, fmt.Errorf("Maximum size for small item is 12k")
 	}
 
@@ -23,12 +23,12 @@ func (eft *EFT) saveSmallItem(info ItemInfo, src_path string) ([32]byte, error) 
 			len(data), info.Size)
 	}
 
-	block := make([]byte, BLOCK_SIZE)
+	block := make([]byte, DATA_SIZE)
 
 	header := info.Bytes()
 	copy(block[0:2048], header)
 
-	copy(block[4096:BLOCK_SIZE], data)
+	copy(block[4096:DATA_SIZE], data)
 
 	hash, err := eft.saveBlock(block)
 	if err != nil {
@@ -46,7 +46,7 @@ func (eft *EFT) loadSmallItem(hash [32]byte, dst_path string) (ItemInfo, error) 
 		return nilInfo, err
 	}
 
-	if len(block) != BLOCK_SIZE {
+	if len(block) != DATA_SIZE {
 		return nilInfo, fmt.Errorf("Bad block size: %d", len(block))
 	}
 

@@ -5,6 +5,8 @@ import (
 	"os"
 )
 
+var SMALL_MAX = uint64(12 * 1024 - BLOCK_OVERHEAD)
+
 func (eft *EFT) putItem(snap *Snapshot, info ItemInfo, src_path string) error {
 	data_hash, err := eft.saveItem(info, src_path)
 	if err != nil {
@@ -83,7 +85,7 @@ func (eft *EFT) loadItem(hash [32]byte, dst_path string) (ItemInfo, error) {
 		return info, nil
 	}
 
-	if info.Size <= 12 * 1024 {
+	if info.Size <= SMALL_MAX {
 		info, err = eft.loadSmallItem(hash, dst_path)
 	} else {
 		info, err = eft.loadLargeItem(hash, dst_path)
@@ -95,7 +97,7 @@ func (eft *EFT) loadItem(hash [32]byte, dst_path string) (ItemInfo, error) {
 }
 
 func (eft *EFT) saveItem(info ItemInfo, src_path string) ([32]byte, error) {
-	if (info.Size <= 12 * 1024) {
+	if info.Size <= SMALL_MAX {
 		return eft.saveSmallItem(info, src_path)
 	} else {
 		return eft.saveLargeItem(info, src_path)
@@ -108,7 +110,7 @@ func (eft *EFT) visitItemBlocks(hash [32]byte, fn func(hash [32]byte) error) err
 		return trace(err)
 	}
 
-	if (info.Size <= 12 * 1024) {
+	if info.Size <= SMALL_MAX {
 		return fn(hash)
 	} else {
 		err :=  fn(hash)
