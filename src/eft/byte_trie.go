@@ -87,13 +87,8 @@ func (tn *TrieNode) load(hash [32]byte) error {
 
 	copy(tn.hdr[:], data[0:2048])
 
-	for ii := 0; ii < 16; ii++ {
-		offset := 3584 + 32 * ii
-		copy(tn.ovr[ii][:], data[offset:offset + 32])
-	}
-
 	for ii := 0; ii < 256; ii++ {
-		offset := 4096 + 48 * ii
+		offset := 2048 + 48 * ii
 		rec := data[offset:offset + 48]
 
 		entry := TrieEntry{}
@@ -104,21 +99,21 @@ func (tn *TrieNode) load(hash [32]byte) error {
 		tn.tab[ii] = entry
 	}
 
+	for ii := 0; ii < 16; ii++ {
+		offset := 14336 + 32 * ii
+		copy(tn.ovr[ii][:], data[offset:offset + 32])
+	}
+
 	return nil
 }
 
 func (tn *TrieNode) save() ([32]byte, error) {
-	data := make([]byte, BLOCK_SIZE)
+	data := make([]byte, DATA_SIZE)
 
 	copy(data[0:2048], tn.hdr[:])
 
-	for ii := 0; ii < 16; ii++ {
-		offset := 3584 + 32 * ii
-		copy(data[offset:offset + 32], tn.ovr[ii][:])
-	}
-
 	for ii := 0; ii < 256; ii++ {
-		offset := 4096 + 48 * ii
+		offset := 2048 + 48 * ii
 		rec := data[offset:offset + 48]
 
 		entry := tn.tab[ii]
@@ -126,6 +121,11 @@ func (tn *TrieNode) save() ([32]byte, error) {
 		rec[32] = entry.Type
 		copy(rec[34:42], entry.Pkey[:])
 		copy(rec[42:48], entry.Data[:])
+	}
+
+	for ii := 0; ii < 16; ii++ {
+		offset := 14336 + 32 * ii
+		copy(data[offset:offset + 32], tn.ovr[ii][:])
 	}
 
 	hash, err := tn.eft.saveBlock(data)

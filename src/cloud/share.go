@@ -9,8 +9,6 @@ import (
 	"../eft"
 )
 
-var FULL_BLOCK_SIZE = int64(eft.BLOCK_SIZE + eft.BLOCK_OVERHEAD)
-
 type ShareInfo struct {
 	NameHmac   string `json:"name"`
 	Root       string `json:"root"`
@@ -51,7 +49,7 @@ func (cc *Cloud) GetShare(name_hmac string) (*ShareInfo, error) {
 		return nil, fs.Trace(err)
 	}
 
-	if sinfo.BlockSize != FULL_BLOCK_SIZE {
+	if sinfo.BlockSize != int64(eft.BLOCK_SIZE) {
 		return nil, fmt.Errorf("Bad remote block size: %d", sinfo.BlockSize)
 	}
 
@@ -68,7 +66,7 @@ func (cc *Cloud) CreateShare(name_hmac string, secrets string) (*ShareInfo, erro
 	req_obj := &ShareCreate{
 		NameHmac:  name_hmac,
 		Secrets:   secrets,
-		BlockSize: int64(eft.BLOCK_SIZE + eft.BLOCK_OVERHEAD),
+		BlockSize: int64(eft.BLOCK_SIZE),
 	}
 	req_data, err := json.Marshal(req_obj)
 	if err != nil {

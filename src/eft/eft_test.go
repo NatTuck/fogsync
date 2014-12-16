@@ -48,6 +48,6 @@ func TestSomeRoundtrips(tt *testing.T) {
 		panic(err)
 	}
 
-	cp.Cleanup()
+	cp.Commit()
 }
 

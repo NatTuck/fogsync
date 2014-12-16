@@ -54,7 +54,6 @@ func TestTrivialMerge(tt *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	defer cp.Cleanup()
 
 	err = eft0.FetchRemote(HexToHash(cp.Hash), fetch_eft1)
 	if err != nil {

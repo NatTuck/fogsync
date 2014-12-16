@@ -64,7 +64,7 @@ func HashFile(file_path string) ([32]byte, error) {
 }
 
 func EncryptBlock(data []byte, key [32]byte) []byte {
-	if len(data) != BLOCK_SIZE {
+	if len(data) != (BLOCK_SIZE - BLOCK_OVERHEAD) {
 		panic("EncryptBlock: Bad block size")
 	}
 
@@ -77,7 +77,7 @@ func EncryptBlock(data []byte, key [32]byte) []byte {
 }
 
 func DecryptBlock(ctxt []byte, key [32]byte) ([]byte, error) {
-	if len(ctxt) != BLOCK_SIZE + 24 + secretbox.Overhead {
+	if len(ctxt) != BLOCK_SIZE {
 		return nil, fmt.Errorf("eft.DecryptBlock: Bad block size")
 	}
 
