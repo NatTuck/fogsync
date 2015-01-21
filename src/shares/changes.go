@@ -22,6 +22,12 @@ func (ss *Share) gotChange(full_path string, when time.Time) {
 }
 
 func (ss *Share) gotChangeWorker(full_path string) {
+	// 
+
+
+}
+
+func (ss *Share) gotChangeWorker1(full_path string) {
 	rel_path := ss.RelPath(full_path)
 
 	stamp := uint64(0)
