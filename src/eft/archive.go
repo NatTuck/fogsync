@@ -68,8 +68,6 @@ func (ba *BlockArchive) Close() error {
 }
 
 func (ba *BlockArchive) Extract(eft *EFT) error {
-	FULL_SIZE := BLOCK_SIZE + BLOCK_OVERHEAD
-
 	_, err := ba.file.Seek(0, 0)
 	if err != nil {
 		return trace(err)
@@ -85,7 +83,7 @@ func (ba *BlockArchive) Extract(eft *EFT) error {
 			return trace(err)
 		}
 
-		ctxt := make([]byte, FULL_SIZE)
+		ctxt := make([]byte, BLOCK_SIZE)
 		_, err = io.ReadFull(ba.file, ctxt)
 		if err != nil {
 			return trace(err)
