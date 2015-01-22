@@ -1,12 +1,17 @@
 
 VERSION=$(shell echo `date "+%Y-%m-%d %H:%M"` `whoami`@`hostname`)
 
-all: bin/fogsync assets
+all: bin/fogsync bin/fogt assets
 
 bin/fogsync: config/version.go $(wildcard */*.go)
 	(cd fogsync && go build)
 	mkdir -p bin
 	cp fogsync/fogsync bin
+
+bin/fogt: $(wildcard */*.go)
+	(cd fogt && go build)
+	mkdir -p bin
+	cp fogt/fogt bin
 
 config/version.go:
 	echo "package config" > $@
@@ -17,7 +22,8 @@ assets:
 
 clean:
 	(cd fogsync && go clean)
-	rm -f bin/fogsync
+	(cd fogt && go clean)
+	rm -f bin/fogsync bin/fogt
 	(cd webui/assets && make clean)
 
 prereqs:
@@ -25,6 +31,7 @@ prereqs:
 	go get github.com/GeertJohan/go.rice
 	go get github.com/edsrzf/mmap-go
 	go get golang.org/x/crypto/nacl/secretbox
+	go get github.com/ogier/pflag
 	(cd webui/assets && make prereqs)
 
 local-reset:
