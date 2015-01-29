@@ -3,6 +3,7 @@ package eft
 import (
 	"fmt"
 	"os"
+	"path"
 )
 
 var SMALL_MAX = uint64(12 * 1024 - BLOCK_OVERHEAD)
@@ -70,11 +71,16 @@ func (eft *EFT) loadItem(hash [32]byte, dst_path string) (ItemInfo, error) {
 	}
 
 	if info.Type == INFO_DIR {
-		err := os.MkdirAll(dst_path, 0700)
+		err := os.MkdirAll(dst_path, 0755)
 		if err != nil {
 			return info, trace(err)
 		}
 		return info, nil
+	}
+	
+	err = os.MkdirAll(path.Dir(dst_path), 0755)
+	if err != nil {
+		return info, trace(err)
 	}
 
 	if info.Type == INFO_TOMB {

@@ -194,6 +194,13 @@ func (eft *EFT) saveSnaps(snaps []Snapshot) error {
 }
 
 func (eft *EFT) mainSnap() *Snapshot {
+	snaps, err := eft.loadSnaps()
+	if err != nil {
+		fmt.Println("Note: Loading snaps failed")
+	} else {
+		eft.Snaps = snaps
+	}
+
 	if len(eft.Snaps) == 0 {
 		snap := Snapshot{}
 		eft.Snaps = append(eft.Snaps, snap)
@@ -202,3 +209,17 @@ func (eft *EFT) mainSnap() *Snapshot {
 	return &eft.Snaps[0]
 }
 
+func (snap *Snapshot) debugDump(trie *EFT) {
+	fmt.Printf("[Snapshot] %s \n\t@ %s (temp %t) (desc \"%s\")\n",
+	    hex.EncodeToString(snap.Root[:]),
+		dateFromUnix(snap.Time), 
+		snap.Temp, 
+		snap.Desc)
+
+	pt, err := trie.loadPathTrie(snap.Root)
+	if err != nil {
+		panic(err)
+	}
+
+	pt.debugDump()
+}

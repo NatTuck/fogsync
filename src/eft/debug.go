@@ -4,6 +4,7 @@ import (
 	"runtime"
 	"fmt"
 	"os"
+	"time"
 	"encoding/hex"
 )
 
@@ -49,4 +50,14 @@ func (eft *EFT) printHashPath(msg string, hash [32]byte) {
 	}
 
 	fmt.Println("XX - ", msg, info.Path)
+}
+
+func timeFromUnix(nn uint64) time.Time {
+    modt := int64(nn)
+	nano := int64(1000000000)
+	return time.Unix(modt / nano, modt % nano)
+}
+
+func dateFromUnix(nn uint64) string {
+	return timeFromUnix(nn).Format(time.RubyDate)
 }

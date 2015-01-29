@@ -1,3 +1,4 @@
 bin/*
 fogsync/fogsync
+fogt/fogt
 config/version.go

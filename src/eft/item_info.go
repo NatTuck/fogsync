@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"time"
+	"path"
 	"os/user"
 	"fmt"
 	"os"
@@ -44,14 +45,12 @@ func (info *ItemInfo) TypeName() string {
 }
 
 func (info *ItemInfo) String() string {
-	return fmt.Sprintf("Type: %s\nPath: %s\nSize: %d\n",
-	    info.TypeName(), info.Path, info.Size)
+	return fmt.Sprintf("Type: %s\tSize: %d\tPath: %s",
+	    info.TypeName(), info.Size, info.Path)
 }
 
 func (info *ItemInfo) ModTime() time.Time {
-	modt := int64(info.ModT)
-	nano := int64(1000000000)
-	return time.Unix(modt / nano, modt % nano)
+	return timeFromUnix(info.ModT)
 }
 
 func (info *ItemInfo) DateText() string {
@@ -73,7 +72,7 @@ func (info *ItemInfo) IsTomb() bool {
 
 func NewItemInfo(name string, src_path string, sysi os.FileInfo) (ItemInfo, error) {
 	info := ItemInfo{}
-	info.Path = name
+	info.Path = path.Clean("/" + name)
 	info.Size = uint64(sysi.Size())
 	info.ModT = uint64(sysi.ModTime().UnixNano())
 
@@ -86,6 +85,11 @@ func NewItemInfo(name string, src_path string, sysi os.FileInfo) (ItemInfo, erro
 	default:
 		// Assume symlink
 		info.Type = INFO_LINK
+		link, err := os.Readlink(src_path)
+		if err != nil {
+			return info, err
+		}
+		info.Size = uint64(len(link))
 	}
 
 	if info.Type == INFO_FILE {

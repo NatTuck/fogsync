@@ -3,7 +3,9 @@ package main
 import (
 	"fmt"
 	"os"
+	"encoding/hex"
 	"github.com/ogier/pflag"
+	"../eft"
 )
 
 func ShowUsage() {
@@ -15,6 +17,7 @@ func ShowUsage() {
 	fmt.Fprintf(os.Stderr, "  fogt del \"Documents/pineapple.gif\"\n")
 	fmt.Fprintf(os.Stderr, "  fogt gc\n")
 	fmt.Fprintf(os.Stderr, "  fogt ls \"Documents\"\n")
+	fmt.Fprintf(os.Stderr, "  fogt dump\n");
 	fmt.Fprintf(os.Stderr, "\nFlags:\n")
 	pflag.PrintDefaults()
 }
@@ -22,7 +25,8 @@ func ShowUsage() {
 func main() {
 	pflag.Usage = ShowUsage
 
-	dir := pflag.StringP("dir", "d", "/tmp/test-eft", "Specify the location where the EFT is stored")
+	dir := pflag.StringP("dir", "d", "/tmp/test-eft", 
+	                        "Specify the location where the EFT is stored")
 	key := pflag.StringP("key", "k", "0000", "Specify the encryption key (hex).")
 	pflag.Parse()
 
@@ -37,30 +41,108 @@ func main() {
 
 	cmd := args[0]
 
+	trie := &eft.EFT{
+		Key: parseKey(*key),
+		Dir: *dir,
+	}
+
 	if len(args) == 1 {
-		if cmd == "gc" {
+		switch cmd {
+		case "gc":
 			fmt.Println("gc")
-		} else {
+		case "dump":
+			dumpCmd(trie)
+		default:
 			pflag.Usage()
 			os.Exit(1)
 		}
+			
 		return
 	}
 
 	tgt := args[1]
 
-	switch args[0] {
+	switch cmd {
 	case "put":
-		fmt.Println("put", tgt)
+		putCmd(trie, tgt)
 	case "get":
-		fmt.Println("get", tgt)
+		getCmd(trie, tgt)
 	case "del":
-		fmt.Println("del", tgt)
+		delCmd(trie, tgt)
 	case "ls":
-		fmt.Println("ls", tgt)
+		lsCmd(trie, tgt)
 	default:
 		pflag.Usage()
 		os.Exit(1)
 	}
 }
 
+func parseKey(text string) [32]byte {
+	var key [32]byte
+
+	sli, err := hex.DecodeString(text)
+	if err != nil {
+		panic(err)
+	}
+
+	copy(key[:], sli)
+	return key
+}
+
+func dumpCmd(trie *eft.EFT) {
+	trie.DebugDump()
+}
+
+func putCmd(trie *eft.EFT, tgt string) {
+	info, err := eft.FastItemInfo(tgt)
+	if err != nil {
+		panic(err)
+	}
+
+	err = trie.Put(info, tgt)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func getCmd(trie *eft.EFT, tgt string) {
+	fmt.Println("Get", tgt)
+
+	if tgt[0] != '/' {
+		panic("Expected a '/' at start of target path.")
+	}
+
+	info, err := trie.Get(tgt, "./" + tgt[1:])
+	if err != nil {
+		if err == eft.ErrNotFound {
+			fmt.Println("Not found")
+			os.Exit(2)
+		} else {
+			panic(err)
+		}
+	}
+
+	fmt.Println("Got:", info.String())
+}
+
+func delCmd(trie *eft.EFT, tgt string) {
+	fmt.Println("Del", tgt)
+
+	err := trie.Del(tgt)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func lsCmd(trie *eft.EFT, tgt string) {
+	list, err := trie.ListDir(tgt)
+	if err != nil {
+		panic(err)
+	}
+		
+	fmt.Println("Listing:", tgt)
+
+	for _, info := range(list) {
+		fmt.Println(info.String())
+	}
+}
