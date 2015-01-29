@@ -56,9 +56,7 @@ for my $ff (@files) {
     $ff =~ s/^\./\//;
     $ff =~ s/^\/\//\//;
 
-    my $cmd = qq{"$FOGT" -d "$TEST_EFT" get "$ff"};
-    say $cmd;
-    runcmd($cmd);
+    $glist->say($ff);
 }
 close($glist);
 

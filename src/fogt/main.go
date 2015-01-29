@@ -115,13 +115,13 @@ func putCmd(trie *eft.EFT, tgt string) {
 }
 
 func getCmd(trie *eft.EFT, tgt string) {
-	fmt.Println("Get", tgt)
+	//fmt.Println("Get", tgt)
 
 	if tgt[0] != '/' {
 		panic("Expected a '/' at start of target path.")
 	}
 
-	info, err := trie.Get(tgt, "./" + tgt[1:])
+	_, err := trie.Get(tgt, "./" + tgt[1:])
 	if err != nil {
 		if err == eft.ErrNotFound {
 			fmt.Println("Not found")
@@ -131,7 +131,7 @@ func getCmd(trie *eft.EFT, tgt string) {
 		}
 	}
 
-	fmt.Println("Got:", info.String())
+	//fmt.Println("Got:", info.String())
 }
 
 func delCmd(trie *eft.EFT, tgt string) {

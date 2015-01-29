@@ -33,6 +33,7 @@ prereqs:
 	go get golang.org/x/crypto/nacl/secretbox
 	go get github.com/ogier/pflag
 	(cd webui/assets && make prereqs)
+	sudo apt-get install parallel
 
 local-reset:
 	rm -rf ~/.cache/fogsync
