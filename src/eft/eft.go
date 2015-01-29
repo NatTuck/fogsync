@@ -5,6 +5,7 @@ import (
 	"sync"
 	"path"
 	"os"
+	"fmt"
 )
 
 const BLOCK_SIZE = 16 * 1024
@@ -48,9 +49,8 @@ func (eft *EFT) RootHash1() string {
 
 func (eft *EFT) BlockPath(hash [32]byte) string {
 	text := hex.EncodeToString(hash[:])
-	d0 := text[0:3]
-	d1 := text[3:6]
-	return path.Join(eft.Dir, "blocks", d0, d1, text)
+	d0 := text[0:2]
+	return path.Join(eft.Dir, "blocks", d0, text)
 }
 
 func (eft *EFT) Put(info ItemInfo, src_path string) error {
@@ -73,6 +73,12 @@ func (eft *EFT) Put(info ItemInfo, src_path string) error {
 func (eft *EFT) Get(name string, dst_path string) (ItemInfo, error) {
 	eft.Lock()
 	defer eft.Unlock()
+
+	dst_parent := path.Dir(dst_path)
+	err := os.MkdirAll(dst_parent, 0755)
+	if err != nil {
+		panic(err)
+	}
 
 	info, err := eft.getItem(eft.mainSnap(), name, dst_path)
 	if err != nil {
@@ -110,6 +116,36 @@ func (eft *EFT) Del(name string) error {
 
 	eft.commit()
 	return nil
+}
+
+func (eft *EFT) ListDir(path string) ([]ItemInfo, error) {
+	infos, err := eft.ListInfos()
+	if err != nil {
+		return nil, err
+	}
+
+	list := make([]ItemInfo, 0)
+
+	for _, info := range(infos) {
+		if info.Path[0:len(path)] == path {
+			list = append(list, info)
+		}
+	}
+
+	return list, nil
+}
+
+func (eft *EFT) DebugDump() {
+	fmt.Println("Dumping EFT Structure...")
+
+	snaps, err := eft.loadSnaps()
+	if err != nil {
+		panic(err)
+	}
+
+	for _, snap := range(snaps) {
+		snap.debugDump(eft)
+	}
 }
 
 func (eft *EFT) TempName() string {
