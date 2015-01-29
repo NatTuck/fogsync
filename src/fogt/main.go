@@ -30,8 +30,8 @@ func main() {
 	key := pflag.StringP("key", "k", "0000", "Specify the encryption key (hex).")
 	pflag.Parse()
 
-	fmt.Println("Eft Dir:", *dir)
-	fmt.Println("Eft Key:", *key)
+	//fmt.Println("Eft Dir:", *dir)
+	//fmt.Println("Eft Key:", *key)
 
 	args := pflag.Args()
 	if len(args) < 1 || len(args) > 2 {
@@ -49,7 +49,7 @@ func main() {
 	if len(args) == 1 {
 		switch cmd {
 		case "gc":
-			fmt.Println("gc")
+			gcCmd(trie)
 		case "dump":
 			dumpCmd(trie)
 		default:
@@ -91,6 +91,15 @@ func parseKey(text string) [32]byte {
 
 func dumpCmd(trie *eft.EFT) {
 	trie.DebugDump()
+}
+
+func gcCmd(trie *eft.EFT) {
+	cp, err := trie.MakeCheckpoint()
+	if err != nil {
+		panic(err)
+	}
+
+	cp.Commit()
 }
 
 func putCmd(trie *eft.EFT, tgt string) {
