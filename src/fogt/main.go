@@ -15,9 +15,10 @@ func ShowUsage() {
 	fmt.Fprintf(os.Stderr, "  fogt put \"Documents/pineapple.gif\"\n")
 	fmt.Fprintf(os.Stderr, "  fogt get \"Documents/pineapple.gif\"\n")
 	fmt.Fprintf(os.Stderr, "  fogt del \"Documents/pineapple.gif\"\n")
+	fmt.Fprintf(os.Stderr, "  fogt blocks\n")
 	fmt.Fprintf(os.Stderr, "  fogt gc\n")
 	fmt.Fprintf(os.Stderr, "  fogt ls \"Documents\"\n")
-	fmt.Fprintf(os.Stderr, "  fogt dump\n");
+	fmt.Fprintf(os.Stderr, "  fogt dump\n")
 	fmt.Fprintf(os.Stderr, "\nFlags:\n")
 	pflag.PrintDefaults()
 }
@@ -52,6 +53,8 @@ func main() {
 			gcCmd(trie)
 		case "dump":
 			dumpCmd(trie)
+		case "blocks":
+			blocksCmd(trie)
 		default:
 			pflag.Usage()
 			os.Exit(1)
@@ -153,5 +156,16 @@ func lsCmd(trie *eft.EFT, tgt string) {
 
 	for _, info := range(list) {
 		fmt.Println(info.String())
+	}
+}
+
+func blocksCmd(trie *eft.EFT) {
+	blocks, err := trie.ListBlocks()
+	if err != nil {
+		 panic(err)
+	}
+
+	for _, bb := range(blocks) {
+		fmt.Println(bb)
 	}
 }

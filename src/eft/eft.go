@@ -148,6 +148,10 @@ func (eft *EFT) DebugDump() {
 	}
 }
 
+func (eft *EFT) ListBlocks() ([]string, error) {
+	return make([]string, 0), nil
+}
+
 func (eft *EFT) TempName() string {
 	temp  := path.Join(eft.Dir, "tmp")
 	err := os.MkdirAll(temp, 0700)

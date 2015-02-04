@@ -289,4 +289,18 @@ func (mm *MarkList) Close() error {
 	return os.Remove(mm.name)
 }
 
+func (snap *Snapshot) liveBlocks() ([]string, error) {
+	trie, err := snap.eft.loadPathTrie(snap.Root)
+	if err != nil {
+		return nil, trace(err)
+	}
 
+	err = trie.visitEachBlock(func (hash [32]byte) error {
+		return nil
+	})
+	if err != nil {
+		return nil, trace(err)
+	}
+
+	return make([]string, 0), nil
+}

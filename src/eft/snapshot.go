@@ -22,16 +22,15 @@ const MAX_SNAPS = 16
 const SNAP_SIZE = 128
 
 type Snapshot struct {
+	eft  *EFT
 	Root [32]byte
-	Log  [32]byte
 	Time uint64
-	Temp bool
 	Desc string
 }
 
 func (eft *EFT) defaultSnapsList() ([]Snapshot, error) {
 	snaps := []Snapshot{}
-	snaps = append(snaps, Snapshot{})
+	snaps = append(snaps, Snapshot{eft: eft})
 	return snaps, nil
 }
 
@@ -44,7 +43,9 @@ func (eft *EFT) loadSnapsHash() ([32]byte, error) {
 		return hash, ErrNotFound
 	}
 
-	hash_slice, err := hex.DecodeString(string(hash_text))
+	hash_string := strings.Trim(string(hash_text), "\n")
+
+	hash_slice, err := hex.DecodeString(hash_string)
 	if err != nil {
 		return hash, trace(err)
 	}
@@ -57,7 +58,7 @@ func (eft *EFT) saveSnapsHash(hash [32]byte) error {
 	snaps_path := path.Join(eft.Dir, "snaps")
 	hash_text := hex.EncodeToString(hash[:])
 
-	err := ioutil.WriteFile(snaps_path, []byte(hash_text), 0600)
+	err := ioutil.WriteFile(snaps_path, []byte(hash_text + "\n"), 0600)
 	if err != nil {
 		return trace(err)
 	}
@@ -68,6 +69,10 @@ func (eft *EFT) saveSnapsHash(hash [32]byte) error {
 func (snap *Snapshot) isEmpty() bool {
 	zero := make([]byte, 32)
 	return bytes.Compare(zero, snap.Root[:]) == 0
+}
+
+func (snap *Snapshot) pathTrie() (PathTrie, error) {
+	return PathTrie{}, nil
 }
 
 func (eft *EFT) loadSnaps() ([]Snapshot, error) {
@@ -102,11 +107,10 @@ func (eft *EFT) loadSnapsFrom(hash [32]byte) ([]Snapshot, error) {
 	zero_hash := make([]byte, 32)
 
 	for ii := 0; ii < 64; ii++ {
-		snap := Snapshot{}
+		snap := Snapshot{eft: eft}
 		base := ii * SNAP_SIZE
 
 		copy(snap.Root[:], data[base:base + 32])
-		copy(snap.Log[:], data[base + 32:base + 64])
 	
 		snap.Desc = string(data[base + 64:base + 96])
 		snap.Desc = strings.Trim(snap.Desc, "\x00")
@@ -156,14 +160,9 @@ func (eft *EFT) saveSnaps(snaps []Snapshot) error {
 	data := make([]byte, DATA_SIZE)
 
 	for ii, snap := range(snaps) {
-		if snap.Temp {
-			continue
-		}
-
 		base := ii * SNAP_SIZE
 
 		copy(data[base:base + 32], snap.Root[:])
-		copy(data[base + 32:base + 64], snap.Log[:])
 
 		if len(snap.Desc) > 31 {
 			snap.Desc = snap.Desc[0:31]
@@ -210,10 +209,9 @@ func (eft *EFT) mainSnap() *Snapshot {
 }
 
 func (snap *Snapshot) debugDump(trie *EFT) {
-	fmt.Printf("[Snapshot] %s \n\t@ %s (temp %t) (desc \"%s\")\n",
+	fmt.Printf("[Snapshot] %s \n\t@ %s (\"%s\")\n",
 	    hex.EncodeToString(snap.Root[:]),
 		dateFromUnix(snap.Time), 
-		snap.Temp, 
 		snap.Desc)
 
 	pt, err := trie.loadPathTrie(snap.Root)
@@ -223,3 +221,4 @@ func (snap *Snapshot) debugDump(trie *EFT) {
 
 	pt.debugDump()
 }
+

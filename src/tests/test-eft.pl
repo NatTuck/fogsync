@@ -6,10 +6,12 @@ use Cwd 'abs_path';
 use File::Basename;
 use IO::Handle;
 
-my $TEST_SRC = "/usr/share/man";
+#my $TEST_SRC = "/usr/share/man";
+my $TEST_SRC = "/usr/share/backgrounds";
 my $TEST_TMP = "/tmp/fog-test-$$";
 my $TEST_EFT = "$TEST_TMP/eft";
 my $TEST_DST = "$TEST_TMP/out";
+my $PARALLEL = "parallel --eta --halt 1 --jobs 200%";
 
 my $FOGT = dirname(abs_path($0)) . "/../bin/fogt";
 
@@ -40,7 +42,7 @@ for my $ff (@files) {
 }
 close($plist);
 
-my $pcmd = qq{parallel --eta --halt 1 "$FOGT" -d "$TEST_EFT" put "{}" < "$TEST_TMP/puts.txt"};
+my $pcmd = qq{$PARALLEL "$FOGT" -d "$TEST_EFT" put "{}" < "$TEST_TMP/puts.txt"};
 runcmd($pcmd);
 
 my $gccmd = qq{"$FOGT" -d "$TEST_EFT" gc};
@@ -60,10 +62,11 @@ for my $ff (@files) {
 }
 close($glist);
 
-my $gcmd = qq{parallel --eta --halt 1 "$FOGT" -d "$TEST_EFT" get "{}" < "$TEST_TMP/gets.txt"};
+my $gcmd = qq{$PARALLEL "$FOGT" -d "$TEST_EFT" get "{}" < "$TEST_TMP/gets.txt"};
 runcmd($gcmd);
 
 say "Directory diff:";
 system(qq{diff "$TEST_SRC" "$TEST_DST" | grep -v "^Common subdirectories:"}); 
 
+say "Test dir: $TEST_TMP";
 system("rm -rf $TEST_TMP");
