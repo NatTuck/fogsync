@@ -28,10 +28,10 @@ type Snapshot struct {
 	Desc string
 }
 
-func (eft *EFT) defaultSnapsList() ([]Snapshot, error) {
+func (eft *EFT) defaultSnapsList() []Snapshot {
 	snaps := []Snapshot{}
 	snaps = append(snaps, Snapshot{eft: eft})
-	return snaps, nil
+	return snaps
 }
 
 func (eft *EFT) loadSnapsHash() ([32]byte, error) {
@@ -78,13 +78,7 @@ func (snap *Snapshot) pathTrie() (PathTrie, error) {
 func (eft *EFT) loadSnaps() ([]Snapshot, error) {
 	hash, err := eft.loadSnapsHash()
 	if err == ErrNotFound {
-		snaps, err := eft.defaultSnapsList()
-		if err != nil {
-			return snaps, trace(err)
-		}
-
-		return snaps, nil 
-
+		return eft.defaultSnapsList(), nil 
 	} else if err != nil {
 		return nil, trace(err)
 	}
@@ -124,10 +118,7 @@ func (eft *EFT) loadSnapsFrom(hash [32]byte) ([]Snapshot, error) {
 	}
 
 	if len(snaps) == 0 {
-		snaps, err = eft.defaultSnapsList()
-		if err != nil {
-			return snaps, trace(err)
-		}
+		snaps = eft.defaultSnapsList()
 	}
 
 	return snaps, nil
@@ -192,20 +183,17 @@ func (eft *EFT) saveSnaps(snaps []Snapshot) error {
 	return nil
 }
 
-func (eft *EFT) mainSnap() *Snapshot {
+func (eft *EFT) getSnap(nn uint) *Snapshot {
 	snaps, err := eft.loadSnaps()
 	if err != nil {
 		fmt.Println("Note: Loading snaps failed")
-	} else {
-		eft.Snaps = snaps
 	}
 
 	if len(eft.Snaps) == 0 {
-		snap := Snapshot{}
-		eft.Snaps = append(eft.Snaps, snap)
+		snaps = eft.defaultSnapsList()
 	}
 
-	return &eft.Snaps[0]
+	return &snaps[nn]
 }
 
 func (snap *Snapshot) debugDump(trie *EFT) {
@@ -221,4 +209,3 @@ func (snap *Snapshot) debugDump(trie *EFT) {
 
 	pt.debugDump()
 }
-

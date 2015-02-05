@@ -8,28 +8,32 @@ import (
 
 var SMALL_MAX = uint64(12 * 1024 - BLOCK_OVERHEAD)
 
-func (eft *EFT) putItem(snap *Snapshot, info ItemInfo, src_path string) error {
-	data_hash, err := eft.saveItem(info, src_path)
+func (snap *EFT) putItem(info ItemInfo, src_path string) error {
+	data_hash, err := snap.eft.saveItem(info, src_path)
 	if err != nil {
 		return trace(err)
 	}
 
-	root, err := eft.putTree(snap, info, data_hash)
+	root, err := snap.putTree(info, data_hash)
 	if err != nil {
 		return trace(err)
 	}
-	snap.Root = root
+
+	err = snap.setRoot(root)
+	if err != nil {
+		return trace(err)
+	}
 
 	return nil
 }
 
-func (eft *EFT) getItem(snap *Snapshot, name string, dst_path string) (ItemInfo, error) {
-	info0, data_hash, err := eft.getTree(snap, name)
+func (snap *EFT) getItem(name string, dst_path string) (ItemInfo, error) {
+	info0, data_hash, err := snap.getTree(name)
 	if err != nil {
 		return info0, err
 	}
 
-	info1, err := eft.loadItem(data_hash, dst_path)
+	info1, err := snap.loadItem(data_hash, dst_path)
 	if err != nil {
 		return info0, trace(err)
 	}
@@ -41,12 +45,16 @@ func (eft *EFT) getItem(snap *Snapshot, name string, dst_path string) (ItemInfo,
 	return info0, nil
 }
 
-func (eft *EFT) delItem(snap *Snapshot, name string) error {
-	root, err := eft.delTree(snap, name)
+func (snap *EFT) delItem(name string) error {
+	root, err := snap.delTree(name)
 	if err != nil {
 		return err
 	}
-	snap.Root = root
+
+	err = snap.setRoot(root)
+	if err != nil {
+		return trace(err)
+	}
 
 	return nil
 }

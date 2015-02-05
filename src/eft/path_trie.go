@@ -180,7 +180,7 @@ func (eft *EFT) ListInfos() ([]ItemInfo, error) {
 	eft.Lock()
 	defer eft.Unlock()
 
-	snap := eft.mainSnap()
+	snap := eft.getSnap(0)
 
 	pt, err := eft.loadPathTrie(snap.Root)
 	if err != nil {
