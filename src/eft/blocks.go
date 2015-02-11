@@ -53,11 +53,6 @@ func (eft *EFT) saveBlock(data []byte) ([32]byte, error) {
 		return hash, trace(err)
 	}
 
-	err = eft.blockAdded(hash)
-	if err != nil {
-		return hash, trace(err)
-	}
-
 	return hash, nil
 }
 

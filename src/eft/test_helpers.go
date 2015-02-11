@@ -6,7 +6,12 @@ import (
 )
 
 func printInfos(eft *EFT) {
-	infos, err := eft.ListInfos()
+	snap, err := eft.GetSnap("")
+	if err != nil {
+		panic(err)
+	}
+
+	infos, err := snap.ListInfos()
 	if err != nil {
 		panic(err)
 	}

@@ -50,7 +50,7 @@ func (ss *Share) syncLoop() {
 }
 
 func (ss *Share) poll() {
-	curr_root, err := ss.Trie.RootHash()
+	curr_root, err := ss.Trie.SnapsHash()
 	if err != nil {
 		fmt.Println(err)
 		return

@@ -177,12 +177,16 @@ func (pt *PathTrie) visitEachBlock(fn func(hash [32]byte) error) error {
 }
 
 func (eft *EFT) ListInfos() ([]ItemInfo, error) {
-	eft.Lock()
-	defer eft.Unlock()
+	snap, err := eft.GetSnap("")
+	if err != nil {
+		return nil, trace(err)
+	}
 
-	snap := eft.getSnap(0)
+	return snap.ListInfos()
+}
 
-	pt, err := eft.loadPathTrie(snap.Root)
+func (snap *Snapshot) ListInfos() ([]ItemInfo, error) {
+	pt, err := snap.eft.loadPathTrie(snap.Root)
 	if err != nil {
 		return nil, trace(err)
 	}
@@ -191,7 +195,7 @@ func (eft *EFT) ListInfos() ([]ItemInfo, error) {
 
 	err = pt.root.visitEachEntry(func (ent *TrieEntry) error {
 		if ent.Type == TRIE_TYPE_ITEM {
-			info, err := eft.loadItemInfo(ent.Hash)
+			info, err := snap.eft.loadItemInfo(ent.Hash)
 			if err != nil {
 				return trace(err)
 			}
