@@ -22,7 +22,7 @@ Performance goals:
 
 
 This implementation:
-  * Blocks are 16k (data) + 64 bytes (nonce & mac).
+  * Blocks are (16k - 64) (data) + 64 bytes (nonce & mac).
   * There are four categories of block:
     * Directory tree structure (a hash-mapped trie)
     * Data block lists (a "number trie")
