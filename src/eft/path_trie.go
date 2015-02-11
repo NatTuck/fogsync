@@ -66,14 +66,14 @@ func (pt *PathTrie) insert(item_path string, data_hash [32]byte) error {
 	return pt.root.insert(path_hash[:], entry)
 }
 
-func (eft *EFT) putTree(snap *Snapshot, info ItemInfo, data_hash [32]byte) ([32]byte, error) {
-	trie := eft.emptyPathTrie()
+func (snap *Snapshot) putTree(info ItemInfo, data_hash [32]byte) ([32]byte, error) {
+	trie := snap.eft.emptyPathTrie()
 
 	var err error
 	root_hash := [32]byte{}
 
 	if !snap.isEmpty() {
-		trie, err = eft.loadPathTrie(snap.Root)
+		trie, err = snap.eft.loadPathTrie(snap.Root)
 		if err != nil {
 			return root_hash, trace(err)
 		}
@@ -92,7 +92,7 @@ func (eft *EFT) putTree(snap *Snapshot, info ItemInfo, data_hash [32]byte) ([32]
 	return root_hash, nil
 }
 
-func (eft *EFT) getTree(snap *Snapshot, item_path string) (ItemInfo, [32]byte, error) {
+func (snap *Snapshot) getTree(item_path string) (ItemInfo, [32]byte, error) {
 	info := ItemInfo{}
 
 	item_hash := [32]byte{}
@@ -101,7 +101,7 @@ func (eft *EFT) getTree(snap *Snapshot, item_path string) (ItemInfo, [32]byte, e
 		return info, item_hash, ErrNotFound 
 	}
 
-	trie, err := eft.loadPathTrie(snap.Root)
+	trie, err := snap.eft.loadPathTrie(snap.Root)
 	if err != nil {
 		return info, item_hash, trace(err)
 	}
@@ -111,7 +111,7 @@ func (eft *EFT) getTree(snap *Snapshot, item_path string) (ItemInfo, [32]byte, e
 		return info, item_hash, err // Could be ErrNotFound
 	}
 
-	info, err = eft.loadItemInfo(item_hash)
+	info, err = snap.eft.loadItemInfo(item_hash)
 	if err != nil {
 		return info, item_hash, trace(err)
 	}
@@ -125,10 +125,10 @@ func (eft *EFT) getTree(snap *Snapshot, item_path string) (ItemInfo, [32]byte, e
 	return info, item_hash, nil
 }
 
-func (eft *EFT) delTree(snap *Snapshot, item_path string) ([32]byte, error) {
+func (snap *Snapshot) delTree(item_path string) ([32]byte, error) {
 	empty := [32]byte{}
 
-	info0, _, err := eft.getTree(snap, item_path)
+	info0, _, err := snap.getTree(item_path)
 	if err != nil {
 		return empty, trace(err)
 	}
@@ -138,7 +138,7 @@ func (eft *EFT) delTree(snap *Snapshot, item_path string) ([32]byte, error) {
 		return empty, trace(err)
 	}
 
-	temp_name := eft.TempName()
+	temp_name := snap.eft.TempName()
 	temp, err := os.Create(temp_name)
 	if err != nil {
 		return empty, trace(err)
@@ -146,7 +146,7 @@ func (eft *EFT) delTree(snap *Snapshot, item_path string) ([32]byte, error) {
 	temp.Close()
 	defer os.Remove(temp_name)
 
-	err = eft.putItem(snap, info1, temp_name)
+	err = snap.putItem(info1, temp_name)
 	if err != nil {
 		return empty, trace(err)
 	}

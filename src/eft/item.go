@@ -8,7 +8,7 @@ import (
 
 var SMALL_MAX = uint64(12 * 1024 - BLOCK_OVERHEAD)
 
-func (snap *EFT) putItem(info ItemInfo, src_path string) error {
+func (snap *Snapshot) putItem(info ItemInfo, src_path string) error {
 	data_hash, err := snap.eft.saveItem(info, src_path)
 	if err != nil {
 		return trace(err)
@@ -27,13 +27,13 @@ func (snap *EFT) putItem(info ItemInfo, src_path string) error {
 	return nil
 }
 
-func (snap *EFT) getItem(name string, dst_path string) (ItemInfo, error) {
+func (snap *Snapshot) getItem(name string, dst_path string) (ItemInfo, error) {
 	info0, data_hash, err := snap.getTree(name)
 	if err != nil {
 		return info0, err
 	}
 
-	info1, err := snap.loadItem(data_hash, dst_path)
+	info1, err := snap.eft.loadItem(data_hash, dst_path)
 	if err != nil {
 		return info0, trace(err)
 	}
@@ -45,7 +45,7 @@ func (snap *EFT) getItem(name string, dst_path string) (ItemInfo, error) {
 	return info0, nil
 }
 
-func (snap *EFT) delItem(name string) error {
+func (snap *Snapshot) delItem(name string) error {
 	root, err := snap.delTree(name)
 	if err != nil {
 		return err

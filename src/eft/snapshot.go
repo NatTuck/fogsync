@@ -209,3 +209,8 @@ func (snap *Snapshot) debugDump(trie *EFT) {
 
 	pt.debugDump()
 }
+
+func (snap *Snapshot) setRoot(root [32]byte) error {
+	snap.Root = root
+	return snap.eft.saveSnaps(snap.eft.Snaps)
+}

@@ -51,7 +51,7 @@ func (eft *EFT) Put(info ItemInfo, src_path string) error {
 
 	eft.begin()
 
-	err := eft.putItem(eft.getSnap(0), info, src_path)
+	err := eft.getSnap(0).putItem(info, src_path)
 	if err != nil {
 		eft.abort()
 		return trace(err)
@@ -72,7 +72,7 @@ func (eft *EFT) Get(name string, dst_path string) (ItemInfo, error) {
 		panic(err)
 	}
 
-	info, err := eft.getItem(eft.getSnap(0), name, dst_path)
+	info, err := eft.getSnap(0).getItem(name, dst_path)
 	if err != nil {
 		return info, err
 	}
@@ -84,7 +84,7 @@ func (eft *EFT) GetInfo(name string) (ItemInfo, error) {
 	eft.Lock()
 	defer eft.Unlock()
 
-	info, _, err := eft.getTree(eft.getSnap(0), name)
+	info, _, err := eft.getSnap(0).getTree(name)
 	if err != nil {
 		return info, err
 	}
@@ -100,7 +100,7 @@ func (eft *EFT) Del(name string) error {
 	
 	snap := eft.getSnap(0)
 
-	err := eft.delItem(snap, name)
+	err := snap.delItem(name)
 	if err != nil {
 		eft.abort()
 		return err
