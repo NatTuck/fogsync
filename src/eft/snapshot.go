@@ -28,6 +28,8 @@ type Snapshot struct {
 	Name string
 }
 
+var NoSnapsFile = fmt.Errorf("Snaps File Not Found")
+
 func (eft *EFT) GetSnap(name string) (*Snapshot, error) {
 	snaps, err := eft.loadSnaps()
 	if err != nil {
@@ -64,7 +66,7 @@ func (eft *EFT) loadSnapsHash() ([32]byte, error) {
 	snaps_path := path.Join(eft.Dir, "snaps")
 	hash_text, err := ioutil.ReadFile(snaps_path)
 	if err != nil {
-		return hash, trace(err)
+		return hash, NoSnapsFile
 	}
 
 	hash_string := strings.Trim(string(hash_text), "\n")
@@ -101,7 +103,7 @@ func (snap *Snapshot) pathTrie() (PathTrie, error) {
 
 func (eft *EFT) loadSnaps() ([]Snapshot, error) {
 	hash, err := eft.loadSnapsHash()
-	if err == ErrNotFound {
+	if err == NoSnapsFile {
 		return eft.defaultSnapsList(), nil 
 	} else if err != nil {
 		return nil, trace(err)
@@ -242,3 +244,8 @@ func (snap *Snapshot) debugDump(trie *EFT) {
 func (snap *Snapshot) mergeRoots() {
 	fmt.Println("mergeRoots: not implemented\n")
 }
+
+func (snap *Snapshot) listRoots() ([][32]byte, error) {
+	
+}
+
