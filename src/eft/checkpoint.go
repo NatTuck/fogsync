@@ -1,61 +1,47 @@
 package eft
 
 import (
-	"os"
-	"path"
+	"fmt"
 )
 
 type Checkpoint struct {
 	Trie *EFT
-	Hash string
 	Adds string
 	Dels string
 }
 
-func (eft *EFT) MakeCheckpoint() (*Checkpoint, error) {
-	eft.Lock()
+// Checkpoint does the following:
+//  - Merges new roots for each snapshot.
+//  - Determines difference between prev and next states.
+//    - Which blocks have been added and need uploading?
+//    - Which blocks are now garbage and need deleting?
+//    - How many blocks are in the new state?
+//  - Collects the garbage.
 
-	eft.begin()
+func (eft *EFT) Checkpoint(prev_hash [32]byte) ([32]byte, *Checkpoint, error) {
+	eft.Lock()
+	defer eft.Unlock()
 
 	dels, err := eft.collect()
 	if err != nil {
-		eft.abort()
-		return nil, trace(err)
+		return ZERO_HASH, nil, trace(err)
 	}
-	
-	eft.commit()
 
 	hash, err := eft.loadSnapsHash()
 	if err != nil {
-		return nil, trace(err)
-	}
-
-	adds := eft.TempName()
-
-	err = os.Rename(path.Join(eft.Dir, "added"), adds)
-	if err != nil {
-		return nil, trace(err)
+		return ZERO_HASH, nil, trace(err)
 	}
 
 	cp := &Checkpoint{
 		Trie: eft,
-		Hash: HashToHex(hash),
-		Adds: adds,
-		Dels: dels,
+		Adds: "",
+		Dels: "",
 	}
 
-	return cp, nil
+	fmt.Println("dels:", dels)
+	fmt.Println("hash:", hash)
+
+	return ZERO_HASH, cp, nil
 }
 
-func (cp *Checkpoint) Abort() {
-	defer cp.Trie.Unlock()
-	os.Remove(cp.Dels)
-	os.Rename(cp.Adds, path.Join(cp.Trie.Dir, "added"))
-}
-
-func (cp *Checkpoint) Commit() {
-	defer cp.Trie.Unlock()
-	os.Remove(cp.Adds)
-	os.Remove(cp.Dels)
-}
 

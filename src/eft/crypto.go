@@ -21,6 +21,13 @@ func RandomBytes(nn int) []byte {
     return bs
 }
 
+func RandomBytes32() [32]byte {
+	data := [32]byte{}
+	temp := RandomBytes(32)
+	copy(data[:], temp[:])
+	return data
+}
+
 func HashSlice(data []byte) [32]byte {
 	sha := sha256.New()
 	sha.Write(data)

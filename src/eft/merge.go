@@ -9,29 +9,27 @@ func (eft *EFT) MergeRemote(hash [32]byte) error {
 	eft.Lock()
 	defer eft.Unlock()
 
-	eft.begin()
-
 	// Merge snapshots
 	snaps, err := eft.loadSnaps()
 	if err != nil {
-		eft.abort()
+		//eft.abort()
 		return trace(err)
 	}
 
 	rem_snaps, err := eft.loadSnapsFrom(hash)
 	if err != nil {
-		eft.abort()
+		//eft.abort()
 		return trace(err)
 	}
 
 	if len(snaps) != 1 || len(rem_snaps) != 1 {
-		eft.abort()
+		//eft.abort()
 		panic("TODO: Handle multiple snapshots")
 	}
 
 	merged, err := eft.mergeSnaps(snaps[0], rem_snaps[0])
 	if err != nil {
-		eft.abort()
+		//eft.abort()
 		return trace(err)
 	}
 
@@ -41,10 +39,10 @@ func (eft *EFT) MergeRemote(hash [32]byte) error {
 	
 	if merged == rem_snaps[0] {
 		fmt.Println("XX - Merge: Took remote hash")
-		eft.commit_hash(hash)
+		//eft.commit_hash(hash)
 		return nil
 	} else {
-		eft.commit()
+		//eft.commit()
 		return nil
 	}
 }

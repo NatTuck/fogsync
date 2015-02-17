@@ -267,10 +267,7 @@ func (mm *MarkList) sweep() (string, error) {
 		}
 	}
 
-	err = mm.eft.removeBlocks(dead)
-	if err != nil {
-		return "", trace(err)
-	}
+	// Remove Blocks
 
 	return dead_name, nil
 }

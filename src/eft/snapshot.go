@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 	"io/ioutil"
+	"os"
 )
 
 // 128 snapshots can be stored in one block
@@ -24,11 +25,13 @@ const SNAP_SIZE = 128
 type Snapshot struct {
 	eft  *EFT
 	Root [32]byte
+	Uuid [32]byte
 	Time uint64
 	Name string
 }
 
 var NoSnapsFile = fmt.Errorf("Snaps File Not Found")
+var ZERO_UUID = [32]byte{}
 
 func (eft *EFT) GetSnap(name string) (*Snapshot, error) {
 	snaps, err := eft.loadSnaps()
@@ -56,7 +59,7 @@ func (eft *EFT) GetSnap(name string) (*Snapshot, error) {
 
 func (eft *EFT) defaultSnapsList() []Snapshot {
 	snaps := []Snapshot{}
-	snaps = append(snaps, Snapshot{eft: eft})
+	snaps = append(snaps, Snapshot{eft: eft, Uuid: RandomBytes32()})
 	return snaps
 }
 
@@ -131,12 +134,17 @@ func (eft *EFT) loadSnapsFrom(hash [32]byte) ([]Snapshot, error) {
 		base := ii * SNAP_SIZE
 
 		copy(snap.Root[:], data[base:base + 32])
+		copy(snap.Uuid[:], data[base + 32:base + 64])
 	
 		snap.Name = string(data[base + 64:base + 96])
 		snap.Name = strings.Trim(snap.Name, "\x00")
 
 		be := binary.BigEndian
 		snap.Time = be.Uint64(data[base + 96:base + 104])
+
+		if HashesEqual(ZERO_UUID, snap.Uuid) {
+			return nil, fmt.Errorf("Found Zero UUID in snap %d", ii)
+		}
 
 		if !bytes.Equal(snap.Root[:], zero_hash) {
 			snaps = append(snaps, snap)
@@ -151,21 +159,9 @@ func (eft *EFT) loadSnapsFrom(hash [32]byte) ([]Snapshot, error) {
 }
 
 func (snap *Snapshot) Save() error {
-	eft := snap.eft
+	rd := snap.rootsDir()
 
-	eft.Lock()
-	defer eft.Unlock()
-
-	snaps, err := eft.loadSnaps()
-	if err != nil {
-		return err
-	}
-
-	// TODO: Handle seperate commit.
-	// TODO: Handle multiple snapshots.
-	snaps[0] = *snap
-
-	return eft.saveSnaps(snaps)
+	return fmt.Errorf("Not Implemented: %s", rd)
 }
 
 func (eft *EFT) saveSnaps(snaps []Snapshot) error {
@@ -197,7 +193,12 @@ func (eft *EFT) saveSnaps(snaps []Snapshot) error {
 	for ii, snap := range(snaps) {
 		base := ii * SNAP_SIZE
 
+		if HashesEqual(ZERO_UUID, snap.Uuid) {
+			return fmt.Errorf("Found Zero UUID in snap %d", ii)
+		}
+
 		copy(data[base:base + 32], snap.Root[:])
+		copy(data[base + 32:base + 64], snap.Uuid[:])
 
 		if len(snap.Name) > 31 {
 			snap.Name = snap.Name[0:31]
@@ -227,6 +228,12 @@ func (eft *EFT) saveSnaps(snaps []Snapshot) error {
 	return nil
 }
 
+func (snap *Snapshot) rootsDir() string {
+	root_dir := path.Join(snap.eft.Dir, "tmp", "roots", HashToHex(snap.Uuid))
+	os.MkdirAll(root_dir, 0750)
+	return root_dir
+}
+
 func (snap *Snapshot) debugDump(trie *EFT) {
 	fmt.Printf("[Snapshot] %s \n\t@ %s (\"%s\")\n",
 	    hex.EncodeToString(snap.Root[:]),
@@ -241,11 +248,31 @@ func (snap *Snapshot) debugDump(trie *EFT) {
 	pt.debugDump()
 }
 
-func (snap *Snapshot) mergeRoots() {
-	fmt.Println("mergeRoots: not implemented\n")
+func (snap *Snapshot) mergeRoots() error {
+	//rs, err := snap.listRoots()
+
+	return fmt.Errorf("Not implemented")
 }
 
 func (snap *Snapshot) listRoots() ([][32]byte, error) {
+	rd := snap.rootsDir()
+
+	infos, err := ioutil.ReadDir(rd)
+	if err != nil {
+		return nil, trace(err)
+	}
+
+	roots := make([][32]byte, 0)
+
+	for _, si := range(infos) {
+		name := si.Name()
+		if len(name) != 64 {
+			continue
+		}
+
+		roots = append(roots, HexToHash(name))
+	}
 	
+	return roots, nil
 }
 

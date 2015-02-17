@@ -54,8 +54,6 @@ func (snap *Snapshot) Put(info ItemInfo, src_path string) error {
 		return trace(err)
 	}
 
-	go snap.mergeRoots()
-
 	return nil
 }
 
@@ -115,8 +113,6 @@ func (snap *Snapshot) Del(name string) error {
 	if err != nil {
 		return err
 	}
-
-	go snap.mergeRoots()
 
 	return nil
 }

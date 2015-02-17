@@ -167,10 +167,14 @@ func (ss *Share) sync() {
 		}
 	}
 	
+	/*
 	prev_root := sdata.Root
 
 	// Upload
-	cp, err := ss.Trie.MakeCheckpoint()
+	// FIXME: Make Upload Work Again
+	//cp, err := ss.Trie.MakeCheckpoint()
+	cp := eft.Checkpoint{}
+	err = fmt.Errorf("FIXME")
 	fs.CheckError(err)
 
 	defer func() {
@@ -233,4 +237,5 @@ func (ss *Share) sync() {
 			ss.Watcher.ChangedRemote(info.Path)
 		}
 	}()
+	*/
 }

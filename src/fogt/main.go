@@ -97,12 +97,15 @@ func dumpCmd(trie *eft.EFT) {
 }
 
 func gcCmd(trie *eft.EFT) {
+	fmt.Fprintf(os.Stderr, "FIX GC")
+	/*
 	cp, err := trie.MakeCheckpoint()
 	if err != nil {
 		panic(err)
 	}
 
 	cp.Commit()
+	*/
 }
 
 func putCmd(trie *eft.EFT, tgt string) {
