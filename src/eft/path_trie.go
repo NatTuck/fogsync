@@ -88,8 +88,7 @@ func (snap *Snapshot) putTree(info ItemInfo, data_hash [32]byte) ([32]byte, erro
 	if err != nil {
 		return root_hash, trace(err)
 	}
-
-	return root_hash, nil
+ 	return root_hash, nil
 }
 
 func (snap *Snapshot) getTree(item_path string) (ItemInfo, [32]byte, error) {

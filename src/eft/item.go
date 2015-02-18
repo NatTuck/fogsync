@@ -19,8 +19,7 @@ func (snap *Snapshot) putItem(info ItemInfo, src_path string) error {
 		return trace(err)
 	}
 
-	snap.Root = root
-	err = snap.Save()
+	err = snap.saveRoot(root)
 	if err != nil {
 		return trace(err)
 	}
@@ -52,8 +51,7 @@ func (snap *Snapshot) delItem(name string) error {
 		return err
 	}
 
-	snap.Root = root
-	err = snap.Save()
+	err = snap.saveRoot(root)
 	if err != nil {
 		return trace(err)
 	}

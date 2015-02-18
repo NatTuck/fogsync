@@ -35,7 +35,7 @@ func (eft *EFT) FetchRemote(rem_hash [32]byte, fetch_fn FetchFn) error {
 	return nil
 }
 
-func (eft *EFT) fetchSnap(snap Snapshot, fetch_fn FetchFn) error {
+func (eft *EFT) fetchSnap(snap *Snapshot, fetch_fn FetchFn) error {
 	bs, err := eft.NewBlockSet1(snap.Root)
 	if err != nil {
 		return trace(err)

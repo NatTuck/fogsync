@@ -35,8 +35,6 @@ func (eft *EFT) MergeRemote(hash [32]byte) error {
 
 	snaps[0] = merged
 
-	eft.Snaps = snaps
-	
 	if merged == rem_snaps[0] {
 		fmt.Println("XX - Merge: Took remote hash")
 		//eft.commit_hash(hash)
@@ -47,39 +45,41 @@ func (eft *EFT) MergeRemote(hash [32]byte) error {
 	}
 }
 
-func (eft *EFT) mergeSnaps(snap0, snap1 Snapshot) (Snapshot, error) {
+func (eft *EFT) mergeSnaps(snap0, snap1 *Snapshot) (*Snapshot, error) {
 	if HashesEqual(snap0.Root, snap1.Root) {
 		return snap0, nil
 	}
 
 	pt0, err := eft.loadPathTrie(snap0.Root)
 	if err != nil {
-		return Snapshot{}, trace(err)
+		return &Snapshot{}, trace(err)
 	}
 	
 	pt1, err := eft.loadPathTrie(snap1.Root)
 	if err != nil {
-		return Snapshot{}, trace(err)
+		return &Snapshot{}, trace(err)
 	}
 
 	trie, err := eft.mergePathTries(pt0, pt1)
 	if err != nil {
-		return Snapshot{}, trace(err)
+		return &Snapshot{}, trace(err)
 	}
+
+	snapM := *snap0
 
 	if trie.Equals(&pt1) {
 		fmt.Println("XX - Remote snap has no changes.")
-		snap0.Root = snap1.Root
+		snapM.Root = snap1.Root
 	} else {
 		hash, err := trie.save()
 		if err != nil {
-			return Snapshot{}, trace(err)
+			return &Snapshot{}, trace(err)
 		}
-
-		snap0.Root = hash
+		
+		snapM.Root = hash
 	}
 	
-	return snap0, nil
+	return &snapM, nil
 }
 
 func (eft *EFT) mergePathTries(pt0, pt1 PathTrie) (PathTrie, error) {

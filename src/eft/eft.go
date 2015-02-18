@@ -15,16 +15,10 @@ type EFT struct {
 	Key  [32]byte // Key for cipher and MAC
 	Dir  string   // Path to block store
 
-	// Current transaction
-	Snaps []Snapshot
-
-	added *os.File
-	addedName string
-	
 	// Synchronize access
-	mutex  sync.Mutex
+	mutex  sync.RWMutex
 	lockf  *os.File
-	locked bool
+	locked int
 }
 
 func (eft *EFT) SnapsHash() (string, error) {
@@ -40,6 +34,9 @@ func (eft *EFT) SnapsHash() (string, error) {
 }
 
 func (eft *EFT) Put(info ItemInfo, src_path string) error {
+	eft.ReadLock()
+	defer eft.Unlock()
+
 	snap, err := eft.GetSnap("")
 	if err != nil {
 		return trace(err)
@@ -58,6 +55,9 @@ func (snap *Snapshot) Put(info ItemInfo, src_path string) error {
 }
 
 func (eft *EFT) Get(name string, dst_path string) (ItemInfo, error) {
+	eft.ReadLock()
+	defer eft.Unlock()
+
 	snap, err := eft.GetSnap("")
 	if err != nil {
 		return ItemInfo{}, trace(err)
@@ -82,15 +82,14 @@ func (snap *Snapshot) Get(name string, dst_path string) (ItemInfo, error) {
 }
 
 func (eft *EFT) GetInfo(name string) (ItemInfo, error) {
+	eft.ReadLock()
+	defer eft.Unlock()
+
 	snap, err := eft.GetSnap("")
 	if err != nil {
-		return ItemInfo{}, trace(err)
+		return ItemInfo{}, err
 	}
 
-	return snap.GetInfo(name)
-}
-
-func (snap *Snapshot) GetInfo(name string) (ItemInfo, error) {
 	info, _, err := snap.getTree(name)
 	if err != nil {
 		return info, err
@@ -118,6 +117,9 @@ func (snap *Snapshot) Del(name string) error {
 }
 
 func (eft *EFT) ListDir(path string) ([]ItemInfo, error) {
+	eft.ReadLock()
+	defer eft.Unlock()
+
 	snap, err := eft.GetSnap("")
 	if err != nil {
 		return nil, trace(err)
@@ -144,6 +146,9 @@ func (snap *Snapshot) ListDir(path string) ([]ItemInfo, error) {
 }
 
 func (eft *EFT) DebugDump() {
+	eft.Lock()
+	defer eft.Unlock()
+
 	fmt.Println("Dumping EFT Structure...")
 
 	snaps, err := eft.loadSnaps()
@@ -158,6 +163,25 @@ func (eft *EFT) DebugDump() {
 
 func (snap *EFT) ListBlocks() ([]string, error) {
 	return make([]string, 0), nil
+}
+
+func (eft *EFT) MergeSnapRoots() error {
+	eft.Lock()
+	defer eft.Unlock()
+
+	snaps, err := eft.loadSnaps()
+	if err != nil {
+		return trace(err)
+	}
+
+	for _, snap := range(snaps) {
+		err := snap.mergeRoots()
+		if err != nil {
+			return trace(err)
+		}
+	}
+
+	return nil
 }
 
 func (eft *EFT) BlockPath(hash [32]byte) string {

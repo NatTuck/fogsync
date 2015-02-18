@@ -2,6 +2,7 @@ package eft
 
 import (
 	"encoding/hex"
+	"strings"
 	"path"
 	"fmt"
 	"os"
@@ -104,4 +105,16 @@ func filesEqual(aa, bb string) (bool, error) {
 	return HashesEqual(aa_hash, bb_hash), nil
 }
 
+func WriteOneLine(fname string, text string) error {
+	return ioutil.WriteFile(fname, []byte(text + "\n"), 0600)
+}
 
+func ReadOneLine(fname string) (string, error) {
+	line_bytes, err := ioutil.ReadFile(fname)
+	if err != nil {
+		return "", err
+	}
+
+	line_text := strings.Trim(string(line_bytes), "\n")
+	return line_text, nil
+}

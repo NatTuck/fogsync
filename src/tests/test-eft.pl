@@ -6,8 +6,8 @@ use Cwd 'abs_path';
 use File::Basename;
 use IO::Handle;
 
-#my $TEST_SRC = "/usr/share/man";
-my $TEST_SRC = "/usr/share/backgrounds";
+my $TEST_SRC = "/usr/share/man";
+#my $TEST_SRC = "/usr/share/backgrounds";
 my $TEST_TMP = "/tmp/fog-test-$$";
 my $TEST_EFT = "$TEST_TMP/eft";
 my $TEST_DST = "$TEST_TMP/out";
@@ -45,9 +45,9 @@ close($plist);
 my $pcmd = qq{$PARALLEL "$FOGT" -d "$TEST_EFT" put "{}" < "$TEST_TMP/puts.txt"};
 runcmd($pcmd);
 
-my $gccmd = qq{"$FOGT" -d "$TEST_EFT" gc};
-say "== Committing and GCing ==";
-runcmd($gccmd);
+my $mergecmd = qq{/usr/bin/time -p "$FOGT" -d "$TEST_EFT" merge};
+say "== Merging ==";
+runcmd($mergecmd);
 
 mkdir $TEST_DST;
 chdir $TEST_DST;

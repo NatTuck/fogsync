@@ -190,7 +190,12 @@ func (mm *MarkList) mark() error {
 		return trace(err)
 	}
 
-	for _, snap := range(mm.eft.Snaps) {
+	snaps, err := mm.eft.loadSnaps()
+	if err != nil {
+		return trace(err)
+	}
+
+	for _, snap := range(snaps) {
 		err := mm.markPathTrie(snap.Root)
 		if err != nil {
 			return trace(err)

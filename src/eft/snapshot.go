@@ -3,7 +3,6 @@ package eft
 import (
 	"encoding/binary"
 	"encoding/hex"
-	"bytes"
 	"path"
 	"fmt"
 	"strings"
@@ -30,26 +29,21 @@ type Snapshot struct {
 	Name string
 }
 
-var NoSnapsFile = fmt.Errorf("Snaps File Not Found")
 var ZERO_UUID = [32]byte{}
 
 func (eft *EFT) GetSnap(name string) (*Snapshot, error) {
 	snaps, err := eft.loadSnaps()
 	if err != nil {
-		fmt.Println("Note: Loading snaps failed")
-	}
-
-	if len(snaps) == 0 {
-		snaps = eft.defaultSnapsList()
+		return nil, trace(err)
 	}
 
 	if name == "" {
-		return &snaps[0], nil
+		return snaps[0], nil
 	}
 
 	for ii := 0; ii < len(snaps); ii++ {
 		if snaps[ii].Name == name {
-			return &snaps[ii], nil
+			return snaps[ii], nil
 		}
 	}
 
@@ -57,24 +51,22 @@ func (eft *EFT) GetSnap(name string) (*Snapshot, error) {
 }
 
 
-func (eft *EFT) defaultSnapsList() []Snapshot {
-	snaps := []Snapshot{}
-	snaps = append(snaps, Snapshot{eft: eft, Uuid: RandomBytes32()})
-	return snaps
+func (eft *EFT) defaultSnaps() []*Snapshot {
+	snaps := []*Snapshot{}
+	return append(snaps, &Snapshot{eft: eft, Uuid: RandomBytes32()})
 }
 
 func (eft *EFT) loadSnapsHash() ([32]byte, error) {
 	hash := [32]byte{}
 
 	snaps_path := path.Join(eft.Dir, "snaps")
-	hash_text, err := ioutil.ReadFile(snaps_path)
+	hash_text, err := ReadOneLine(snaps_path)
 	if err != nil {
-		return hash, NoSnapsFile
+		// Pass through ENOENT
+		return hash, err
 	}
 
-	hash_string := strings.Trim(string(hash_text), "\n")
-
-	hash_slice, err := hex.DecodeString(hash_string)
+	hash_slice, err := hex.DecodeString(hash_text)
 	if err != nil {
 		return hash, trace(err)
 	}
@@ -87,7 +79,7 @@ func (eft *EFT) saveSnapsHash(hash [32]byte) error {
 	snaps_path := path.Join(eft.Dir, "snaps")
 	hash_text := hex.EncodeToString(hash[:])
 
-	err := ioutil.WriteFile(snaps_path, []byte(hash_text + "\n"), 0600)
+	err := WriteOneLine(snaps_path, hash_text)
 	if err != nil {
 		return trace(err)
 	}
@@ -96,19 +88,39 @@ func (eft *EFT) saveSnapsHash(hash [32]byte) error {
 }
 
 func (snap *Snapshot) isEmpty() bool {
-	zero := make([]byte, 32)
-	return bytes.Compare(zero, snap.Root[:]) == 0
+	return HashesEqual(ZERO_HASH, snap.Root)
 }
 
 func (snap *Snapshot) pathTrie() (PathTrie, error) {
 	return PathTrie{}, nil
 }
 
-func (eft *EFT) loadSnaps() ([]Snapshot, error) {
+func (eft *EFT) loadSnaps() ([]*Snapshot, error) {
+	if eft.locked == LOCKED_NO {
+		return nil, ErrNeedLock
+	}
+
 	hash, err := eft.loadSnapsHash()
-	if err == NoSnapsFile {
-		return eft.defaultSnapsList(), nil 
-	} else if err != nil {
+	if os.IsNotExist(err) {
+		// Try again with a write lock to avoid
+		// a race on picking the first UUID.
+		eft.Unlock()
+		eft.Lock()
+	
+		hash, err = eft.loadSnapsHash()
+		if os.IsNotExist(err) {
+			fmt.Println("Note: No snaps file. Writing defaults.") 
+			snaps := eft.defaultSnaps()
+			
+			err = eft.saveSnaps(snaps)
+			if err != nil {
+				return nil, trace(err)
+			}
+		
+			return snaps, nil
+		}
+	} 
+	if err != nil {
 		return nil, trace(err)
 	}
 
@@ -116,21 +128,24 @@ func (eft *EFT) loadSnaps() ([]Snapshot, error) {
 	if err != nil {
 		return nil, trace(err)
 	}
+
+	if len(snaps) == 0 {
+		snaps = eft.defaultSnaps()
+	}
 	
 	return snaps, nil
 }
 
-func (eft *EFT) loadSnapsFrom(hash [32]byte) ([]Snapshot, error) {
+func (eft *EFT) loadSnapsFrom(hash [32]byte) ([]*Snapshot, error) {
 	data, err := eft.loadBlock(hash)
 	if err != nil {
 		return nil, trace(err)
 	}
 
-	snaps := make([]Snapshot, 0)
-	zero_hash := make([]byte, 32)
+	snaps := make([]*Snapshot, 0)
 
 	for ii := 0; ii < 64; ii++ {
-		snap := Snapshot{eft: eft}
+		snap := &Snapshot{eft: eft}
 		base := ii * SNAP_SIZE
 
 		copy(snap.Root[:], data[base:base + 32])
@@ -142,49 +157,56 @@ func (eft *EFT) loadSnapsFrom(hash [32]byte) ([]Snapshot, error) {
 		be := binary.BigEndian
 		snap.Time = be.Uint64(data[base + 96:base + 104])
 
-		if HashesEqual(ZERO_UUID, snap.Uuid) {
-			return nil, fmt.Errorf("Found Zero UUID in snap %d", ii)
-		}
 
-		if !bytes.Equal(snap.Root[:], zero_hash) {
+		if !HashesEqual(ZERO_UUID, snap.Uuid) {
 			snaps = append(snaps, snap)
 		}
-	}
-
-	if len(snaps) == 0 {
-		snaps = eft.defaultSnapsList()
 	}
 
 	return snaps, nil
 }
 
-func (snap *Snapshot) Save() error {
+func (snap *Snapshot) saveRoot(root [32]byte) error {
 	rd := snap.rootsDir()
 
-	return fmt.Errorf("Not Implemented: %s", rd)
-}
+	name := HashToHex(root)
+	rofn := path.Join(rd, name)
 
-func (eft *EFT) saveSnaps(snaps []Snapshot) error {
-	if len(snaps) == 0 {
-		return fmt.Errorf("No snapshots to save")
-	}
-
-	prev_snaps, err := eft.loadSnaps()
+	err := WriteOneLine(rofn, name)
 	if err != nil {
 		return trace(err)
 	}
 
-	if len(snaps) == len(prev_snaps) {
-		snaps_changed := false
+	return nil
+}
 
-		for ii := 0; ii < len(snaps); ii++ {
-			if snaps[ii] != prev_snaps[ii] {
-				snaps_changed = true
-			}
+func (eft *EFT) saveSnaps(snaps []*Snapshot) error {
+	if eft.locked == LOCKED_NO {
+		return ErrNeedLock
+	}
+
+	if len(snaps) == 0 {
+		return fmt.Errorf("No snapshots to save")
+	}
+
+	if !HashesEqual(ZERO_HASH, snaps[0].Root) {
+		prev_snaps, err := eft.loadSnaps()
+		if err != nil {
+			return trace(err)
 		}
-
-		if !snaps_changed {
-			return nil
+		
+		if len(snaps) == len(prev_snaps) {
+			snaps_changed := false
+			
+			for ii := 0; ii < len(snaps); ii++ {
+				if snaps[ii] != prev_snaps[ii] {
+					snaps_changed = true
+				}
+			}
+			
+			if !snaps_changed {
+				return nil
+			}
 		}
 	}
 
@@ -248,10 +270,94 @@ func (snap *Snapshot) debugDump(trie *EFT) {
 	pt.debugDump()
 }
 
-func (snap *Snapshot) mergeRoots() error {
-	//rs, err := snap.listRoots()
+func (snap *Snapshot) removeRoot(root [32]byte) error {
+	root_file := path.Join(snap.rootsDir(), HashToHex(root))
+	return os.Remove(root_file)
+}
 
-	return fmt.Errorf("Not implemented")
+func (snap *Snapshot) mergeRootPair(r0 [32]byte, r1 [32]byte) ([32]byte, error) {
+	pt0, err := snap.eft.loadPathTrie(r0)
+	if err != nil {
+		return ZERO_HASH, trace(err)
+	}
+
+	pt1, err := snap.eft.loadPathTrie(r1)
+	if err != nil {
+		return ZERO_HASH, trace(err)
+	}
+
+	ptM, err := snap.eft.mergePathTries(pt0, pt1)
+	if err != nil {
+		return ZERO_HASH, trace(err)
+	}
+
+	root, err := ptM.save()
+	if err != nil {
+		return ZERO_HASH, trace(err)
+	}
+
+	err = snap.saveRoot(root)
+	if err != nil {
+		return ZERO_HASH, trace(err)
+	}
+
+	err = snap.removeRoot(r0)
+	if err != nil {
+		return ZERO_HASH, trace(err)
+	}
+
+	err = snap.removeRoot(r1)
+	if err != nil {
+		return ZERO_HASH, trace(err)
+	}
+
+	return root, nil
+}
+
+func (snap *Snapshot) mergeRoots() error {
+	if snap.eft.locked != LOCKED_RW {
+		return ErrNeedLock
+	}
+
+	var roots [][32]byte
+	var err   error
+
+	for {
+		roots, err = snap.listRoots()
+		if err != nil {
+			return trace(err)
+		}
+		if len(roots) <= 1 {
+			break
+		}
+
+		jobs := len(roots) / 2
+
+		fmt.Println("XX - mergeRoots() Jobs:", jobs)
+
+		for ii := 0 ; ii < jobs; ii += 2 {
+			_, err := snap.mergeRootPair(roots[ii], roots[ii + 1])
+			if err != nil {
+				return trace(err)
+			}
+		}
+
+		fmt.Println("XX - after loop")
+	}
+
+	if len(roots) == 1 {
+		root, err := snap.mergeRootPair(snap.Root, roots[0])
+		snap.Root = root
+
+		err = snap.eft.commitSnap(snap)
+		if err != nil {
+			return trace(err)
+		}
+
+		snap.removeRoot(root)
+	}
+
+	return nil
 }
 
 func (snap *Snapshot) listRoots() ([][32]byte, error) {
@@ -276,3 +382,29 @@ func (snap *Snapshot) listRoots() ([][32]byte, error) {
 	return roots, nil
 }
 
+func (eft *EFT) commitSnap(snap *Snapshot) error {
+	if eft.locked != LOCKED_RW {
+		return ErrNeedLock
+	}
+
+	snaps, err := eft.loadSnaps()
+	if err != nil {
+		return trace(err)
+	}
+
+	var prev_snap *Snapshot = nil
+
+	for _, sn := range(snaps) {
+		if HashesEqual(snap.Uuid, sn.Uuid) {
+			prev_snap = sn
+		}
+	}
+
+	if prev_snap == nil {
+		return fmt.Errorf("No matching snap found")
+	}
+
+	prev_snap.Root = snap.Root
+
+	return eft.saveSnaps(snaps)
+}
