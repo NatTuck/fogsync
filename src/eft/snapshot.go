@@ -272,7 +272,13 @@ func (snap *Snapshot) debugDump(trie *EFT) {
 
 func (snap *Snapshot) removeRoot(root [32]byte) error {
 	root_file := path.Join(snap.rootsDir(), HashToHex(root))
-	return os.Remove(root_file)
+
+	err := os.Remove(root_file)
+	if err != nil {
+		return trace(err)
+	}
+
+	return nil
 }
 
 func (snap *Snapshot) mergeRootPair(r0 [32]byte, r1 [32]byte) ([32]byte, error) {
@@ -301,16 +307,6 @@ func (snap *Snapshot) mergeRootPair(r0 [32]byte, r1 [32]byte) ([32]byte, error) 
 		return ZERO_HASH, trace(err)
 	}
 
-	err = snap.removeRoot(r0)
-	if err != nil {
-		return ZERO_HASH, trace(err)
-	}
-
-	err = snap.removeRoot(r1)
-	if err != nil {
-		return ZERO_HASH, trace(err)
-	}
-
 	return root, nil
 }
 
@@ -327,16 +323,29 @@ func (snap *Snapshot) mergeRoots() error {
 		if err != nil {
 			return trace(err)
 		}
-		if len(roots) <= 1 {
+		if len(roots) < 2 {
 			break
 		}
+		
+		fmt.Println("XX - mergeRoots() Roots:", len(roots))
 
 		jobs := len(roots) / 2
 
-		fmt.Println("XX - mergeRoots() Jobs:", jobs)
+		for ii := 0 ; ii < jobs; ii++ {
+			r0 := roots[2*ii]
+			r1 := roots[2*ii + 1]
 
-		for ii := 0 ; ii < jobs; ii += 2 {
-			_, err := snap.mergeRootPair(roots[ii], roots[ii + 1])
+			_, err := snap.mergeRootPair(r0, r1)
+			if err != nil {
+				return trace(err)
+			}
+
+			err = snap.removeRoot(r0)
+			if err != nil {
+				return trace(err)
+			}
+			
+			err = snap.removeRoot(r1)
 			if err != nil {
 				return trace(err)
 			}
@@ -347,6 +356,10 @@ func (snap *Snapshot) mergeRoots() error {
 
 	if len(roots) == 1 {
 		root, err := snap.mergeRootPair(snap.Root, roots[0])
+		if err != nil {
+			return trace(err)
+		}
+
 		snap.Root = root
 
 		err = snap.eft.commitSnap(snap)
@@ -354,7 +367,15 @@ func (snap *Snapshot) mergeRoots() error {
 			return trace(err)
 		}
 
-		snap.removeRoot(root)
+		err = snap.removeRoot(roots[0])
+		if err != nil {
+			return trace(err)
+		}
+
+		err = snap.removeRoot(root)
+		if err != nil {
+			return trace(err)
+		}
 	}
 
 	return nil

@@ -6,12 +6,12 @@ use Cwd 'abs_path';
 use File::Basename;
 use IO::Handle;
 
-my $TEST_SRC = "/usr/share/man";
-#my $TEST_SRC = "/usr/share/backgrounds";
+#my $TEST_SRC = "/usr/share/man";
+my $TEST_SRC = "/usr/share/backgrounds";
 my $TEST_TMP = "/tmp/fog-test-$$";
 my $TEST_EFT = "$TEST_TMP/eft";
 my $TEST_DST = "$TEST_TMP/out";
-my $PARALLEL = "parallel --eta --halt 1 --jobs 200%";
+my $PARALLEL = "parallel -t --halt 1 --jobs 200%";
 
 my $FOGT = dirname(abs_path($0)) . "/../bin/fogt";
 
