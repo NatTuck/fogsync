@@ -141,3 +141,20 @@ func (eft *EFT) visitItemBlocks(hash [32]byte, fn func(hash [32]byte) error) err
 	}
 }
 
+func (eft *EFT) debugDumpItem(hash [32]byte, depth int) {
+	info, err := eft.loadItemInfo(hash)
+	if err != nil {
+		panic(err)
+	}
+
+	if info.Size <= SMALL_MAX {
+		fmt.Println(indent(depth), "[Small Item]")
+	} else {
+		lt, err := eft.loadLargeTrie(hash)
+		if err != nil {
+			panic(err)
+		}
+
+		lt.debugDump(depth)
+	}
+}

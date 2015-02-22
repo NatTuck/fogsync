@@ -267,7 +267,7 @@ func (snap *Snapshot) debugDump(trie *EFT) {
 		panic(err)
 	}
 
-	pt.debugDump()
+	pt.debugDump(1)
 }
 
 func (snap *Snapshot) removeRoot(root [32]byte) error {
@@ -327,8 +327,6 @@ func (snap *Snapshot) mergeRoots() error {
 			break
 		}
 		
-		fmt.Println("XX - mergeRoots() Roots:", len(roots))
-
 		jobs := len(roots) / 2
 
 		for ii := 0 ; ii < jobs; ii++ {
@@ -350,8 +348,6 @@ func (snap *Snapshot) mergeRoots() error {
 				return trace(err)
 			}
 		}
-
-		fmt.Println("XX - after loop")
 	}
 
 	if len(roots) == 1 {

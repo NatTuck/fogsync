@@ -54,12 +54,13 @@ func (pt *PathTrie) save() ([32]byte, error) {
 
 func (pt *PathTrie) find(item_path string) ([32]byte, error) {
 	path_hash := HashString(item_path)
+
 	return pt.root.find(path_hash[:])
 }
 
 func (pt *PathTrie) insert(item_path string, data_hash [32]byte) error {
 	path_hash := HashString(item_path)
-
+	
 	entry := TrieEntry{}
 	entry.Hash = data_hash
 
@@ -88,7 +89,7 @@ func (snap *Snapshot) putTree(info ItemInfo, data_hash [32]byte) ([32]byte, erro
 	if err != nil {
 		return root_hash, trace(err)
 	}
- 	return root_hash, nil
+	return root_hash, nil
 }
 
 func (snap *Snapshot) getTree(item_path string) (ItemInfo, [32]byte, error) {
@@ -211,7 +212,42 @@ func (snap *Snapshot) ListInfos() ([]ItemInfo, error) {
 	return infos, nil
 }
 
-func (pt *PathTrie) debugDump() {
+func (pt *PathTrie) debugDump(depth int) {
 	fmt.Println("[PathTrie]")
-	pt.root.debugDump()
+	tn := pt.root
+
+	fmt.Println(indent(depth), "[TrieNode]")
+
+	empties := 0
+
+	for ii := 0; ii < 256; ii++ {
+		ent := &tn.tab[ii]
+
+		switch ent.Type {
+		case TRIE_TYPE_NONE:
+			empties += 1
+		case TRIE_TYPE_MORE:
+			fmt.Println(indent(depth), ii, "\tMORE");
+			child, err := tn.eft.loadPathTrie(ent.Hash)
+			if err != nil {
+				panic(err)
+			}
+			child.debugDump(depth + 1)
+		case TRIE_TYPE_OVRF:
+			fmt.Println(indent(depth), ii, "\tOVRF")
+		case TRIE_TYPE_ITEM:
+			info, err := tn.eft.loadItemInfo(ent.Hash)
+			if err != nil {
+				panic(err)
+			}
+			fmt.Println(indent(depth), ii, "\tITEM", info.String())
+
+			tn.eft.debugDumpItem(ent.Hash, depth + 1)
+		default:
+			fmt.Println(indent(depth), ii, "** UKNOWN **", ent.Type)
+		}
+	}
+
+	fmt.Println(indent(depth), "Skipped empties:", empties)
+
 }

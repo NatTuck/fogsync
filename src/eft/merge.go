@@ -200,7 +200,7 @@ func (ptn *TrieNode) mergeInsert(ent0, ent1 TrieEntry) (TrieEntry, error) {
 	mtn := &TrieNode{
 		eft: ptn.eft,
 		tri: ptn.tri,
-		dep: ptn.dep,
+		dep: ptn.dep + 1,
 	}
 
 	if !HashesEqual(ent0.Hash, ZERO_HASH) {

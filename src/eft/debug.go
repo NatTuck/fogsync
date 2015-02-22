@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 	"encoding/hex"
+	"strings"
 )
 
 var DEBUG = false
@@ -60,4 +61,8 @@ func timeFromUnix(nn uint64) time.Time {
 
 func dateFromUnix(nn uint64) string {
 	return timeFromUnix(nn).Format(time.RubyDate)
+}
+
+func indent(nn int) string {
+	return strings.Repeat(" ", 2 * nn)
 }

@@ -45,7 +45,7 @@ func (info *ItemInfo) TypeName() string {
 }
 
 func (info *ItemInfo) String() string {
-	return fmt.Sprintf("Type: %s\tSize: %d\tPath: %s",
+	return fmt.Sprintf("Type: %s\tSize: %6d\tPath: [%s]",
 	    info.TypeName(), info.Size, info.Path)
 }
 

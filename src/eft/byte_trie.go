@@ -313,32 +313,3 @@ func (tn *TrieNode) visitEachEntry(fn func(ent *TrieEntry) error) error {
 
 	return nil
 }
-
-func (tn *TrieNode) debugDump() {
-	fmt.Println("[TrieNode]")
-
-	empties := 0
-
-	for ii := 0; ii < 256; ii++ {
-		ent := &tn.tab[ii]
-
-		switch ent.Type {
-		case TRIE_TYPE_NONE:
-			empties += 1
-		case TRIE_TYPE_MORE:
-			fmt.Println(ii, "\tMORE")
-		case TRIE_TYPE_OVRF:
-			fmt.Println(ii, "\tOVRF")
-		case TRIE_TYPE_ITEM:
-			info, err := tn.eft.loadItemInfo(ent.Hash)
-			if err != nil {
-				panic(err)
-			}
-			fmt.Println(ii, "\tITEM", info.String())
-		default:
-			fmt.Println(ii, "** UKNOWN **", ent.Type)
-		}
-	}
-
-	fmt.Println("Skipped empties:", empties)
-}

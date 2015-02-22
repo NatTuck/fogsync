@@ -59,7 +59,7 @@ func (trie *LargeTrie) find(ii uint64) ([32]byte, error) {
 
 	var iile [8]byte
 	le.PutUint64(iile[:], ii)
-
+	
 	return trie.root.find(iile[:])
 }
 
@@ -175,3 +175,36 @@ func (lt *LargeTrie) visitEachBlock(fn func(hash [32]byte) error) error {
 	})
 }
 
+func (lt *LargeTrie) debugDump(deep int) {
+	fmt.Println("[PathTrie]")
+	tn := lt.root
+
+	fmt.Println(indent(deep), "[TrieNode]")
+
+	empties := 0
+
+	for ii := 0; ii < 256; ii++ {
+		ent := &tn.tab[ii]
+
+		switch ent.Type {
+		case TRIE_TYPE_NONE:
+			empties += 1
+		case TRIE_TYPE_MORE:
+			fmt.Printf("%s %4d \tMORE\n", indent(deep), ii);
+			child, err := tn.eft.loadLargeTrie(ent.Hash)
+			if err != nil {
+				panic(err)
+			}
+			child.debugDump(deep + 1)
+		case TRIE_TYPE_OVRF:
+			fmt.Printf("%s %4d \tOVRF\n", indent(deep), ii);
+		case TRIE_TYPE_ITEM:
+			fmt.Printf("%s %4d \tITEM\n", indent(deep), ii);
+		default:
+			fmt.Println(indent(deep), ii, "** UKNOWN **", ent.Type)
+		}
+	}
+
+	fmt.Println(indent(deep), "Skipped empties:", empties)
+
+}
