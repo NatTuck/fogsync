@@ -8,6 +8,7 @@ import (
 	"strings"
 	"io/ioutil"
 	"os"
+	"sync"
 )
 
 // 128 snapshots can be stored in one block
@@ -49,7 +50,6 @@ func (eft *EFT) GetSnap(name string) (*Snapshot, error) {
 
 	return nil, ErrNotFound
 }
-
 
 func (eft *EFT) defaultSnaps() []*Snapshot {
 	snaps := []*Snapshot{}
@@ -329,22 +329,38 @@ func (snap *Snapshot) mergeRoots() error {
 		
 		jobs := len(roots) / 2
 
+		wg := sync.WaitGroup{}
+		var eret error = nil
+
 		for ii := 0 ; ii < jobs; ii++ {
-			r0 := roots[2*ii]
-			r1 := roots[2*ii + 1]
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
 
-			_, err := snap.mergeRootPair(r0, r1)
-			if err != nil {
-				return trace(err)
-			}
+				r0 := roots[2*ii]
+				r1 := roots[2*ii + 1]
 
-			err = snap.removeRoot(r0)
-			if err != nil {
-				return trace(err)
-			}
+				_, err := snap.mergeRootPair(r0, r1)
+				if err != nil {
+					eret = err
+					return 
+				}
+
+				err = snap.removeRoot(r0)
+				if err != nil {
+					eret = err
+					return 
+				}
 			
-			err = snap.removeRoot(r1)
-			if err != nil {
+				err = snap.removeRoot(r1)
+				if err != nil {
+					eret = err
+					return
+				}
+			}()
+
+			wg.Wait()
+			if eret != nil {
 				return trace(err)
 			}
 		}

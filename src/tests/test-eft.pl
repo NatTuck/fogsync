@@ -12,7 +12,7 @@ my $TEST_TMP = "/tmp/fog-test-$$";
 my $TEST_EFT = "$TEST_TMP/eft";
 my $TEST_DST = "$TEST_TMP/out";
 #my $PARALLEL = "parallel -t --halt 1 --jobs 1";
-my $PARALLEL = "parallel -t --halt 1 --jobs 200%";
+my $PARALLEL = "parallel --eta --halt 1 --jobs 200%";
 
 my $FOGT = dirname(abs_path($0)) . "/../bin/fogt";
 
