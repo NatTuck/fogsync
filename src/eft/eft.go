@@ -161,8 +161,23 @@ func (eft *EFT) DebugDump() {
 	}
 }
 
-func (snap *EFT) ListBlocks() ([]string, error) {
-	return make([]string, 0), nil
+func (eft *EFT) ListBlocks() (_ []string, eret error) {
+	eft.Lock()
+	defer eft.Unlock()
+	defer func() { eret = recover_assert() }()
+
+	snap, err := eft.GetSnap("")
+	if err != nil {
+		return nil, trace(err)
+	}
+
+	pt, err := eft.loadPathTrie(snap.Root)
+	if err != nil {
+		return nil, trace(err)
+	}
+
+	bs := pt.blockSet()
+	return bs.HexSlice(), nil
 }
 
 func (eft *EFT) MergeSnapRoots() error {

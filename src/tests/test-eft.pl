@@ -70,4 +70,9 @@ say "Directory diff:";
 system(qq{diff "$TEST_SRC" "$TEST_DST" | grep -v "^Common subdirectories:"}); 
 
 say "Test dir: $TEST_TMP";
+system("du -chs $TEST_TMP");
+
+say "Files:";
+system("find $TEST_TMP | wc -l");
+
 system("rm -rf $TEST_TMP");

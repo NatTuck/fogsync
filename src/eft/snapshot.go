@@ -270,6 +270,14 @@ func (snap *Snapshot) debugDump(trie *EFT) {
 	pt.debugDump(1)
 }
 
+func (snap *Snapshot) cleanupRoot(old_root, new_root [32]byte) {
+	deads, _ := snap.eft.root_changes(old_root, new_root)
+	snap.eft.removeBlocks(deads)
+
+	err := snap.removeRoot(old_root)
+	assert_no_error(err)
+}
+
 func (snap *Snapshot) removeRoot(root [32]byte) error {
 	root_file := path.Join(snap.rootsDir(), HashToHex(root))
 
@@ -340,23 +348,14 @@ func (snap *Snapshot) mergeRoots() error {
 				r0 := roots[2*ii]
 				r1 := roots[2*ii + 1]
 
-				_, err := snap.mergeRootPair(r0, r1)
+				rN, err := snap.mergeRootPair(r0, r1)
 				if err != nil {
 					eret = err
 					return 
 				}
 
-				err = snap.removeRoot(r0)
-				if err != nil {
-					eret = err
-					return 
-				}
-			
-				err = snap.removeRoot(r1)
-				if err != nil {
-					eret = err
-					return
-				}
+				snap.cleanupRoot(r0, rN)
+				snap.cleanupRoot(r1, rN)
 			}()
 
 			wg.Wait()

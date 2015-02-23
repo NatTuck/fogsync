@@ -176,6 +176,18 @@ func (pt *PathTrie) visitEachBlock(fn func(hash [32]byte) error) error {
 	})
 }
 
+func (pt *PathTrie) blockSet() *BlockSet {
+	bs := pt.root.eft.NewBlockSet()
+
+	err := pt.visitEachBlock(func (hash [32]byte) error {
+		bs.Add(hash)
+		return nil
+	})
+	assert_no_error(err)
+
+	return bs
+}
+
 func (eft *EFT) ListInfos() ([]ItemInfo, error) {
 	snap, err := eft.GetSnap("")
 	if err != nil {
@@ -213,7 +225,7 @@ func (snap *Snapshot) ListInfos() ([]ItemInfo, error) {
 }
 
 func (pt *PathTrie) debugDump(depth int) {
-	fmt.Println("[PathTrie]")
+	fmt.Println(indent(depth), "[PathTrie]")
 	tn := pt.root
 
 	fmt.Println(indent(depth), "[TrieNode]")

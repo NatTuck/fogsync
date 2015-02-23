@@ -76,7 +76,7 @@ func (ss *Share) poll() {
 	}
 }
 
-func (ss *Share) fetchBlocks(cc *cloud.Cloud, bs *eft.BlockSet) (*eft.BlockArchive, error) {
+func (ss *Share) fetchBlocks(cc *cloud.Cloud, bs []string) (*eft.BlockArchive, error) {
 	temp_name := ss.Trie.TempName()
 
 	temp, err := os.Create(temp_name)
@@ -84,14 +84,13 @@ func (ss *Share) fetchBlocks(cc *cloud.Cloud, bs *eft.BlockSet) (*eft.BlockArchi
 		return nil, fs.Trace(err)
 	}
 	defer os.Remove(temp_name)
-	
-	err = bs.EachHex(func (hh string) error {
+
+	for _, hh := range(bs) {
 		_, err := temp.WriteString(hh + "\n")
 		if err != nil {
-			return fs.Trace(err)
+			return nil, fs.Trace(err)
 		}
-		return nil
-	})
+	}
 	if err != nil {
 		return nil, fs.Trace(err)
 	}
@@ -146,7 +145,7 @@ func (ss *Share) sync() {
 	}
 
 	// Fetch
-	fetch_fn := func(bs *eft.BlockSet) (*eft.BlockArchive, error) {
+	fetch_fn := func(bs []string) (*eft.BlockArchive, error) {
 		return ss.fetchBlocks(cc, bs)
 	}
 

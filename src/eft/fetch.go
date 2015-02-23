@@ -4,18 +4,16 @@ import (
 	"fmt"
 )
 
-type FetchFn func(bs *BlockSet) (*BlockArchive, error)
+type FetchFn func(bs []string) (*BlockArchive, error)
 
 func (eft *EFT) FetchRemote(rem_hash [32]byte, fetch_fn FetchFn) error {
 	eft.Lock()
 	defer eft.Unlock()
 
-	bs, err := eft.NewBlockSet1(rem_hash)
-	if err != nil {
-		return trace(err)
-	}
+	bs := eft.NewBlockSet()
+	bs.Add(rem_hash)
 
-	err = eft.fetchBlocks(bs, fetch_fn)
+	err := eft.fetchBlocks(bs, fetch_fn)
 	if err != nil {
 		return trace(err)
 	}
@@ -36,12 +34,10 @@ func (eft *EFT) FetchRemote(rem_hash [32]byte, fetch_fn FetchFn) error {
 }
 
 func (eft *EFT) fetchSnap(snap *Snapshot, fetch_fn FetchFn) error {
-	bs, err := eft.NewBlockSet1(snap.Root)
-	if err != nil {
-		return trace(err)
-	}
+	bs := eft.NewBlockSet()
+	bs.Add(snap.Root)
 
-	err = eft.fetchBlocks(bs, fetch_fn)
+	err := eft.fetchBlocks(bs, fetch_fn)
 	if err != nil {
 		return trace(err)
 	}
@@ -61,21 +57,15 @@ func (eft *EFT) fetchSnap(snap *Snapshot, fetch_fn FetchFn) error {
 
 func (eft *EFT) fetchPathTrieNode(ptn *TrieNode, dd int, fetch_fn FetchFn) error {
 	// First, fetch all sub-blocks
-	bs, err := eft.NewBlockSet()
-	if err != nil {
-		return trace(err)
-	}
+	bs := eft.NewBlockSet()
 
 	for _, ent := range(ptn.tab) {
 		if ent.Type != TRIE_TYPE_NONE {
-			err := bs.Add(ent.Hash)
-			if err != nil {
-				return trace(err)
-			}
+			bs.Add(ent.Hash)
 		}
 	}
 
-	err = eft.fetchBlocks(bs, fetch_fn)
+	err := eft.fetchBlocks(bs, fetch_fn)
 	if err != nil {
 		return trace(err)
 	}
@@ -141,21 +131,15 @@ func (eft *EFT) fetchItem(hash [32]byte, fetch_fn FetchFn) error {
 
 func (eft *EFT) fetchLargeNode(ltn *TrieNode, dd int, fetch_fn FetchFn) error {
 	// First, fetch all the blocks
-	bs, err := eft.NewBlockSet()
-	if err != nil {
-		return trace(err)
-	}
+	bs := eft.NewBlockSet()
 
 	for _, ent := range(ltn.tab) {
 		if ent.Type != TRIE_TYPE_NONE {
-			err := bs.Add(ent.Hash)
-			if err != nil {
-				return trace(err)
-			}
+			bs.Add(ent.Hash)
 		}
 	}
 	
-	err = eft.fetchBlocks(bs, fetch_fn)
+	err := eft.fetchBlocks(bs, fetch_fn)
 	if err != nil {
 		return trace(err)
 	}
@@ -179,7 +163,7 @@ func (eft *EFT) fetchLargeNode(ltn *TrieNode, dd int, fetch_fn FetchFn) error {
 }
 
 func (eft *EFT) fetchBlocks(bs *BlockSet, fetch_fn FetchFn) error {
-	ba, err := fetch_fn(bs)
+	ba, err := fetch_fn(bs.HexSlice())
 	if err != nil {
 		return trace(err)
 	}

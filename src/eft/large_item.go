@@ -176,7 +176,7 @@ func (lt *LargeTrie) visitEachBlock(fn func(hash [32]byte) error) error {
 }
 
 func (lt *LargeTrie) debugDump(deep int) {
-	fmt.Println("[PathTrie]")
+	fmt.Println(indent(deep), "[LargeTrie]")
 	tn := lt.root
 
 	fmt.Println(indent(deep), "[TrieNode]")
