@@ -1,5 +1,6 @@
 package eft
 
+/*
 import (
 	"fmt"
 )
@@ -43,5 +44,5 @@ func (eft *EFT) Checkpoint(prev_hash [32]byte) ([32]byte, *Checkpoint, error) {
 
 	return ZERO_HASH, cp, nil
 }
-
+*/
 

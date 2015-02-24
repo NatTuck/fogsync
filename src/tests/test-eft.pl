@@ -6,8 +6,8 @@ use Cwd 'abs_path';
 use File::Basename;
 use IO::Handle;
 
-my $TEST_SRC = "/usr/share/man";
-#my $TEST_SRC = "/usr/share/backgrounds";
+#my $TEST_SRC = "/usr/share/man";
+my $TEST_SRC = "/usr/share/backgrounds";
 my $TEST_TMP = "/tmp/fog-test-$$";
 my $TEST_EFT = "$TEST_TMP/eft";
 my $TEST_DST = "$TEST_TMP/out";
@@ -63,7 +63,15 @@ for my $ff (@files) {
 }
 close($glist);
 
+say "Live block count:";
+my $ccmd = qq{"$FOGT" -d "$TEST_EFT" blocks | wc -l};
+runcmd($ccmd);
+
+#my $gccmd = qq{"$FOGT" -d "$TEST_EFT" gc};
+#runcmd($gccmd);
+
 my $gcmd = qq{$PARALLEL "$FOGT" -d "$TEST_EFT" get "{}" < "$TEST_TMP/gets.txt"};
+say "== GCing ==";
 runcmd($gcmd);
 
 say "Directory diff:";

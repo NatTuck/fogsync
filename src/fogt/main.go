@@ -17,7 +17,6 @@ func ShowUsage() {
 	fmt.Fprintf(os.Stderr, "  fogt del \"Documents/pineapple.gif\"\n")
 	fmt.Fprintf(os.Stderr, "  fogt merge\n")
 	fmt.Fprintf(os.Stderr, "  fogt blocks\n")
-	fmt.Fprintf(os.Stderr, "  fogt gc\n")
 	fmt.Fprintf(os.Stderr, "  fogt ls \"Documents\"\n")
 	fmt.Fprintf(os.Stderr, "  fogt dump\n")
 	fmt.Fprintf(os.Stderr, "\nFlags:\n")
@@ -100,15 +99,7 @@ func dumpCmd(trie *eft.EFT) {
 }
 
 func gcCmd(trie *eft.EFT) {
-	fmt.Fprintf(os.Stderr, "FIX GC")
-	/*
-	cp, err := trie.MakeCheckpoint()
-	if err != nil {
-		panic(err)
-	}
-
-	cp.Commit()
-	*/
+	panic("Not a real command")
 }
 
 func putCmd(trie *eft.EFT, tgt string) {

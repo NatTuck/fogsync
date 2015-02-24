@@ -196,7 +196,7 @@ func (eft *EFT) MergeSnapRoots() error {
 		}
 	}
 
-	return nil
+	return eft.collect()
 }
 
 func (eft *EFT) BlockPath(hash [32]byte) string {

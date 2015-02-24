@@ -43,6 +43,12 @@ func (bs *BlockSet) Diff(bs1 *BlockSet) (*BlockSet) {
 	return diff
 }
 
+func (bs* BlockSet) AddSet(bs1 *BlockSet) {
+	for hh, _ := range(bs1.bmap) {
+		bs.Add(hh)
+	}
+}
+
 func (bs *BlockSet) EachHash(fn func(hash [32]byte)) {
 	for hh, _ := range(bs.bmap) {
 		fn(hh)

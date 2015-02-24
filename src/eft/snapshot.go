@@ -440,3 +440,14 @@ func (eft *EFT) commitSnap(snap *Snapshot) error {
 
 	return eft.saveSnaps(snaps)
 }
+
+func (snap *Snapshot) liveBlocks() *BlockSet {
+	trie, err := snap.eft.loadPathTrie(snap.Root)
+	assert_no_error(err)
+
+	bs := trie.blockSet()
+	bs.Add(snap.Root)
+
+	return bs
+}
+
