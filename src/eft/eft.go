@@ -21,182 +21,118 @@ type EFT struct {
 	locked int
 }
 
-func (eft *EFT) SnapsHash() (string, error) {
-	eft.Lock()
-	defer eft.Unlock()
+func (eft *EFT) RootHash() (string, error) {
+	var root_hex string
 
-	hash, err := eft.loadSnapsHash()
-	if err != nil {
-		return "", trace(err)
-	}
+	err := eft.with_read_lock(func() {
+		root_hash, err := eft.getRoot()
+		assert_no_error(err)
 
-	return hex.EncodeToString(hash[:]), nil
+		root_hex = HashToHex(root_hash)
+	})
+
+	return root_hex, err
 }
 
 func (eft *EFT) Put(info ItemInfo, src_path string) error {
-	eft.ReadLock()
-	defer eft.Unlock()
-
-	snap, err := eft.GetSnap("")
-	if err != nil {
-		return trace(err)
-	}
-
-	return snap.Put(info, src_path)
-}
-
-func (snap *Snapshot) Put(info ItemInfo, src_path string) error {
-	err := snap.putItem(info, src_path)
-	if err != nil {
-		return trace(err)
-	}
-
-	return nil
+	return eft.with_read_lock(func() {
+		eft.putItem(info, src_path)
+	})
 }
 
 func (eft *EFT) Get(name string, dst_path string) (ItemInfo, error) {
-	eft.ReadLock()
-	defer eft.Unlock()
+	var info ItemInfo
 
-	snap, err := eft.GetSnap("")
-	if err != nil {
-		return ItemInfo{}, trace(err)
-	}
+	err := eft.with_read_lock(func() {
+		dst_parent := path.Dir(dst_path)
 
-	return snap.Get(name, dst_path)
+		err := os.MkdirAll(dst_parent, 0755)
+		assert_no_error(err)
+
+		info = eft.getItem(name, dst_path)
+	})
+
+	return info, err
 }
 
-func (snap *Snapshot) Get(name string, dst_path string) (ItemInfo, error) {
-	dst_parent := path.Dir(dst_path)
-	err := os.MkdirAll(dst_parent, 0755)
-	if err != nil {
-		return ItemInfo{}, trace(err)
-	}
+func (eft *EFT) GetInfo(name string) (_ ItemInfo, eret error) {
+	var info ItemInfo
 
-	info, err := snap.getItem(name, dst_path)
-	if err != nil {
-		return info, err
-	}
+	err := eft.with_read_lock(func() {
+		ii, _, err := eft.getTree(name)
+		assert_no_error(err)
+
+		info = ii
+	})
 
 	return info, nil
 }
 
-func (eft *EFT) GetInfo(name string) (ItemInfo, error) {
-	eft.ReadLock()
-	defer eft.Unlock()
-
-	snap, err := eft.GetSnap("")
-	if err != nil {
-		return ItemInfo{}, err
-	}
-
-	info, _, err := snap.getTree(name)
-	if err != nil {
-		return info, err
-	}
-
-	return info, nil
-}
-
-func (eft *EFT) Del(name string) error {
-	snap, err := eft.GetSnap("")
-	if err != nil {
-		return err
-	}
-
-	return snap.Del(name)
-}
-
-func (snap *Snapshot) Del(name string) error {
-	err := snap.delItem(name)
-	if err != nil {
-		return err
-	}
-
-	return nil
+func (eft *EFT) Del(name string) (eret error) {
+	return eft.with_read_lock(func() {
+		eft.delItem(name)
+	})
 }
 
 func (eft *EFT) ListDir(path string) ([]ItemInfo, error) {
-	eft.ReadLock()
-	defer eft.Unlock()
-
-	snap, err := eft.GetSnap("")
-	if err != nil {
-		return nil, trace(err)
-	}
-
-	return snap.ListDir(path)
-}
-
-func (snap *Snapshot) ListDir(path string) ([]ItemInfo, error) {
-	infos, err := snap.ListInfos()
-	if err != nil {
-		return nil, err
-	}
-
 	list := make([]ItemInfo, 0)
 
-	for _, info := range(infos) {
-		if info.Path[0:len(path)] == path {
-			list = append(list, info)
+	err := eft.with_read_lock(func() {
+		infos, err := eft.ListInfos()
+		assert_no_error(err)
+
+		for _, info := range(infos) {
+			if info.Path[0:len(path)] == path {
+				list = append(list, info)
+			}
 		}
-	}
+	})
 
-	return list, nil
+	return list, err
 }
 
-func (eft *EFT) DebugDump() {
-	eft.Lock()
-	defer eft.Unlock()
+func (eft *EFT) DebugDump() error {
+	return eft.with_write_lock(func() {
+		fmt.Println("Dumping EFT Structure...")
 
-	fmt.Println("Dumping EFT Structure...")
+		snaps := eft.listSnaps()
 
-	snaps, err := eft.loadSnaps()
-	if err != nil {
-		panic(err)
-	}
+		for _, name := range(snaps) {
+			fmt.Println("Snap:", name)
 
-	for _, snap := range(snaps) {
-		snap.debugDump(eft)
-	}
-}
+			root, err := eft.getSnapRoot(name)
+			assert_no_error(err)
 
-func (eft *EFT) ListBlocks() (_ []string, eret error) {
-	eft.Lock()
-	defer eft.Unlock()
-	defer func() { eret = recover_assert() }()
+			pt, err := eft.loadPathTrie(root)
+			assert_no_error(err)
 
-	snap, err := eft.GetSnap("")
-	if err != nil {
-		return nil, trace(err)
-	}
-
-	pt, err := eft.loadPathTrie(snap.Root)
-	if err != nil {
-		return nil, trace(err)
-	}
-
-	bs := pt.blockSet()
-	return bs.HexSlice(), nil
-}
-
-func (eft *EFT) MergeSnapRoots() error {
-	eft.Lock()
-	defer eft.Unlock()
-
-	snaps, err := eft.loadSnaps()
-	if err != nil {
-		return trace(err)
-	}
-
-	for _, snap := range(snaps) {
-		err := snap.mergeRoots()
-		if err != nil {
-			return trace(err)
+			pt.debugDump(0)
 		}
-	}
+	})
+}
 
-	return eft.collect()
+func (eft *EFT) ListBlocks() ([]string, error) {
+	var blocks []string
+
+	err := eft.with_write_lock(func() {
+		root, err := eft.getRoot()
+		assert_no_error(err)
+
+		pt, err := eft.loadPathTrie(root)
+		assert_no_error(err)
+
+		blocks = pt.blockSet().HexSlice()
+	})
+
+	return blocks, err
+}
+
+func (eft *EFT) Commit() error {
+	return eft.with_write_lock(func() {
+		eft.mergeRoots()
+		err := eft.collect()
+		assert_no_error(err)
+	})
 }
 
 func (eft *EFT) BlockPath(hash [32]byte) string {

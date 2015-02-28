@@ -144,6 +144,13 @@ func (ss *Share) sync() {
 		return
 	}
 
+	// Commit local changes.
+	err := ss.Trie.MergeSnapRoots()
+	if err != nil {
+		fmt.Println(fs.Trace(err))
+		return
+	}
+
 	// Fetch
 	fetch_fn := func(bs []string) (*eft.BlockArchive, error) {
 		return ss.fetchBlocks(cc, bs)
@@ -166,23 +173,7 @@ func (ss *Share) sync() {
 		}
 	}
 	
-	/*
 	prev_root := sdata.Root
-
-	// Upload
-	// FIXME: Make Upload Work Again
-	//cp, err := ss.Trie.MakeCheckpoint()
-	cp := eft.Checkpoint{}
-	err = fmt.Errorf("FIXME")
-	fs.CheckError(err)
-
-	defer func() {
-		if sync_success {
-			cp.Commit()
-		} else {
-			cp.Abort()
-		}
-	}()
 
 	ba, err := eft.NewArchive()
 	if err != nil {
@@ -221,20 +212,14 @@ func (ss *Share) sync() {
 
 	sync_success = true
 
-	go func() {
-		// Outer func is still holding EFT lock, so this
-		// happens asynchronously.
-
-		// Actually copy out all the files
-		infos, err := ss.Trie.ListInfos()
-		if err != nil {
-			fmt.Println(fs.Trace(err))
-			return
-		}
+	// Actually copy out all the files
+	infos, err := ss.Trie.ListInfos()
+	if err != nil {
+		fmt.Println(fs.Trace(err))
+		return
+	}
 		
-		for _, info := range(infos) {
-			ss.Watcher.ChangedRemote(info.Path)
-		}
-	}()
-	*/
+	for _, info := range(infos) {
+		ss.Watcher.ChangedRemote(info.Path)
+	}
 }

@@ -10,23 +10,21 @@ import (
 )
 
 func (eft *EFT) collect() error {
-	snaps, err := eft.loadSnaps()
-	if err != nil {
-		return trace(err)
-	}
+	snaps := eft.listSnaps()
 
 	// Generate full block set.
 	live := eft.NewBlockSet()
 
-	shash, err := eft.loadSnapsHash()
-	if err != nil {
-		return trace(err)
-	}
+	for _, name := range(snaps) {
+		snap_root, err := eft.getSnapRoot(name)
+		assert_no_error(err)
 
-	live.Add(shash)
+		live.Add(snap_root)
 
-	for _, snap := range(snaps) {
-		bs := snap.liveBlocks()
+		pt, err := eft.loadPathTrie(snap_root)
+		assert_no_error(err)
+
+		bs := pt.blockSet()
 		live.AddSet(bs)
 	}
 
@@ -57,7 +55,7 @@ func (eft *EFT) collect() error {
 
 	blocks_dir := filepath.Join(eft.Dir, "blocks")
 
-	err = filepath.Walk(blocks_dir, walk_fn)
+	err := filepath.Walk(blocks_dir, walk_fn)
 	if err != nil {
 		return trace(err)
 	}

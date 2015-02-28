@@ -7,52 +7,21 @@ import (
 type FetchFn func(bs []string) (*BlockArchive, error)
 
 func (eft *EFT) FetchRemote(rem_hash [32]byte, fetch_fn FetchFn) error {
-	eft.Lock()
-	defer eft.Unlock()
+	return eft.with_write_lock(func() {
 
-	bs := eft.NewBlockSet()
-	bs.Add(rem_hash)
+		bs := eft.NewBlockSet()
+		bs.Add(rem_hash)
 
-	err := eft.fetchBlocks(bs, fetch_fn)
-	if err != nil {
-		return trace(err)
-	}
+		err := eft.fetchBlocks(bs, fetch_fn)
+		assert_no_error(err)
 
-	snaps, err := eft.loadSnapsFrom(rem_hash)
-	if err != nil {
-		return trace(err)
-	}
+		pt, err := eft.loadPathTrie(rem_hash)
+		assert_no_error(err)
 
-	for _, snap := range(snaps) {
-		err := eft.fetchSnap(snap, fetch_fn)
-		if err != nil {
-			return trace(err)
-		}
-	}
+		err = eft.fetchPathTrieNode(pt.root, 0, fetch_fn)
+		assert_no_error(err)
 
-	return nil
-}
-
-func (eft *EFT) fetchSnap(snap *Snapshot, fetch_fn FetchFn) error {
-	bs := eft.NewBlockSet()
-	bs.Add(snap.Root)
-
-	err := eft.fetchBlocks(bs, fetch_fn)
-	if err != nil {
-		return trace(err)
-	}
-
-	pt, err := eft.loadPathTrie(snap.Root)
-	if err != nil {
-		return trace(err)
-	}
-
-	err = eft.fetchPathTrieNode(pt.root, 0, fetch_fn)
-	if err != nil {
-		return trace(err)
-	}
-
-	return nil
+	})
 }
 
 func (eft *EFT) fetchPathTrieNode(ptn *TrieNode, dd int, fetch_fn FetchFn) error {

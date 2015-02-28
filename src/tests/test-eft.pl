@@ -6,8 +6,8 @@ use Cwd 'abs_path';
 use File::Basename;
 use IO::Handle;
 
-#my $TEST_SRC = "/usr/share/man";
-my $TEST_SRC = "/usr/share/backgrounds";
+my $TEST_SRC = "/usr/share/man";
+#my $TEST_SRC = "/usr/share/backgrounds";
 my $TEST_TMP = "/tmp/fog-test-$$";
 my $TEST_EFT = "$TEST_TMP/eft";
 my $TEST_DST = "$TEST_TMP/out";

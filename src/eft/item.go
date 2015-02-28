@@ -8,55 +8,35 @@ import (
 
 var SMALL_MAX = uint64(12 * 1024 - BLOCK_OVERHEAD)
 
-func (snap *Snapshot) putItem(info ItemInfo, src_path string) error {
-	data_hash, err := snap.eft.saveItem(info, src_path)
-	if err != nil {
-		return trace(err)
-	}
+func (eft *EFT) putItem(info ItemInfo, src_path string) {
+	data_hash, err := eft.saveItem(info, src_path)
+	assert_no_error(err)
 
-	root, err := snap.putTree(info, data_hash)
-	if err != nil {
-		return trace(err)
-	}
+	root, err := eft.putTree(info, data_hash)
+	assert_no_error(err)
 
-	err = snap.saveRoot(root)
-	if err != nil {
-		return trace(err)
-	}
-
-	return nil
+	eft.saveRoot(root)
 }
 
-func (snap *Snapshot) getItem(name string, dst_path string) (ItemInfo, error) {
-	info0, data_hash, err := snap.getTree(name)
-	if err != nil {
-		return info0, err
-	}
+func (eft *EFT) getItem(name string, dst_path string) ItemInfo {
+	info0, data_hash, err := eft.getTree(name)
+	assert_no_error(err)
 
-	info1, err := snap.eft.loadItem(data_hash, dst_path)
-	if err != nil {
-		return info0, trace(err)
-	}
+	info1, err := eft.loadItem(data_hash, dst_path)
+	assert_no_error(err)
 
 	if info0 != info1 {
-		return info0, trace(fmt.Errorf("Item info mismatch"))
+		panic(fmt.Errorf("Item info mismatch"))
 	}
 
-	return info0, nil
+	return info0
 }
 
-func (snap *Snapshot) delItem(name string) error {
-	root, err := snap.delTree(name)
-	if err != nil {
-		return err
-	}
+func (eft *EFT) delItem(name string) {
+	root, err := eft.delTree(name)
+	assert_no_error(err)
 
-	err = snap.saveRoot(root)
-	if err != nil {
-		return trace(err)
-	}
-
-	return nil
+	eft.saveRoot(root)
 }
 
 func (eft *EFT) loadItemInfo(hash [32]byte) (ItemInfo, error) {

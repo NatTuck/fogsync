@@ -135,3 +135,28 @@ func (eft *EFT) ReadLock() (eret error) {
 	return nil
 }
 
+func (eft *EFT) with_read_lock(fn func()) (eret error) {
+	eft.ReadLock()
+	defer eft.Unlock()
+
+	defer func() {
+		eret = recover_assert()
+	}()
+	
+	fn()
+
+	return nil
+}
+
+func (eft *EFT) with_write_lock(fn func()) (eret error) {
+	eft.Lock()
+	defer eft.Unlock()
+
+	defer func() {
+		eret = recover_assert()
+	}()
+	
+	fn()
+
+	return nil
+}
