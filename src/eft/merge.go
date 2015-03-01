@@ -6,80 +6,35 @@ import (
 )
 
 func (eft *EFT) MergeRemote(hash [32]byte) error {
-	eft.Lock()
-	defer eft.Unlock()
+	err := eft.with_read_lock(func() {
+		currHash, err := eft.getRoot()
+		assert_no_error(err)
 
-	// Merge snapshots
-	snaps, err := eft.loadSnaps()
-	if err != nil {
-		//eft.abort()
-		return trace(err)
-	}
-
-	rem_snaps, err := eft.loadSnapsFrom(hash)
-	if err != nil {
-		//eft.abort()
-		return trace(err)
-	}
-
-	if len(snaps) != 1 || len(rem_snaps) != 1 {
-		//eft.abort()
-		panic("TODO: Handle multiple snapshots")
-	}
-
-	merged, err := eft.mergeSnaps(snaps[0], rem_snaps[0])
-	if err != nil {
-		//eft.abort()
-		return trace(err)
-	}
-
-	snaps[0] = merged
-
-	if merged == rem_snaps[0] {
-		fmt.Println("XX - Merge: Took remote hash")
-		//eft.commit_hash(hash)
-		return nil
-	} else {
-		//eft.commit()
-		return nil
-	}
-}
-
-func (eft *EFT) mergeSnaps(snap0, snap1 *Snapshot) (*Snapshot, error) {
-	if HashesEqual(snap0.Root, snap1.Root) {
-		return snap0, nil
-	}
-
-	pt0, err := eft.loadPathTrie(snap0.Root)
-	if err != nil {
-		return &Snapshot{}, trace(err)
-	}
-	
-	pt1, err := eft.loadPathTrie(snap1.Root)
-	if err != nil {
-		return &Snapshot{}, trace(err)
-	}
-
-	trie, err := eft.mergePathTries(pt0, pt1)
-	if err != nil {
-		return &Snapshot{}, trace(err)
-	}
-
-	snapM := *snap0
-
-	if trie.Equals(&pt1) {
-		fmt.Println("XX - Remote snap has no changes.")
-		snapM.Root = snap1.Root
-	} else {
-		hash, err := trie.save()
-		if err != nil {
-			return &Snapshot{}, trace(err)
+		if HashesEqual(currHash, hash) {
+			fmt.Println("XX - Remote snap has no changes.")
+			return
 		}
-		
-		snapM.Root = hash
-	}
+
+		ptR, err := eft.loadPathTrie(hash)
+		assert_no_error(err)
 	
-	return &snapM, nil
+		ptL, err := eft.loadPathTrie(currHash)
+		assert_no_error(err)
+
+		trie, err := eft.mergePathTries(ptL, ptR)
+		assert_no_error(err)
+
+		merged, err := trie.save()
+		assert_no_error(err)
+
+		eft.saveRoot(merged)
+	})
+
+	if err != nil {
+		return err
+	}
+
+	return eft.Commit()
 }
 
 func (eft *EFT) mergePathTries(pt0, pt1 PathTrie) (PathTrie, error) {
@@ -210,10 +165,7 @@ func (ptn *TrieNode) mergeInsert(ent0, ent1 TrieEntry) (TrieEntry, error) {
 		}
 	}
 
-	key, err := ptn.KeyBytes(ent1)
-	if err != nil {
-		return TrieEntry{}, trace(err)
-	}
+	key := ptn.KeyBytes(ent1)
 
 	err = mtn.insert(key, ent1)
 	if err != nil {
@@ -238,26 +190,12 @@ func (mtn *TrieNode) mergeItems(ent0, ent1 TrieEntry) (TrieEntry, error) {
 		return TrieEntry{}, fmt.Errorf("Both arguments must be TRIE_TYPE_ITEM")
 	}
 
-	key0, err := mtn.KeyBytes(ent0)
-	if err != nil {
-		return TrieEntry{}, trace(err)
-	}
-			
-	key1, err := mtn.KeyBytes(ent1)
-	if err != nil {
-		return TrieEntry{}, trace(err)
-	}
+	key0 := mtn.KeyBytes(ent0)
+	key1 := mtn.KeyBytes(ent1)
 			
 	if bytes.Equal(key0, key1) {
-		info0, err := mtn.eft.loadItemInfo(ent0.Hash)
-		if err != nil {
-			return TrieEntry{}, trace(err)
-		}
-
-		info1, err := mtn.eft.loadItemInfo(ent1.Hash)
-		if err != nil {
-			return TrieEntry{}, trace(err)
-		}
+		info0 := mtn.eft.loadItemInfo(ent0.Hash)
+		info1 := mtn.eft.loadItemInfo(ent1.Hash)
 		
 		fmt.Println("XX - Merging", info0.Path, info1.Path)
 
@@ -272,7 +210,7 @@ func (mtn *TrieNode) mergeItems(ent0, ent1 TrieEntry) (TrieEntry, error) {
 		Type: TRIE_TYPE_MORE,
 	}
 
-	ment, err = mtn.mergeInsert(ment, ent0)
+	ment, err := mtn.mergeInsert(ment, ent0)
 	if err != nil {
 		return TrieEntry{}, trace(err)
 	}

@@ -36,7 +36,8 @@ func (eft *EFT) RootHash() (string, error) {
 
 func (eft *EFT) Put(info ItemInfo, src_path string) error {
 	return eft.with_read_lock(func() {
-		eft.putItem(info, src_path)
+		root := eft.putItem(info, src_path)
+		eft.saveRoot(root)
 	})
 }
 
@@ -65,28 +66,29 @@ func (eft *EFT) GetInfo(name string) (_ ItemInfo, eret error) {
 		info = ii
 	})
 
-	return info, nil
+	return info, err
 }
 
 func (eft *EFT) Del(name string) (eret error) {
 	return eft.with_read_lock(func() {
-		eft.delItem(name)
+		root := eft.delItem(name)
+		eft.saveRoot(root)
 	})
 }
 
 func (eft *EFT) ListDir(path string) ([]ItemInfo, error) {
 	list := make([]ItemInfo, 0)
 
-	err := eft.with_read_lock(func() {
-		infos, err := eft.ListInfos()
-		assert_no_error(err)
+	infos, err := eft.ListInfos()
+	if err != nil {
+		return list, trace(err)
+	}
 
-		for _, info := range(infos) {
-			if info.Path[0:len(path)] == path {
-				list = append(list, info)
-			}
+	for _, info := range(infos) {
+		if info.Path[0:len(path)] == path {
+			list = append(list, info)
 		}
-	})
+	}
 
 	return list, err
 }

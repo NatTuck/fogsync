@@ -78,10 +78,7 @@ func (eft *EFT) fetchPathTrieNode(ptn *TrieNode, dd int, fetch_fn FetchFn) error
 }
 
 func (eft *EFT) fetchItem(hash [32]byte, fetch_fn FetchFn) error {
-	info, err := eft.loadItemInfo(hash)
-	if err != nil {
-		return trace(err)
-	}
+	info := eft.loadItemInfo(hash)
 
 	if (info.Size > 12 * 1024) {
 		lgt, err := eft.loadLargeTrie(hash)

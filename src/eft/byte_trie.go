@@ -7,7 +7,7 @@ import (
 )
 
 type ByteTrie interface {
-	KeyBytes(ee TrieEntry) ([]byte, error)
+	KeyBytes(ee TrieEntry) []byte
 }
 
 const (
@@ -37,10 +37,8 @@ type TrieNode struct {
 
 var ErrNotFound = errors.New("EFT: record not found")
 
-func (tn *TrieNode) KeyBytes(ee TrieEntry) ([]byte, error) {
-	if tn.tri == nil {
-		return nil, fmt.Errorf("Invalid TrieNode (no tri)")
-	}
+func (tn *TrieNode) KeyBytes(ee TrieEntry) []byte {
+	assert(tn.tri != nil, "Invalid TrieNode (no tri)")
 	return tn.tri.KeyBytes(ee)
 }
 
@@ -153,10 +151,7 @@ func (tn *TrieNode) find(key []byte) ([32]byte, error) {
 		return next.find(key)
 
 	case TRIE_TYPE_ITEM:
-		key1, err := tn.tri.KeyBytes(entry)
-		if err != nil {
-			return [32]byte{}, trace(err)
-		}
+		key1 := tn.tri.KeyBytes(entry)
 
 		if bytes.Compare(key, key1) == 0 {
 			return entry.Hash, nil
@@ -181,10 +176,7 @@ func (tn *TrieNode) insert(key []byte, new_ent TrieEntry) error {
 		tn.tab[slot] = new_ent
 
 	case TRIE_TYPE_ITEM:
-		curr_key, err := tn.tri.KeyBytes(entry)
-		if err != nil {
-			return trace(err)
-		}
+		curr_key := tn.tri.KeyBytes(entry)
 		
 		if bytes.Compare(key, curr_key) == 0 {
 			// Replace
@@ -195,7 +187,7 @@ func (tn *TrieNode) insert(key []byte, new_ent TrieEntry) error {
 
 			next := tn.emptyChild()
 
-			err = next.insert(curr_key, entry)
+			err := next.insert(curr_key, entry)
 			if err != nil {
 				return trace(err)
 			}

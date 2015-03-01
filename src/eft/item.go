@@ -8,22 +8,21 @@ import (
 
 var SMALL_MAX = uint64(12 * 1024 - BLOCK_OVERHEAD)
 
-func (eft *EFT) putItem(info ItemInfo, src_path string) {
+func (eft *EFT) putItem(info ItemInfo, src_path string) [32]byte {
 	data_hash, err := eft.saveItem(info, src_path)
 	assert_no_error(err)
 
 	root, err := eft.putTree(info, data_hash)
 	assert_no_error(err)
 
-	eft.saveRoot(root)
+	return root
 }
 
 func (eft *EFT) getItem(name string, dst_path string) ItemInfo {
 	info0, data_hash, err := eft.getTree(name)
 	assert_no_error(err)
 
-	info1, err := eft.loadItem(data_hash, dst_path)
-	assert_no_error(err)
+	info1 := eft.loadItem(data_hash, dst_path)
 
 	if info0 != info1 {
 		panic(fmt.Errorf("Item info mismatch"))
@@ -32,51 +31,39 @@ func (eft *EFT) getItem(name string, dst_path string) ItemInfo {
 	return info0
 }
 
-func (eft *EFT) delItem(name string) {
-	root, err := eft.delTree(name)
-	assert_no_error(err)
-
-	eft.saveRoot(root)
+func (eft *EFT) delItem(name string) [32]byte {
+	return eft.delTree(name)
 }
 
-func (eft *EFT) loadItemInfo(hash [32]byte) (ItemInfo, error) {
+func (eft *EFT) loadItemInfo(hash [32]byte) ItemInfo {
 	info := ItemInfo{}
 
 	data, err := eft.loadBlock(hash)
-	if err != nil {
-		return info, err
-	}
+	assert_no_error(err)
 
 	info = ItemInfoFromBytes(data[0:2048])
 
-	return info, nil
+	return info
 }
 
-func (eft *EFT) loadItem(hash [32]byte, dst_path string) (ItemInfo, error) {
-	info, err := eft.loadItemInfo(hash)
-	if err != nil {
-		return info, err
-	}
+func (eft *EFT) loadItem(hash [32]byte, dst_path string) ItemInfo {
+	info := eft.loadItemInfo(hash)
 
 	if info.Type == INFO_DIR {
 		err := os.MkdirAll(dst_path, 0755)
-		if err != nil {
-			return info, trace(err)
-		}
-		return info, nil
+		assert_no_error(err)
+		return info
 	}
 	
-	err = os.MkdirAll(path.Dir(dst_path), 0755)
-	if err != nil {
-		return info, trace(err)
-	}
+	err := os.MkdirAll(path.Dir(dst_path), 0755)
+	assert_no_error(err)
 
 	if info.Type == INFO_TOMB {
 		err := os.Remove(dst_path)
 		if err != nil {
 			// ignore remove error
 		}
-		return info, nil
+		return info
 	}
 
 	if info.Size <= SMALL_MAX {
@@ -84,10 +71,9 @@ func (eft *EFT) loadItem(hash [32]byte, dst_path string) (ItemInfo, error) {
 	} else {
 		info, err = eft.loadLargeItem(hash, dst_path)
 	}
-	if err != nil {
-		return info, trace(err)
-	}
-	return info, nil
+	assert_no_error(err)
+
+	return info
 }
 
 func (eft *EFT) saveItem(info ItemInfo, src_path string) ([32]byte, error) {
@@ -99,10 +85,7 @@ func (eft *EFT) saveItem(info ItemInfo, src_path string) ([32]byte, error) {
 }
 
 func (eft *EFT) visitItemBlocks(hash [32]byte, fn func(hash [32]byte) error) error {
-	info, err := eft.loadItemInfo(hash)
-	if err != nil {
-		return trace(err)
-	}
+	info := eft.loadItemInfo(hash)
 
 	if info.Size <= SMALL_MAX {
 		return fn(hash)
@@ -122,18 +105,13 @@ func (eft *EFT) visitItemBlocks(hash [32]byte, fn func(hash [32]byte) error) err
 }
 
 func (eft *EFT) debugDumpItem(hash [32]byte, depth int) {
-	info, err := eft.loadItemInfo(hash)
-	if err != nil {
-		panic(err)
-	}
+	info := eft.loadItemInfo(hash)
 
 	if info.Size <= SMALL_MAX {
 		fmt.Println(indent(depth), "[Small Item]")
 	} else {
 		lt, err := eft.loadLargeTrie(hash)
-		if err != nil {
-			panic(err)
-		}
+		assert_no_error(err)
 
 		lt.debugDump(depth)
 	}

@@ -12,8 +12,8 @@ type LargeTrie struct {
 	root *TrieNode
 }
 
-func (trie *LargeTrie) KeyBytes(ee TrieEntry) ([]byte, error) {
-	return ee.Pkey[:], nil
+func (trie *LargeTrie) KeyBytes(ee TrieEntry) []byte {
+	return ee.Pkey[:]
 }
 
 func (eft *EFT) newLargeTrie(info ItemInfo) LargeTrie {

@@ -50,7 +50,7 @@ func (ss *Share) syncLoop() {
 }
 
 func (ss *Share) poll() {
-	curr_root, err := ss.Trie.SnapsHash()
+	curr_root, err := ss.Trie.RootHash()
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -145,7 +145,7 @@ func (ss *Share) sync() {
 	}
 
 	// Commit local changes.
-	err := ss.Trie.MergeSnapRoots()
+	err = ss.Trie.Commit()
 	if err != nil {
 		fmt.Println(fs.Trace(err))
 		return
@@ -172,7 +172,8 @@ func (ss *Share) sync() {
 			return
 		}
 	}
-	
+
+	/*
 	prev_root := sdata.Root
 
 	ba, err := eft.NewArchive()
@@ -222,4 +223,5 @@ func (ss *Share) sync() {
 	for _, info := range(infos) {
 		ss.Watcher.ChangedRemote(info.Path)
 	}
+	*/
 }

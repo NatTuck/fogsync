@@ -45,10 +45,7 @@ func (eft *EFT) printHashPath(msg string, hash [32]byte) {
 		return
 	}
 
-	info, err := eft.loadItemInfo(hash)
-	if err != nil {
-		panic(err)
-	}
+	info := eft.loadItemInfo(hash)
 
 	fmt.Println("XX - ", msg, info.Path)
 }

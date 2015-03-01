@@ -22,7 +22,7 @@ func (eft *EFT) getSnapRoot(name string) ([32]byte, error) {
 
 	root_hex, err := ReadOneLine(root_path)
 	if err != nil {
-		return trace(err)
+		return ZERO_HASH, trace(err)
 	}
 
 	return HexToHash(root_hex), nil
@@ -37,17 +37,17 @@ func (eft *EFT) putSnapRoot(name string, hash [32]byte) {
 		panic(ErrNeedLock)
 	}
 
-	err := os.MkdirAll(path.Join(eft.Dir, snaps), 0750)
+	err := os.MkdirAll(path.Join(eft.Dir, "snaps"), 0750)
 	assert_no_error(err)
 
 	snap_root := path.Join(eft.Dir, "snaps", name)
 
-	err := WriteOneLine(snap_root, HashToHex(hash))
+	err = WriteOneLine(snap_root, HashToHex(hash))
 	assert_no_error(err)
 }
 
 func (eft *EFT) rootsDir() string {
-	root_dir := path.Join(eft.Dir, "tmp", "roots", HashToHex(snap.Uuid))
+	root_dir := path.Join(eft.Dir, "tmp", "roots")
 	
 	err := os.MkdirAll(root_dir, 0750)
 	assert_no_error(err)
@@ -59,8 +59,7 @@ func (eft *EFT) cleanupRoot(old_root, new_root [32]byte) {
 	deads, _ := eft.root_changes(old_root, new_root)
 	eft.removeBlocks(deads)
 
-	err := eft.removeRoot(old_root)
-	assert_no_error(err)
+	eft.removeRoot(old_root)
 }
 
 func (eft *EFT) removeRoot(root [32]byte) {
@@ -75,8 +74,6 @@ func (eft *EFT) saveRoot(root [32]byte) {
 
 	err := WriteOneLine(root_file, HashToHex(root))
 	assert_no_error(err)
-
-	return nil
 }
 
 func (eft *EFT) mergeRootPair(r0 [32]byte, r1 [32]byte) [32]byte {
@@ -92,23 +89,18 @@ func (eft *EFT) mergeRootPair(r0 [32]byte, r1 [32]byte) [32]byte {
 	root, err := ptM.save()
 	assert_no_error(err)
 
-	err = eft.saveRoot(root)
-	assert_no_error(err)
+	eft.saveRoot(root)
 
 	return root
 }
 
 func (eft *EFT) mergeRoots() {
-	if eft.locked != LOCKED_RW {
-		return ErrNeedLock
-	}
+	assert(eft.locked == LOCKED_RW, "Need RW Lock")
 
 	var roots [][32]byte
-	var err   error
 
 	for {
-		roots, err = eft.listRoots()
-		assert_no_error(err)
+		roots = eft.listRoots()
 
 		if len(roots) < 2 {
 			break
@@ -124,7 +116,7 @@ func (eft *EFT) mergeRoots() {
 			go func() {
 				defer wg.Done()
 				defer func() {
-					err := recover()
+					err := recover_assert()
 					if err != nil {
 						eret = err
 					}
@@ -145,12 +137,18 @@ func (eft *EFT) mergeRoots() {
 	}
 
 	if len(roots) == 1 {
-		root := eft.mergeRootPair(eft.getRoot(), roots[0])
-
+		prev_root, err := eft.getRoot()
+		if err == nil {
+			eft.putSnapRoot("main", roots[0])
+			eft.removeRoot(roots[0])
+			return
+		}
+			
+		root := eft.mergeRootPair(prev_root, roots[0])
 		eft.putSnapRoot("main", root)
 
-		snap.removeRoot(roots[0])
-		snap.removeRoot(root)
+		eft.removeRoot(roots[0])
+		eft.removeRoot(root)
 	}
 }
 
@@ -175,9 +173,10 @@ func (eft *EFT) listRoots() [][32]byte {
 }
 
 func (eft *EFT) liveBlocks(name string) *BlockSet {
-	root := eft.getSnapRoot(name)
+	root, err := eft.getSnapRoot(name)
+	assert_no_error(err)
 
-	trie, err := snap.eft.loadPathTrie(snap.Root)
+	trie, err := eft.loadPathTrie(root)
 	assert_no_error(err)
 
 	bs := trie.blockSet()

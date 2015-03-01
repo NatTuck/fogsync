@@ -9,14 +9,10 @@ type PathTrie struct {
 	root *TrieNode
 }
 
-func (pt *PathTrie) KeyBytes(ee TrieEntry) ([]byte, error) {
-	info, err := pt.root.eft.loadItemInfo(ee.Hash)
-	if err != nil {
-		return nil, err
-	}
-
+func (pt *PathTrie) KeyBytes(ee TrieEntry) ([]byte) {
+	info := pt.root.eft.loadItemInfo(ee.Hash)
 	hash := HashString(info.Path)
-	return hash[:], nil
+	return hash[:]
 }
 
 func (eft *EFT) emptyPathTrie() PathTrie {
@@ -71,10 +67,8 @@ func (eft *EFT) putTree(info ItemInfo, data_hash [32]byte) ([32]byte, error) {
 	trie := eft.emptyPathTrie()
 
 	root_hash, err := eft.getRoot()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Note: Creating 'main' snap.")
-	} else {
-		trie, err = snap.eft.loadPathTrie(snap.Root)
+	if err == nil {
+		trie, err = eft.loadPathTrie(root_hash)
 		if err != nil {
 			return root_hash, trace(err)
 		}
@@ -102,7 +96,7 @@ func (eft *EFT) getTree(item_path string) (ItemInfo, [32]byte, error) {
 		return info, item_hash, ErrNotFound
 	}
 
-	trie, err := eft.loadPathTrie(snap.Root)
+	trie, err := eft.loadPathTrie(root_hash)
 	if err != nil {
 		return info, item_hash, trace(err)
 	}
@@ -112,7 +106,7 @@ func (eft *EFT) getTree(item_path string) (ItemInfo, [32]byte, error) {
 		return info, item_hash, err // Could be ErrNotFound
 	}
 
-	info, err = eft.loadItemInfo(item_hash)
+	info = eft.loadItemInfo(item_hash)
 	if err != nil {
 		return info, item_hash, trace(err)
 	}
@@ -120,33 +114,23 @@ func (eft *EFT) getTree(item_path string) (ItemInfo, [32]byte, error) {
 	return info, item_hash, nil
 }
 
-func (eft *EFT) delTree(item_path string) ([32]byte, error) {
-	empty := [32]byte{}
-
+func (eft *EFT) delTree(item_path string) [32]byte {
 	info0, _, err := eft.getTree(item_path)
-	if err != nil {
-		return empty, trace(err)
-	}
+	assert_no_error(err)
 
 	info1, err := MakeTombstone(info0)
-	if err != nil {
-		return empty, trace(err)
-	}
+	assert_no_error(err)
 
 	temp_name := eft.TempName()
 	temp, err := os.Create(temp_name)
-	if err != nil {
-		return empty, trace(err)
-	}
+	assert_no_error(err)
 	temp.Close()
 	defer os.Remove(temp_name)
 
-	root, err = eft.putItem(info1, temp_name)
-	if err != nil {
-		return empty, trace(err)
-	}
+	root := eft.putItem(info1, temp_name)
+	assert_no_error(err)
 
-	return root, nil
+	return root
 }
 
 func (pt *PathTrie) visitEachBlock(fn func(hash [32]byte) error) error {
@@ -195,11 +179,7 @@ func (eft *EFT) ListInfos() ([]ItemInfo, error) {
 		
 		err = pt.root.visitEachEntry(func (ent *TrieEntry) error {
 			if ent.Type == TRIE_TYPE_ITEM {
-				info, err := snap.eft.loadItemInfo(ent.Hash)
-				if err != nil {
-					return trace(err)
-				}
-
+				info := eft.loadItemInfo(ent.Hash)
 				infos = append(infos, info)
 			}
 			
@@ -235,10 +215,7 @@ func (pt *PathTrie) debugDump(depth int) {
 		case TRIE_TYPE_OVRF:
 			fmt.Println(indent(depth), ii, "\tOVRF")
 		case TRIE_TYPE_ITEM:
-			info, err := tn.eft.loadItemInfo(ent.Hash)
-			if err != nil {
-				panic(err)
-			}
+			info := tn.eft.loadItemInfo(ent.Hash)
 			fmt.Println(indent(depth), ii, "\tITEM", info.String())
 
 			tn.eft.debugDumpItem(ent.Hash, depth + 1)

@@ -15,7 +15,7 @@ func ShowUsage() {
 	fmt.Fprintf(os.Stderr, "  fogt put \"Documents/pineapple.gif\"\n")
 	fmt.Fprintf(os.Stderr, "  fogt get \"Documents/pineapple.gif\"\n")
 	fmt.Fprintf(os.Stderr, "  fogt del \"Documents/pineapple.gif\"\n")
-	fmt.Fprintf(os.Stderr, "  fogt merge\n")
+	fmt.Fprintf(os.Stderr, "  fogt commit\n")
 	fmt.Fprintf(os.Stderr, "  fogt blocks\n")
 	fmt.Fprintf(os.Stderr, "  fogt ls \"Documents\"\n")
 	fmt.Fprintf(os.Stderr, "  fogt dump\n")
@@ -51,8 +51,8 @@ func main() {
 		switch cmd {
 		case "gc":
 			gcCmd(trie)
-		case "merge":
-			mergeCmd(trie)
+		case "commit":
+			commitCmd(trie)
 		case "dump":
 			dumpCmd(trie)
 		case "blocks":
@@ -167,8 +167,8 @@ func blocksCmd(trie *eft.EFT) {
 	}
 }
 
-func mergeCmd(trie *eft.EFT) {
-	err := trie.MergeSnapRoots()
+func commitCmd(trie *eft.EFT) {
+	err := trie.Commit()
 	if err != nil {
 		panic(err)
 	}

@@ -64,6 +64,7 @@ func (eft *EFT) Unlock() (eret error) {
 		}
 	}()
 
+	assert(eft.locked != LOCKED_NO, "Need a lock to unlock")
 
 	err := syscall.Flock(int(eft.lockf.Fd()), syscall.LOCK_UN)
 	if err != nil {
