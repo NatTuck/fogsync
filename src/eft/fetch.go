@@ -7,8 +7,7 @@ import (
 type FetchFn func(bs []string) (*BlockArchive, error)
 
 func (eft *EFT) FetchRemote(rem_hash [32]byte, fetch_fn FetchFn) error {
-	return eft.with_write_lock(func() {
-
+	err := eft.with_read_lock(func() {
 		bs := eft.NewBlockSet()
 		bs.Add(rem_hash)
 
@@ -21,6 +20,20 @@ func (eft *EFT) FetchRemote(rem_hash [32]byte, fetch_fn FetchFn) error {
 		err = eft.fetchPathTrieNode(pt.root, 0, fetch_fn)
 		assert_no_error(err)
 
+		eft.saveRoot(rem_hash)
+	})
+
+	if err != nil {
+		return trace(err)
+	}
+
+	return eft.with_write_lock(func() {
+		// Verify that this root is still there.
+		// Could have been lost in GC between locks.
+		_, err := eft.loadBlock(rem_hash)
+		assert_no_error(err)
+
+		eft.putSnapRoot("remote", rem_hash)
 	})
 }
 

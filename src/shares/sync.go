@@ -156,25 +156,24 @@ func (ss *Share) sync() {
 		return ss.fetchBlocks(cc, bs)
 	}
 
-	// Perform merge
+	rem_root := [32]byte{}
+
 	if sdata.Root != "" {
-		hash := eft.HexToHash(sdata.Root)
+		rem_root = eft.HexToHash(sdata.Root)
 
-		err = ss.Trie.FetchRemote(hash, fetch_fn)
-		if err != nil {
-			fmt.Println(fs.Trace(err))
-			return
-		}
-
-		err = ss.Trie.MergeRemote(hash)
+		err = ss.Trie.FetchRemote(rem_root, fetch_fn)
 		if err != nil {
 			fmt.Println(fs.Trace(err))
 			return
 		}
 	}
 
-	/*
-	prev_root := sdata.Root
+	// Perform merge
+	root, adds, dels, err := ss.Trie.PrepUpload(rem_root)
+	if err != nil {
+		fmt.Println(fs.Trace(err))
+		return
+	}
 
 	ba, err := eft.NewArchive()
 	if err != nil {
@@ -182,7 +181,8 @@ func (ss *Share) sync() {
 		return
 	}
 	defer ba.Close()
-
+	
+	
 	err = ba.AddList(ss.Trie, cp.Adds)
 	if err != nil {
 		fmt.Println(fs.Trace(err))

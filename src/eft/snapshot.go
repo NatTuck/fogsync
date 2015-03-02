@@ -10,12 +10,12 @@ import (
 // An EFT has one or more "snapshots", each representing a trie root
 // that shouldn't be garbage collected.
 
-// There is a main snapshot, "main", which represents the current
-// state of the EFT.
-
-// In addition, we have a snapshot "remote", which represents the
-// current status of the remote server. This snapshot is kept around
-// to avoid having to download excess blocks during a merge.
+// Standard snapshot names:
+//  - "main" is the local state of the EFT
+//  - "remote" is the last successful upload, this is
+//    to avoid block downloads during merge   
+//  - "upload" is the current upload attempt, this is to
+//    avoid a race condition on upload
 
 func (eft *EFT) getSnapRoot(name string) ([32]byte, error) {
 	root_path := path.Join(eft.Dir, "snaps", "main")
@@ -94,7 +94,7 @@ func (eft *EFT) mergeRootPair(r0 [32]byte, r1 [32]byte) [32]byte {
 	return root
 }
 
-func (eft *EFT) mergeRoots() {
+func (eft *EFT) mergeRoots() [32]byte {
 	assert(eft.locked == LOCKED_RW, "Need RW Lock")
 
 	var roots [][32]byte

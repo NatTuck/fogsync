@@ -129,12 +129,20 @@ func (eft *EFT) ListBlocks() ([]string, error) {
 	return blocks, err
 }
 
-func (eft *EFT) Commit() error {
-	return eft.with_write_lock(func() {
+func (eft *EFT) Commit() ([32]byte, error) {
+	var root [32]byte
+
+	err := eft.with_write_lock(func() {
 		eft.mergeRoots()
+
 		err := eft.collect()
 		assert_no_error(err)
+
+		root, err = eft.getRoot()
+		assert_no_error(err)
 	})
+
+	return root, err
 }
 
 func (eft *EFT) BlockPath(hash [32]byte) string {

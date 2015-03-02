@@ -162,6 +162,12 @@ func (ba *BlockArchive) AddList(eft *EFT, src_path string) error {
 	return nil
 }
 
+func (ba *BlockArchive) AddSet(eft *EFT, bs *BlockSet) error {
+	bs.eachHash(func (hh [32]byte) {
+		ba.Add(eft, hh)
+	})
+}
+
 func (ba *BlockArchive) Size() int {
 	return ba.size
 }

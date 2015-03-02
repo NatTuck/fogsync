@@ -15,8 +15,8 @@ func (eft* EFT) root_changes(r0 [32]byte, r1 [32]byte) (*BlockSet, *BlockSet) {
 	bs0 := pt0.blockSet()
 	bs1 := pt1.blockSet()
 
-	un0 := bs0.Diff(bs1)
-	un1 := bs1.Diff(bs0)
+	un0 := bs0.Diff(bs1) // Blocks unique to bs0
+	un1 := bs1.Diff(bs0) // Blocks unique to bs1
 
 	return un0, un1
 }

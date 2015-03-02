@@ -10,6 +10,8 @@ import (
 )
 
 func (eft *EFT) collect() error {
+	assert(eft.locked == LOCKED_RW, "Need RW Lock")
+
 	snaps := eft.listSnaps()
 
 	// Generate full block set.
@@ -22,6 +24,17 @@ func (eft *EFT) collect() error {
 		live.Add(snap_root)
 
 		pt, err := eft.loadPathTrie(snap_root)
+		assert_no_error(err)
+
+		bs := pt.blockSet()
+		live.AddSet(bs)
+	}
+
+	// Catch any uncommitted roots.
+	for _, root := range(eft.listRoots()) {
+		live.Add(root)
+		
+		pt, err := eft.loadPathTrie(root)
 		assert_no_error(err)
 
 		bs := pt.blockSet()

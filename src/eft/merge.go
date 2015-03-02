@@ -5,36 +5,22 @@ import (
 	"bytes"
 )
 
-func (eft *EFT) MergeRemote(hash [32]byte) error {
-	err := eft.with_read_lock(func() {
-		currHash, err := eft.getRoot()
+func (eft *EFT) MergeRemote(remote_root [32]byte) ([]string, []string, error) {
+
+	err := eft.with_write_lock(func() {
+		eft.mergeRoots()
+
+		err := eft.collect()
 		assert_no_error(err)
 
-		if HashesEqual(currHash, hash) {
-			fmt.Println("XX - Remote snap has no changes.")
-			return
-		}
-
-		ptR, err := eft.loadPathTrie(hash)
-		assert_no_error(err)
-	
-		ptL, err := eft.loadPathTrie(currHash)
+		merged, err := eft.getRoot()
 		assert_no_error(err)
 
-		trie, err := eft.mergePathTries(ptL, ptR)
-		assert_no_error(err)
-
-		merged, err := trie.save()
-		assert_no_error(err)
-
-		eft.saveRoot(merged)
+		adds, dels := eft.root_changes(merged, remote_root)
+		// TODO: FIXME
 	})
 
-	if err != nil {
-		return err
-	}
-
-	return eft.Commit()
+	return nil
 }
 
 func (eft *EFT) mergePathTries(pt0, pt1 PathTrie) (PathTrie, error) {
