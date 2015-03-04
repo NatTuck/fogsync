@@ -17,7 +17,6 @@ func (eft *EFT) MergeRemote(remote_root [32]byte) ([]string, []string, error) {
 		assert_no_error(err)
 
 		adds, dels := eft.root_changes(merged, remote_root)
-		// TODO: FIXME
 	})
 
 	return nil

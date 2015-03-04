@@ -3,7 +3,15 @@ package eft
 import (
 )
 
-func (eft* EFT) root_changes(r0 [32]byte, r1 [32]byte) (*BlockSet, *BlockSet) {
+func (eft *EFT) PrepUpload() {
+
+}
+
+func (eft *EFT) CommitUpload() {
+
+}
+
+func (eft *EFT) root_changes(r0 [32]byte, r1 [32]byte) (*BlockSet, *BlockSet) {
 	// Given two path trie roots, find the blocks unique to each.
 
 	pt0, err := eft.loadPathTrie(r0)
